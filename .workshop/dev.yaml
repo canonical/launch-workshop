@@ -1,0 +1,9 @@
+name: dev
+base: ubuntu@24.04
+sdks:
+  - name: project-node
+scripts:
+  all: npm run all -- "$@"
+  format: npm run format:write -- "$@"
+  lint: npm run lint -- "$@"
+  test: npm run test -- "$@"

@@ -1,0 +1,16 @@
+name: Install workshop
+description: Install Workshop
+author: Canonical
+branding:
+  icon: tool
+  color: orange
+inputs:
+  token:
+    description: Access token for canonical/workshop.
+    required: true
+  version:
+    description: Workshop version or range of versions.
+    default: latest
+runs:
+  using: node20
+  main: dist/index.js

@@ -1,0 +1,2 @@
+name: jammy
+base: ubuntu@22.04
