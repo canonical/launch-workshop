@@ -46,14 +46,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install workshop
+      - name: Launch workshop
         uses: ./
         with:
           token: ${{ secrets.WORKSHOP_TOKEN }}
+          workshop: ${{ matrix.workshop }}
 
       - name: Check base image
         run: |
-          workshop launch "$WS"
           release="$(workshop exec "$WS" lsb_release --codename --short)"
           [ "$WS" = "$release" ]
         env:

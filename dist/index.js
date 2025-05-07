@@ -27,11 +27,11 @@ import require$$6 from 'string_decoder';
 import require$$0$9 from 'diagnostics_channel';
 import require$$2$3 from 'child_process';
 import require$$6$1 from 'timers';
-import { isNativeError } from 'node:util/types';
 import * as fs from 'node:fs/promises';
 import assert from 'node:assert';
 import os from 'node:os';
 import path from 'node:path';
+import { isNativeError } from 'node:util/types';
 
 var commonjsGlobal = typeof globalThis !== 'undefined' ? globalThis : typeof window !== 'undefined' ? window : typeof global !== 'undefined' ? global : typeof self !== 'undefined' ? self : {};
 
@@ -27284,18 +27284,6 @@ function requireCore () {
 
 var coreExports = requireCore();
 
-/**
- * Parses action inputs from the environment.
- *
- * @returns The inputs.
- */
-function getInputs() {
-    return {
-        token: coreExports.getInput('token', { required: true }),
-        version: coreExports.getInput('version', { required: true })
-    };
-}
-
 var execExports = requireExec();
 
 var toolCache = {};
@@ -34076,19 +34064,77 @@ async function workshopVersion() {
     }
     return '';
 }
+/**
+ * Launches a workshop.
+ *
+ * @param project Project directory.
+ * @param workshop Name of workshop to launch.
+ * @returns Resolves when complete.
+ */
+async function launchWorkshop(project, workshop) {
+    const args = ['--project', project, 'launch'];
+    if (workshop) {
+        args.push('--', workshop);
+    }
+    try {
+        await execExports.exec('workshop', args);
+    }
+    catch (error) {
+        try {
+            await execExports.exec('workshop', ['tasks']);
+        }
+        catch (taskError) {
+            coreExports.error(errorMessage(taskError));
+        }
+        throw error;
+    }
+}
+/**
+ * Converts an error to a string.
+ *
+ * @param error Arbitrary error object.
+ * @returns A message describing the error.
+ */
+function errorMessage(error) {
+    if (isNativeError(error)) {
+        return error.message;
+    }
+    return String(error);
+}
 
 /**
- * Installs Workshop.
+ * Parses action inputs from the environment.
+ *
+ * @returns The inputs.
+ */
+function getInputs() {
+    const token = coreExports.getInput('token', { required: true });
+    const version = coreExports.getInput('version', { required: true });
+    let project = coreExports.getInput('project');
+    if (project) {
+        project = path.resolve(project);
+    }
+    else {
+        project = path.resolve();
+    }
+    coreExports.debug(`Project directory: ${project}`);
+    const workshop = coreExports.getInput('workshop');
+    return { token, version, project, workshop };
+}
+
+/**
+ * Launches a workshop, installing Workshop first if necessary.
  *
  * @returns Resolves when complete.
  */
 async function run() {
     try {
-        const { token, version } = getInputs();
+        const { token, version, project, workshop } = getInputs();
         await setupWorkshop(token, version);
+        await launchWorkshop(project, workshop);
     }
     catch (error) {
-        coreExports.setFailed(isNativeError(error) ? error.message : String(error));
+        coreExports.setFailed(errorMessage(error));
     }
 }
 

@@ -3,4 +3,6 @@ import { jest } from '@jest/globals'
 
 export const debug = jest.fn<typeof core.debug>()
 
+export const error = jest.fn<typeof core.error>()
+
 export const setFailed = jest.fn<typeof core.setFailed>()

@@ -9,11 +9,12 @@ jest.unstable_mockModule('../src/workshop.js', () => workshop)
 
 const { run } = await import('../src/main.js')
 
-test('installs Workshop', async () => {
+test('launches workshop', async () => {
   await run()
 
   expect(core.setFailed.mock.calls).toEqual([])
   expect(workshop.setupWorkshop).toHaveBeenCalledWith('abcxyz', '1.2.3')
+  expect(workshop.launchWorkshop).toHaveBeenCalledWith('/project', 'dev')
 })
 
 test('reports invalid inputs', async () => {
@@ -32,4 +33,12 @@ test('reports setup failure', async () => {
   await run()
 
   expect(core.setFailed).toHaveBeenCalledWith('cannot setup')
+})
+
+test('reports launch failure', async () => {
+  workshop.launchWorkshop.mockRejectedValueOnce(new Error('cannot launch'))
+
+  await run()
+
+  expect(core.setFailed).toHaveBeenCalledWith('cannot launch')
 })

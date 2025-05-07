@@ -1,6 +1,7 @@
 # Launch workshop action
 
-This action installs [Workshop](https://github.com/canonical/workshop).
+This action launches an ephemeral development environment using
+[Workshop](https://github.com/canonical/workshop).
 
 [![Tests](https://github.com/canonical/launch-workshop/actions/workflows/tests.yaml/badge.svg)](https://github.com/canonical/launch-workshop/actions/workflows/tests.yaml)
 [![Check dist](https://github.com/canonical/launch-workshop/actions/workflows/check-dist.yaml/badge.svg)](https://github.com/canonical/launch-workshop/actions/workflows/check-dist.yaml)
@@ -18,6 +19,14 @@ This action installs [Workshop](https://github.com/canonical/workshop).
     # Workshop version or range of versions.
     # Optional.
     version: latest
+
+    # Directory containing a workshop to launch.
+    # Optional.
+    project: .
+
+    # Name of workshop to launch.
+    # Required if the project has multiple workshops.
+    workshop: dev
 ```
 
 ## Example jobs
@@ -32,8 +41,6 @@ steps:
   - uses: canonical/launch-workshop@v1
     with:
       token: ${{ secrets.WORKSHOP_TOKEN }}
-
-  - run: workshop launch
 
   - run: workshop exec -- pytest
 ```
@@ -51,10 +58,7 @@ steps:
   - uses: canonical/launch-workshop@v1
     with:
       token: ${{ secrets.WORKSHOP_TOKEN }}
-
-  - run: workshop launch "$WS"
-    env:
-      WS: ${{ matrix.workshop }}
+      workshop: ${{ matrix.workshop }}
 
   - run: workshop run "$WS" unit-tests
     env:

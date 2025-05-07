@@ -5,6 +5,7 @@ import * as tc from '@actions/tool-cache'
 import { pierceFirewall, setupLxd } from './lxd.js'
 import assert from 'node:assert'
 import { downloadRelease } from './release.js'
+import { isNativeError } from 'node:util/types'
 import path from 'node:path'
 import { snapArch } from './snap.js'
 
@@ -83,4 +84,45 @@ async function workshopVersion(): Promise<string> {
     return stdout.trim()
   }
   return ''
+}
+
+/**
+ * Launches a workshop.
+ *
+ * @param project Project directory.
+ * @param workshop Name of workshop to launch.
+ * @returns Resolves when complete.
+ */
+export async function launchWorkshop(
+  project: string,
+  workshop: string
+): Promise<void> {
+  const args = ['--project', project, 'launch']
+  if (workshop) {
+    args.push('--', workshop)
+  }
+
+  try {
+    await exec.exec('workshop', args)
+  } catch (error) {
+    try {
+      await exec.exec('workshop', ['tasks'])
+    } catch (taskError) {
+      core.error(errorMessage(taskError))
+    }
+    throw error
+  }
+}
+
+/**
+ * Converts an error to a string.
+ *
+ * @param error Arbitrary error object.
+ * @returns A message describing the error.
+ */
+export function errorMessage(error: unknown): string {
+  if (isNativeError(error)) {
+    return error.message
+  }
+  return String(error)
 }

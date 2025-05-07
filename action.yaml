@@ -1,5 +1,6 @@
-name: Install workshop
-description: Install Workshop
+name: Launch workshop
+description:
+  Install Workshop and use it to launch an ephemeral development environment
 author: Canonical
 branding:
   icon: tool
@@ -11,6 +12,10 @@ inputs:
   version:
     description: Workshop version or range of versions.
     default: latest
+  project:
+    description: Directory containing a workshop to launch.
+  workshop:
+    description: Name of workshop to launch.
 runs:
   using: node20
   main: dist/index.js
