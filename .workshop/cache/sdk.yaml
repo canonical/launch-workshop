@@ -1,0 +1,8 @@
+name: cache
+plugs:
+  one:
+    interface: mount
+    workshop-target: /home/workshop/.cache/one
+  two:
+    interface: mount
+    workshop-target: /home/workshop/.cache/two

@@ -1,9 +1,15 @@
+import * as cache from '@actions/cache'
 import * as core from '@actions/core'
 import * as exec from '@actions/exec'
 import * as fs from 'node:fs/promises'
 import * as tc from '@actions/tool-cache'
+import { hostCachePath, mountHostSource } from './paths.js'
 import { pierceFirewall, setupLxd } from './lxd.js'
+import type { PlugRef } from './inputs.js'
+import type { Project } from './client.js'
 import assert from 'node:assert'
+import { context } from '@actions/github'
+import { createHash } from 'node:crypto'
 import { downloadRelease } from './release.js'
 import { isNativeError } from 'node:util/types'
 import path from 'node:path'
@@ -84,6 +90,109 @@ async function workshopVersion(): Promise<string> {
     return stdout.trim()
   }
   return ''
+}
+
+/**
+ * Caches mount plug contents.
+ *
+ * @param project Project ID and directory.
+ * @param workshop Workshop name.
+ * @param plugs Mount plugs to cache.
+ * @returns Resolves when complete.
+ */
+export async function saveCache(
+  project: Project,
+  workshop: string,
+  plugs: PlugRef[]
+): Promise<void> {
+  const hashes = plugHashes(project, workshop, plugs)
+
+  const existing = []
+  for (const [i, plug] of plugs.entries()) {
+    const source = mountHostSource(project.id, workshop, plug.sdk, plug.name)
+    const exists = await mv(source, hostCachePath(hashes[i]))
+    if (exists) {
+      core.debug(`Caching ${plugToString(plug)} (${source})`)
+      existing.push(hashes[i])
+    }
+  }
+
+  const uploads = existing.map((hash) => {
+    const paths = [hostCachePath(hash)]
+    const key = `workshop-${hash}-${context.runId}-${context.runAttempt}`
+    return cache.saveCache(paths, key)
+  })
+  await Promise.all(uploads)
+}
+
+/**
+ * Restores mount plug contents from cache (if possible).
+ *
+ * @param project Project ID and directory.
+ * @param workshop Workshop name.
+ * @param plugs Mount plugs to restore.
+ * @returns Resolves when complete.
+ */
+export async function restoreCache(
+  project: Project,
+  workshop: string,
+  plugs: PlugRef[]
+): Promise<void> {
+  const hashes = plugHashes(project, workshop, plugs)
+
+  const downloads = hashes.map((hash) => {
+    const paths = [hostCachePath(hash)]
+    const key = `workshop-${hash}-${context.runId}-${context.runAttempt}`
+    const prefixes = [`workshop-${hash}-`]
+    return cache.restoreCache(paths, key, prefixes)
+  })
+  await Promise.all(downloads)
+
+  for (const [i, plug] of plugs.entries()) {
+    const target = mountHostSource(project.id, workshop, plug.sdk, plug.name)
+    const exists = await mv(hostCachePath(hashes[i]), target)
+    if (exists) {
+      core.debug(`Restored ${plugToString(plug)} (${target})`)
+    }
+  }
+}
+
+function plugHashes(
+  project: Project,
+  workshop: string,
+  plugs: PlugRef[]
+): string[] {
+  const hashes = plugs.map((plug) => {
+    const metadata = ['v1', project.path, workshop, plug.sdk, plug.name]
+    return createHash('sha256').update(JSON.stringify(metadata)).digest('hex')
+  })
+
+  for (const [i, hash] of hashes.entries()) {
+    const j = hashes.indexOf(hash)
+    if (j < i) {
+      throw new Error(
+        `hash collision between ${plugToString(plugs[j])} and ${plugToString(plugs[i])}`
+      )
+    }
+  }
+
+  return hashes
+}
+
+function plugToString(plug: PlugRef): string {
+  return `${plug.sdk}:${plug.name}`
+}
+
+async function mv(source: string, target: string): Promise<boolean> {
+  try {
+    await fs.access(source)
+  } catch {
+    return false
+  }
+
+  await fs.mkdir(path.dirname(target), { mode: 0o755, recursive: true })
+  await fs.rename(source, target)
+  return true
 }
 
 /**

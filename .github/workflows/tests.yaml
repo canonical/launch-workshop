@@ -58,3 +58,102 @@ jobs:
           [ "$WS" = "$release" ]
         env:
           WS: ${{ matrix.workshop }}
+
+  prepare-cache:
+    name: Prepare cache
+    runs-on: ubuntu-latest
+    outputs:
+      path: ${{ steps.copy.outputs.path }}
+      one: ${{ steps.write.outputs.one }}
+      two: ${{ steps.write.outputs.two }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Copy project to unique location
+        id: copy
+        run: |
+          path="prj-$(openssl rand -hex 8)"
+          mkdir "$path"
+          cp -a .workshop "$path"
+          printf 'path=%s\n' "$path" >> "$GITHUB_OUTPUT"
+
+      - name: Launch workshop
+        uses: ./
+        with:
+          token: ${{ secrets.WORKSHOP_TOKEN }}
+          project: ${{ steps.copy.outputs.path }}
+          workshop: cache
+          cache: |
+            project-cache:one
+            project-cache:two
+
+      - name: Generate cached data
+        id: write
+        run: |
+          for plug in one two; do
+            value="$(openssl rand -hex 8)"
+            workshop run cache write "$plug" "$value"
+            printf '%s=%s\n' "$plug" "$value" >> "$GITHUB_OUTPUT"
+          done
+        working-directory: ${{ steps.copy.outputs.path }}
+
+  cache-tests:
+    name: Cache tests
+    runs-on: ubuntu-latest
+    needs: prepare-cache
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Copy project to separate locations
+        id: copy
+        run: |
+          mkdir "$PROJECT"
+          cp -a .workshop "$PROJECT"
+
+          path="prj2-$(openssl rand -hex 8)"
+          mkdir "$path"
+          cp -a .workshop "$path"
+          printf 'path=%s\n' "$path" >> "$GITHUB_OUTPUT"
+        env:
+          PROJECT: ${{ needs.prepare-cache.outputs.path }}
+
+      - name: Launch workshop in known project
+        uses: ./
+        with:
+          token: ${{ secrets.WORKSHOP_TOKEN }}
+          project: ${{ needs.prepare-cache.outputs.path }}
+          workshop: cache
+          cache: |
+            project-cache:one
+            project-cache:two
+
+      - name: Verify cached data
+        run: |
+          value="$(workshop run cache read one)"
+          [ "$value" = "$ONE" ]
+          value="$(workshop run cache read two)"
+          [ "$value" = "$TWO" ]
+        env:
+          ONE: ${{ needs.prepare-cache.outputs.one }}
+          TWO: ${{ needs.prepare-cache.outputs.two }}
+        working-directory: ${{ needs.prepare-cache.outputs.path }}
+
+      - name: Launch workshop in new project
+        uses: ./
+        with:
+          token: ${{ secrets.WORKSHOP_TOKEN }}
+          project: ${{ steps.copy.outputs.path }}
+          workshop: cache
+          cache: |
+            project-cache:one
+            project-cache:two
+
+      - name: Check cache is empty for new project
+        run: |
+          workshop run cache empty one
+          workshop run cache empty two
+        working-directory: ${{ steps.copy.outputs.path }}

@@ -16,6 +16,10 @@ inputs:
     description: Directory containing a workshop to launch.
   workshop:
     description: Name of workshop to launch.
+  cache:
+    description: Mount plugs to cache across workflow runs.
 runs:
   using: node20
   main: dist/index.js
+  post: dist/post.js
+  post-if: success()

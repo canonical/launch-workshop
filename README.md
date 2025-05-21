@@ -27,6 +27,11 @@ This action launches an ephemeral development environment using
     # Name of workshop to launch.
     # Required if the project has multiple workshops.
     workshop: dev
+
+    # Mount plugs to cache across workflow runs.
+    # Each line has the format <SDK>:<PLUG>.
+    # Optional.
+    cache: ''
 ```
 
 ## Example jobs
@@ -63,4 +68,28 @@ steps:
   - run: workshop run "$WS" unit-tests
     env:
       WS: ${{ matrix.workshop }}
+```
+
+## Caching
+
+Workshop SDKs can define mount plugs to persist data outside the workshop
+container. For example, a `python` SDK could define a `pip-cache` plug:
+
+```console
+$ workshop connections --all
+Interface  Plug                  Slot              Notes
+mount      dev/python:pip-cache  dev/system:mount  -
+```
+
+Use the `cache` input to cache such data across workflow runs:
+
+```yaml
+- uses: canonical/launch-workshop@v1
+  with:
+    token: ...
+    cache: |
+      cargo:git
+      cargo:registry
+      go:mod-cache
+      python:pip-cache
 ```

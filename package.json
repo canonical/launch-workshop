@@ -37,6 +37,7 @@
   },
   "license": "LGPL-3.0-only",
   "dependencies": {
+    "@actions/cache": "^4.0.3",
     "@actions/core": "^1.11.1",
     "@actions/exec": "^1.1.1",
     "@actions/github": "^6.0.1",
@@ -48,6 +49,7 @@
     "@fetch-mock/jest": "^0.2.16",
     "@jest/globals": "^29.7.0",
     "@rollup/plugin-commonjs": "^28.0.6",
+    "@rollup/plugin-json": "^6.1.0",
     "@rollup/plugin-node-resolve": "^16.0.1",
     "@rollup/plugin-typescript": "^12.1.4",
     "@types/jest": "^29.5.14",

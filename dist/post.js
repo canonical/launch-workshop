@@ -1,0 +1,45 @@
+import { p as postRun } from './main.js';
+import 'os';
+import 'crypto';
+import 'fs';
+import 'path';
+import 'http';
+import 'https';
+import 'net';
+import 'tls';
+import 'events';
+import 'assert';
+import 'util';
+import 'stream';
+import 'buffer';
+import 'querystring';
+import 'stream/web';
+import 'node:stream';
+import 'node:util';
+import 'node:events';
+import 'worker_threads';
+import 'perf_hooks';
+import 'util/types';
+import 'async_hooks';
+import 'console';
+import 'url';
+import 'zlib';
+import 'string_decoder';
+import 'diagnostics_channel';
+import 'child_process';
+import 'timers';
+import 'node:assert';
+import 'node:fs/promises';
+import 'node:os';
+import 'node:path';
+import 'node:crypto';
+import 'node:process';
+import 'node:http';
+import 'node:https';
+import 'node:zlib';
+import 'tty';
+import 'node:util/types';
+
+/* istanbul ignore next */
+postRun();
+//# sourceMappingURL=post.js.map

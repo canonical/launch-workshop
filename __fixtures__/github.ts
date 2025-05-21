@@ -4,6 +4,8 @@ import { ReadableStream } from 'node:stream/web'
 import fetchMock from '@fetch-mock/jest'
 import { jest } from '@jest/globals'
 
+export const context = { runId: 1658821493, runAttempt: 7 }
+
 export const getOctokit = jest.fn<typeof github.getOctokit>(
   () => new GitHub({ request: { fetch: fetchMock.fetchHandler } })
 )

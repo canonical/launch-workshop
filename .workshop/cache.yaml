@@ -1,0 +1,9 @@
+name: cache
+base: ubuntu@24.04
+sdks:
+  - name: project-cache
+scripts:
+  read: cat "$HOME/.cache/$1/content"
+  write: printf '%s\n' "$2" > "$HOME/.cache/$1/content"
+  empty: |
+    [ -z "$(ls -A "$HOME/.cache/$1")" ]
