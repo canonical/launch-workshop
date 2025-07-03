@@ -3,5 +3,11 @@
   extends: ['config:recommended'],
   major: {
     dependencyDashboardApproval: true
-  }
+  },
+  packageRules: [
+    {
+      matchPackageNames: ['node', '@types/node'],
+      allowedVersions: '^20.0.0'
+    }
+  ]
 }
