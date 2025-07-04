@@ -10,7 +10,7 @@ This action launches an ephemeral development environment using
 ## Usage
 
 ```yaml
-- uses: canonical/launch-workshop@v1
+- uses: canonical/launch-workshop@v0
   with:
     # Access token for canonical/workshop.
     # Required.
@@ -43,7 +43,7 @@ runs-on: ubuntu-latest
 steps:
   - uses: actions/checkout@v4
 
-  - uses: canonical/launch-workshop@v1
+  - uses: canonical/launch-workshop@v0
     with:
       token: ${{ secrets.WORKSHOP_TOKEN }}
 
@@ -60,7 +60,7 @@ strategy:
 steps:
   - uses: actions/checkout@v4
 
-  - uses: canonical/launch-workshop@v1
+  - uses: canonical/launch-workshop@v0
     with:
       token: ${{ secrets.WORKSHOP_TOKEN }}
       workshop: ${{ matrix.workshop }}
@@ -84,7 +84,7 @@ mount      dev/python:pip-cache  dev/system:mount  -
 Use the `cache` input to cache such data across workflow runs:
 
 ```yaml
-- uses: canonical/launch-workshop@v1
+- uses: canonical/launch-workshop@v0
   with:
     token: ...
     cache: |
