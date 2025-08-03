@@ -86,8 +86,8 @@ jobs:
           project: ${{ steps.copy.outputs.path }}
           workshop: cache
           cache: |
-            project-cache:one
-            project-cache:two
+            cache:one
+            cache:two
 
       - name: Generate cached data
         id: write
@@ -128,8 +128,8 @@ jobs:
           project: ${{ needs.prepare-cache.outputs.path }}
           workshop: cache
           cache: |
-            project-cache:one
-            project-cache:two
+            cache:one
+            cache:two
 
       - name: Verify cached data
         run: |
@@ -149,8 +149,8 @@ jobs:
           project: ${{ steps.copy.outputs.path }}
           workshop: cache
           cache: |
-            project-cache:one
-            project-cache:two
+            cache:one
+            cache:two
 
       - name: Check cache is empty for new project
         run: |
