@@ -68693,7 +68693,7 @@ function requireConfig () {
 
 var userAgent$1 = {};
 
-var version = "4.0.3";
+var version = "4.0.5";
 var require$$0$1 = {
 	version: version};
 
@@ -74513,6 +74513,7 @@ function requireCache () {
 	const config_1 = requireConfig();
 	const tar_1 = requireTar();
 	const constants_1 = requireConstants();
+	const http_client_1 = requireLib();
 	class ValidationError extends Error {
 	    constructor(message) {
 	        super(message);
@@ -74549,7 +74550,17 @@ function requireCache () {
 	 * @returns boolean return true if Actions cache service feature is available, otherwise false
 	 */
 	function isFeatureAvailable() {
-	    return !!process.env['ACTIONS_CACHE_URL'];
+	    const cacheServiceVersion = (0, config_1.getCacheServiceVersion)();
+	    // Check availability based on cache service version
+	    switch (cacheServiceVersion) {
+	        case 'v2':
+	            // For v2, we need ACTIONS_RESULTS_URL
+	            return !!process.env['ACTIONS_RESULTS_URL'];
+	        case 'v1':
+	        default:
+	            // For v1, we only need ACTIONS_CACHE_URL
+	            return !!process.env['ACTIONS_CACHE_URL'];
+	    }
 	}
 	cache$1.isFeatureAvailable = isFeatureAvailable;
 	/**
@@ -74634,8 +74645,16 @@ function requireCache () {
 	                throw error;
 	            }
 	            else {
-	                // Supress all non-validation cache related errors because caching should be optional
-	                core.warning(`Failed to restore: ${error.message}`);
+	                // warn on cache restore failure and continue build
+	                // Log server errors (5xx) as errors, all other errors as warnings
+	                if (typedError instanceof http_client_1.HttpClientError &&
+	                    typeof typedError.statusCode === 'number' &&
+	                    typedError.statusCode >= 500) {
+	                    core.error(`Failed to restore: ${error.message}`);
+	                }
+	                else {
+	                    core.warning(`Failed to restore: ${error.message}`);
+	                }
 	            }
 	        }
 	        finally {
@@ -74688,7 +74707,13 @@ function requireCache () {
 	                core.debug(`Cache not found for version ${request.version} of keys: ${keys.join(', ')}`);
 	                return undefined;
 	            }
-	            core.info(`Cache hit for: ${request.key}`);
+	            const isRestoreKeyMatch = request.key !== response.matchedKey;
+	            if (isRestoreKeyMatch) {
+	                core.info(`Cache hit for restore-key: ${response.matchedKey}`);
+	            }
+	            else {
+	                core.info(`Cache hit for: ${response.matchedKey}`);
+	            }
 	            if (options === null || options === void 0 ? void 0 : options.lookupOnly) {
 	                core.info('Lookup only - skipping download');
 	                return response.matchedKey;
@@ -74713,7 +74738,15 @@ function requireCache () {
 	            }
 	            else {
 	                // Supress all non-validation cache related errors because caching should be optional
-	                core.warning(`Failed to restore: ${error.message}`);
+	                // Log server errors (5xx) as errors, all other errors as warnings
+	                if (typedError instanceof http_client_1.HttpClientError &&
+	                    typeof typedError.statusCode === 'number' &&
+	                    typedError.statusCode >= 500) {
+	                    core.error(`Failed to restore: ${error.message}`);
+	                }
+	                else {
+	                    core.warning(`Failed to restore: ${error.message}`);
+	                }
 	            }
 	        }
 	        finally {
@@ -74816,7 +74849,15 @@ function requireCache () {
 	                core.info(`Failed to save: ${typedError.message}`);
 	            }
 	            else {
-	                core.warning(`Failed to save: ${typedError.message}`);
+	                // Log server errors (5xx) as errors, all other errors as warnings
+	                if (typedError instanceof http_client_1.HttpClientError &&
+	                    typeof typedError.statusCode === 'number' &&
+	                    typedError.statusCode >= 500) {
+	                    core.error(`Failed to save: ${typedError.message}`);
+	                }
+	                else {
+	                    core.warning(`Failed to save: ${typedError.message}`);
+	                }
 	            }
 	        }
 	        finally {
@@ -74912,7 +74953,15 @@ function requireCache () {
 	                core.info(`Failed to save: ${typedError.message}`);
 	            }
 	            else {
-	                core.warning(`Failed to save: ${typedError.message}`);
+	                // Log server errors (5xx) as errors, all other errors as warnings
+	                if (typedError instanceof http_client_1.HttpClientError &&
+	                    typeof typedError.statusCode === 'number' &&
+	                    typedError.statusCode >= 500) {
+	                    core.error(`Failed to save: ${typedError.message}`);
+	                }
+	                else {
+	                    core.warning(`Failed to save: ${typedError.message}`);
+	                }
 	            }
 	        }
 	        finally {
