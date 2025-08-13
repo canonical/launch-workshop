@@ -5,5 +5,6 @@ sdks:
 scripts:
   all: npm run all -- "$@"
   format: npm run format:write -- "$@"
+  install: npm ci -- "$@"
   lint: npm run lint -- "$@"
   test: npm run test -- "$@"
