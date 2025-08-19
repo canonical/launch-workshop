@@ -1,9 +1,17 @@
 name: dev
 base: ubuntu@24.04
 sdks:
-  - name: project-node
+  - name: system
+    plugs:
+      inspector:
+        interface: tunnel
+        endpoint: 9229
+  - name: node
+    channel: 24.04/edge
 scripts:
   all: npm run all -- "$@"
   format: npm run format:write -- "$@"
+  inspect: npm run inspect -- "$@"
+  install: npm ci -- "$@"
   lint: npm run lint -- "$@"
   test: npm run test -- "$@"

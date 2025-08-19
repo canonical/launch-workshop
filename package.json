@@ -25,14 +25,15 @@
   },
   "scripts": {
     "bundle": "npm run format:write && npm run package",
-    "ci-test": "NODE_OPTIONS=--experimental-vm-modules NODE_NO_WARNINGS=1 npx jest",
+    "ci-test": "npx --node-options '--experimental-vm-modules --no-warnings' -- jest",
     "coverage": "npx make-coverage-badge --output-path ./badges/coverage.svg",
     "format:write": "npx prettier --write .",
     "format:check": "npx prettier --check .",
+    "inspect": "npx --node-options '--experimental-vm-modules --inspect-brk --no-warnings' -- jest --coverage=false --runInBand",
     "lint": "npx eslint .",
     "package": "npx rollup --config rollup.config.ts --configPlugin @rollup/plugin-typescript",
     "package:watch": "npm run package -- --watch",
-    "test": "NODE_OPTIONS=--experimental-vm-modules NODE_NO_WARNINGS=1 npx jest",
+    "test": "npx --node-options '--experimental-vm-modules --no-warnings' -- jest",
     "all": "npm run format:write && npm run lint && npm run test && npm run coverage && npm run package"
   },
   "license": "LGPL-3.0-only",
