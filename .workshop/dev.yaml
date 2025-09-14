@@ -8,7 +8,7 @@ sdks:
         endpoint: 9229
   - name: node
     channel: 24.04/edge
-scripts:
+actions:
   all: npm run all -- "$@"
   format: npm run format:write -- "$@"
   inspect: npm run inspect -- "$@"

@@ -2,7 +2,6 @@ import * as cache from '@actions/cache'
 import * as core from '@actions/core'
 import * as exec from '@actions/exec'
 import * as fs from 'node:fs/promises'
-import * as tc from '@actions/tool-cache'
 import { hostCachePath, mountHostSource } from './paths.js'
 import { pierceFirewall, setupLxd } from './lxd.js'
 import type { PlugRef } from './inputs.js'
@@ -13,6 +12,7 @@ import { createHash } from 'node:crypto'
 import { downloadRelease } from './release.js'
 import { isNativeError } from 'node:util/types'
 import path from 'node:path'
+import { satisfies } from 'semver'
 import { snapArch } from './snap.js'
 
 /**
@@ -30,7 +30,7 @@ export async function setupWorkshop(
   const installed = await workshopVersion()
   if (
     installed !== '' &&
-    (version == 'latest' || tc.evaluateVersions([installed], version) !== '')
+    (version == 'latest' || satisfies(installed, version))
   ) {
     core.debug(`Workshop ${installed} already installed`)
     return
