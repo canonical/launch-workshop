@@ -1,4 +1,6 @@
+import * as core from '@actions/core'
 import * as exec from '@actions/exec'
+import { coerce, satisfies } from 'semver'
 
 /**
  * Installs and initializes the LXD snap.
@@ -7,11 +9,19 @@ import * as exec from '@actions/exec'
  * @returns Resolves when complete.
  */
 export async function setupLxd(): Promise<void> {
-  if (await isLxdInstalled()) {
-    return
+  const installed = await isLxdInstalled()
+
+  if (installed) {
+    const version = await lxdVersion()
+    const semver = coerce(version)
+    if (semver !== null && satisfies(semver, '>=6.3')) {
+      core.debug(`LXD ${version} already installed`)
+      return
+    }
   }
 
-  await exec.exec('sudo', ['snap', 'install', '--channel=6/stable', 'lxd'])
+  const action = installed ? 'refresh' : 'install'
+  await exec.exec('sudo', ['snap', action, '--channel=6/stable', 'lxd'])
   await exec.exec('sudo', ['lxd', 'waitready'])
 }
 
@@ -21,6 +31,21 @@ async function isLxdInstalled(): Promise<boolean> {
     ignoreReturnCode: true
   })
   return code == 0
+}
+
+async function lxdVersion(): Promise<string> {
+  const { exitCode, stdout } = await exec.getExecOutput(
+    'env',
+    ['lxd', '--version'],
+    {
+      silent: true,
+      ignoreReturnCode: true
+    }
+  )
+  if (exitCode == 0) {
+    return stdout.trim()
+  }
+  return ''
 }
 
 /**

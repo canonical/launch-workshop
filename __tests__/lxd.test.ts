@@ -31,13 +31,55 @@ describe('setupLxd', () => {
     )
   })
 
-  test('avoids reinstalling', async () => {
+  test.each([
+    {
+      exitCode: 0,
+      stdout: '5.0.4',
+      stderr: ''
+    },
+    {
+      exitCode: 127,
+      stdout: '',
+      stderr: '/usr/bin/env: ‘lxd’: No such file or directory\n'
+    }
+  ])('refreshes', async (output) => {
+    exec.getExecOutput.mockResolvedValueOnce(output)
+
     await setupLxd()
 
     const snapList = exec.exec.mock.calls[0]?.[1]
     expect(snapList).toEqual(['snap', 'list', 'lxd'])
 
+    const lxdVersion = exec.getExecOutput.mock.calls[0]?.[1]
+    expect(lxdVersion).toEqual(['lxd', '--version'])
+
+    const snapRefresh = exec.exec.mock.calls[1]?.[1]
+    expect(snapRefresh?.slice(0, 2)).toEqual(['snap', 'refresh'])
+
+    const lxdWaitready = exec.exec.mock.calls[2]?.[1]
+    expect(lxdWaitready).toEqual(['lxd', 'waitready'])
+
+    expect(exec.exec).toHaveBeenCalledTimes(3)
+    expect(exec.getExecOutput).toHaveBeenCalledTimes(1)
+  })
+
+  test('avoids reinstalling', async () => {
+    exec.getExecOutput.mockResolvedValueOnce({
+      exitCode: 0,
+      stdout: '6.5',
+      stderr: ''
+    })
+
+    await setupLxd()
+
+    const snapList = exec.exec.mock.calls[0]?.[1]
+    expect(snapList).toEqual(['snap', 'list', 'lxd'])
+
+    const lxdVersion = exec.getExecOutput.mock.calls[0]?.[1]
+    expect(lxdVersion).toEqual(['lxd', '--version'])
+
     expect(exec.exec).toHaveBeenCalledTimes(1)
+    expect(exec.getExecOutput).toHaveBeenCalledTimes(1)
   })
 })
 
