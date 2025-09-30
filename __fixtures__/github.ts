@@ -52,7 +52,15 @@ fetchMock.get('path:/repos/org/prj/releases', ({ url, queryParams }) => {
   if (!queryParams?.has('page')) {
     return {
       body: [
-        { tag_name: 'v0.9.1' },
+        {
+          assets: [
+            {
+              name: 'file',
+              id: 91
+            }
+          ],
+          tag_name: 'v0.9.1'
+        },
         { tag_name: 'v1.0.0' },
         { tag_name: 'v0.8.7' }
       ],
@@ -63,15 +71,7 @@ fetchMock.get('path:/repos/org/prj/releases', ({ url, queryParams }) => {
   if (queryParams?.get('page') === '2') {
     return {
       body: [
-        {
-          assets: [
-            {
-              name: 'file',
-              id: 87
-            }
-          ],
-          tag_name: 'v0.9.2'
-        },
+        { tag_name: 'v0.8.9' },
         { tag_name: 'v1.2.3' },
         { tag_name: 'v0.9.0' }
       ]
@@ -81,7 +81,7 @@ fetchMock.get('path:/repos/org/prj/releases', ({ url, queryParams }) => {
   return { throws: new Error('unknown query parameters') }
 })
 
-for (const id of [10, 87, 100, 101, 1234]) {
+for (const id of [10, 91, 100, 101, 1234]) {
   fetchMock.get(
     `path:/repos/org/prj/releases/assets/${id}`,
     ReadableStream.from([`content${id}`])

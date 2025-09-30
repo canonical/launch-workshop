@@ -73,7 +73,7 @@ test('downloads latest matching release', async () => {
   const content = await fs.readFile(path.join(assets, 'file'), {
     encoding: 'utf8'
   })
-  expect(content).toBe('content87')
+  expect(content).toBe('content91')
 })
 
 test('retrieves cached release', async () => {
