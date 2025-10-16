@@ -2,7 +2,7 @@ import require$$0$3 from 'os';
 import require$$0$4, { createHmac } from 'crypto';
 import * as require$$1$1 from 'fs';
 import require$$1__default from 'fs';
-import require$$1$6 from 'path';
+import require$$1$5 from 'path';
 import require$$2$2 from 'http';
 import require$$1$2 from 'https';
 import require$$0$6 from 'net';
@@ -15,18 +15,16 @@ import require$$0$7, { Readable } from 'stream';
 import require$$7 from 'buffer';
 import require$$8 from 'querystring';
 import require$$14 from 'stream/web';
-import require$$0$9, { Transform, Writable } from 'node:stream';
-import require$$1$4, { inspect } from 'node:util';
-import require$$0$8 from 'node:events';
-import require$$0$a from 'worker_threads';
+import { createRequire } from 'node:module';
+import require$$0$8 from 'worker_threads';
 import require$$2$3 from 'perf_hooks';
 import require$$5 from 'util/types';
 import require$$4$2 from 'async_hooks';
-import require$$1$5 from 'console';
+import require$$1$4 from 'console';
 import require$$5$1 from 'url';
 import require$$3$1 from 'zlib';
 import require$$6 from 'string_decoder';
-import require$$0$b from 'diagnostics_channel';
+import require$$0$9 from 'diagnostics_channel';
 import require$$2$4 from 'child_process';
 import require$$6$1 from 'timers';
 import assert$1 from 'node:assert';
@@ -35,11 +33,13 @@ import * as os from 'node:os';
 import os__default, { EOL as EOL$1 } from 'node:os';
 import path from 'node:path';
 import { randomUUID as randomUUID$2, createHash } from 'node:crypto';
+import util$8, { inspect } from 'node:util';
 import * as process$1 from 'node:process';
 import * as http from 'node:http';
 import * as https from 'node:https';
 import * as zlib from 'node:zlib';
-import require$$1$7 from 'tty';
+import { Transform, Writable } from 'node:stream';
+import require$$1$6 from 'tty';
 import { isNativeError } from 'node:util/types';
 
 var commonjsGlobal = typeof globalThis !== 'undefined' ? globalThis : typeof window !== 'undefined' ? window : typeof global !== 'undefined' ? global : typeof self !== 'undefined' ? self : {};
@@ -1767,6 +1767,15 @@ function requireTimers () {
 
 var main = {exports: {}};
 
+const require$3 = createRequire(import.meta.url);
+function __require$2() { return require$3("node:stream"); }
+
+const require$2 = createRequire(import.meta.url);
+function __require$1() { return require$2("node:util"); }
+
+const require$1 = createRequire(import.meta.url);
+function __require() { return require$1("node:events"); }
+
 var sbmh;
 var hasRequiredSbmh;
 
@@ -1800,8 +1809,8 @@ function requireSbmh () {
 	 * Based heavily on the Streaming Boyer-Moore-Horspool C++ implementation
 	 * by Hongli Lai at: https://github.com/FooBarWidget/boyer-moore-horspool
 	 */
-	const EventEmitter = require$$0$8.EventEmitter;
-	const inherits = require$$1$4.inherits;
+	const EventEmitter = __require().EventEmitter;
+	const inherits = __require$1().inherits;
 
 	function SBMH (needle) {
 	  if (typeof needle === 'string') {
@@ -2010,8 +2019,8 @@ function requirePartStream () {
 	if (hasRequiredPartStream) return PartStream_1;
 	hasRequiredPartStream = 1;
 
-	const inherits = require$$1$4.inherits;
-	const ReadableStream = require$$0$9.Readable;
+	const inherits = __require$1().inherits;
+	const ReadableStream = __require$2().Readable;
 
 	function PartStream (opts) {
 	  ReadableStream.call(this, opts);
@@ -2055,8 +2064,8 @@ function requireHeaderParser () {
 	if (hasRequiredHeaderParser) return HeaderParser_1;
 	hasRequiredHeaderParser = 1;
 
-	const EventEmitter = require$$0$8.EventEmitter;
-	const inherits = require$$1$4.inherits;
+	const EventEmitter = __require().EventEmitter;
+	const inherits = __require$1().inherits;
 	const getLimit = requireGetLimit();
 
 	const StreamSearch = requireSbmh();
@@ -2163,8 +2172,8 @@ function requireDicer () {
 	if (hasRequiredDicer) return Dicer_1;
 	hasRequiredDicer = 1;
 
-	const WritableStream = require$$0$9.Writable;
-	const inherits = require$$1$4.inherits;
+	const WritableStream = __require$2().Writable;
+	const inherits = __require$1().inherits;
 
 	const StreamSearch = requireSbmh();
 
@@ -2740,8 +2749,8 @@ function requireMultipart () {
 	//  * support limits.fieldNameSize
 	//     -- this will require modifications to utils.parseParams
 
-	const { Readable } = require$$0$9;
-	const { inherits } = require$$1$4;
+	const { Readable } = __require$2();
+	const { inherits } = __require$1();
 
 	const Dicer = requireDicer();
 
@@ -3306,8 +3315,8 @@ function requireMain () {
 	if (hasRequiredMain) return main.exports;
 	hasRequiredMain = 1;
 
-	const WritableStream = require$$0$9.Writable;
-	const { inherits } = require$$1$4;
+	const WritableStream = __require$2().Writable;
+	const { inherits } = __require$1();
 	const Dicer = requireDicer();
 
 	const MultipartParser = requireMultipart();
@@ -3399,7 +3408,7 @@ function requireConstants$5 () {
 	if (hasRequiredConstants$5) return constants$5;
 	hasRequiredConstants$5 = 1;
 
-	const { MessageChannel, receiveMessageOnPort } = require$$0$a;
+	const { MessageChannel, receiveMessageOnPort } = require$$0$8;
 
 	const corsSafeListedMethods = ['GET', 'HEAD', 'POST'];
 	const corsSafeListedMethodsSet = new Set(corsSafeListedMethods);
@@ -14155,7 +14164,7 @@ function requirePendingInterceptorsFormatter () {
 	hasRequiredPendingInterceptorsFormatter = 1;
 
 	const { Transform } = require$$0$7;
-	const { Console } = require$$1$5;
+	const { Console } = require$$1$4;
 
 	/**
 	 * Gets the output of `console.table(…)` as a string.
@@ -22332,7 +22341,7 @@ function requireEvents () {
 
 	const { webidl } = requireWebidl();
 	const { kEnumerableProperty } = requireUtil$7();
-	const { MessagePort } = require$$0$a;
+	const { MessagePort } = require$$0$8;
 
 	/**
 	 * @see https://html.spec.whatwg.org/multipage/comms.html#messageevent
@@ -22849,7 +22858,7 @@ function requireConnection () {
 	if (hasRequiredConnection) return connection;
 	hasRequiredConnection = 1;
 
-	const diagnosticsChannel = require$$0$b;
+	const diagnosticsChannel = require$$0$9;
 	const { uid, states } = requireConstants$2();
 	const {
 	  kReadyState,
@@ -23230,7 +23239,7 @@ function requireReceiver () {
 	hasRequiredReceiver = 1;
 
 	const { Writable } = require$$0$7;
-	const diagnosticsChannel = require$$0$b;
+	const diagnosticsChannel = require$$0$9;
 	const { parserStates, opcodes, states, emptyBuffer } = requireConstants$2();
 	const { kReadyState, kSentClose, kResponse, kReceivedClose } = requireSymbols();
 	const { isValidStatusCode, failWebsocketConnection, websocketMessageReceived } = requireUtil$1();
@@ -25553,7 +25562,7 @@ function requirePathUtils () {
 	};
 	Object.defineProperty(pathUtils, "__esModule", { value: true });
 	pathUtils.toPlatformPath = pathUtils.toWin32Path = pathUtils.toPosixPath = void 0;
-	const path = __importStar(require$$1$6);
+	const path = __importStar(require$$1$5);
 	/**
 	 * toPosixPath converts the given path to the posix form. On Windows, \\ will be
 	 * replaced with /.
@@ -25640,7 +25649,7 @@ function requireIoUtil () {
 		Object.defineProperty(exports, "__esModule", { value: true });
 		exports.getCmdPath = exports.tryGetExecutablePath = exports.isRooted = exports.isDirectory = exports.exists = exports.READONLY = exports.UV_FS_O_EXLOCK = exports.IS_WINDOWS = exports.unlink = exports.symlink = exports.stat = exports.rmdir = exports.rm = exports.rename = exports.readlink = exports.readdir = exports.open = exports.mkdir = exports.lstat = exports.copyFile = exports.chmod = void 0;
 		const fs = __importStar(require$$1__default);
-		const path = __importStar(require$$1$6);
+		const path = __importStar(require$$1$5);
 		_a = fs.promises
 		// export const {open} = 'fs'
 		, exports.chmod = _a.chmod, exports.copyFile = _a.copyFile, exports.lstat = _a.lstat, exports.mkdir = _a.mkdir, exports.open = _a.open, exports.readdir = _a.readdir, exports.readlink = _a.readlink, exports.rename = _a.rename, exports.rm = _a.rm, exports.rmdir = _a.rmdir, exports.stat = _a.stat, exports.symlink = _a.symlink, exports.unlink = _a.unlink;
@@ -25830,7 +25839,7 @@ function requireIo () {
 	Object.defineProperty(io, "__esModule", { value: true });
 	io.findInPath = io.which = io.mkdirP = io.rmRF = io.mv = io.cp = void 0;
 	const assert_1 = require$$0$5;
-	const path = __importStar(require$$1$6);
+	const path = __importStar(require$$1$5);
 	const ioUtil = __importStar(requireIoUtil());
 	/**
 	 * Copies a file or folder.
@@ -26138,7 +26147,7 @@ function requireToolrunner () {
 	const os = __importStar(require$$0$3);
 	const events = __importStar(require$$4$1);
 	const child = __importStar(require$$2$4);
-	const path = __importStar(require$$1$6);
+	const path = __importStar(require$$1$5);
 	const io = __importStar(requireIo());
 	const ioUtil = __importStar(requireIoUtil());
 	const timers_1 = require$$6$1;
@@ -26982,7 +26991,7 @@ function requireCore () {
 		const file_command_1 = requireFileCommand();
 		const utils_1 = requireUtils$3();
 		const os = __importStar(require$$0$3);
-		const path = __importStar(require$$1$6);
+		const path = __importStar(require$$1$5);
 		const oidc_utils_1 = requireOidcUtils();
 		/**
 		 * The code to exit an action
@@ -27540,7 +27549,7 @@ function requireInternalPathHelper () {
 	};
 	Object.defineProperty(internalPathHelper, "__esModule", { value: true });
 	internalPathHelper.safeTrimTrailingSeparator = internalPathHelper.normalizeSeparators = internalPathHelper.hasRoot = internalPathHelper.hasAbsoluteRoot = internalPathHelper.ensureAbsoluteRoot = internalPathHelper.dirname = void 0;
-	const path = __importStar(require$$1$6);
+	const path = __importStar(require$$1$5);
 	const assert_1 = __importDefault(require$$0$5);
 	const IS_WINDOWS = process.platform === 'win32';
 	/**
@@ -29126,7 +29135,7 @@ function requireInternalPath () {
 	};
 	Object.defineProperty(internalPath, "__esModule", { value: true });
 	internalPath.Path = void 0;
-	const path = __importStar(require$$1$6);
+	const path = __importStar(require$$1$5);
 	const pathHelper = __importStar(requireInternalPathHelper());
 	const assert_1 = __importDefault(require$$0$5);
 	const IS_WINDOWS = process.platform === 'win32';
@@ -29247,7 +29256,7 @@ function requireInternalPattern () {
 	Object.defineProperty(internalPattern, "__esModule", { value: true });
 	internalPattern.Pattern = void 0;
 	const os = __importStar(require$$0$3);
-	const path = __importStar(require$$1$6);
+	const path = __importStar(require$$1$5);
 	const pathHelper = __importStar(requireInternalPathHelper());
 	const assert_1 = __importDefault(require$$0$5);
 	const minimatch_1 = requireMinimatch();
@@ -29556,7 +29565,7 @@ function requireInternalGlobber () {
 	const core = __importStar(requireCore());
 	const fs = __importStar(require$$1__default);
 	const globOptionsHelper = __importStar(requireInternalGlobOptionsHelper());
-	const path = __importStar(require$$1$6);
+	const path = __importStar(require$$1$5);
 	const patternHelper = __importStar(requireInternalPatternHelper());
 	const internal_match_kind_1 = requireInternalMatchKind();
 	const internal_pattern_1 = requireInternalPattern();
@@ -31527,7 +31536,7 @@ function requireCacheUtils () {
 	const io = __importStar(requireIo());
 	const crypto = __importStar(require$$0$4);
 	const fs = __importStar(require$$1__default);
-	const path = __importStar(require$$1$6);
+	const path = __importStar(require$$1$5);
 	const semver = __importStar(requireSemver$3());
 	const util = __importStar(require$$0__default);
 	const constants_1 = requireConstants$1();
@@ -31743,7 +31752,7 @@ let AbortError$3 = class AbortError extends Error {
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 function log(message, ...args) {
-    process$1.stderr.write(`${require$$1$4.format(message, ...args)}${EOL$1}`);
+    process$1.stderr.write(`${util$8.format(message, ...args)}${EOL$1}`);
 }
 
 // Copyright (c) Microsoft Corporation.
@@ -34308,7 +34317,7 @@ function requireSupportsColor () {
 	if (hasRequiredSupportsColor) return supportsColor_1;
 	hasRequiredSupportsColor = 1;
 	const os = require$$0$3;
-	const tty = require$$1$7;
+	const tty = require$$1$6;
 	const hasFlag = requireHasFlag();
 
 	const {env} = process;
@@ -34454,7 +34463,7 @@ function requireNode () {
 	if (hasRequiredNode) return node.exports;
 	hasRequiredNode = 1;
 	(function (module, exports) {
-		const tty = require$$1$7;
+		const tty = require$$1$6;
 		const util = require$$0__default;
 
 		/**
@@ -74245,7 +74254,7 @@ function requireTar () {
 	const exec_1 = requireExec();
 	const io = __importStar(requireIo());
 	const fs_1 = require$$1__default;
-	const path = __importStar(require$$1$6);
+	const path = __importStar(require$$1$5);
 	const utils = __importStar(requireCacheUtils());
 	const constants_1 = requireConstants$1();
 	const IS_WINDOWS = process.platform === 'win32';
@@ -74520,7 +74529,7 @@ function requireCache () {
 	Object.defineProperty(cache$1, "__esModule", { value: true });
 	cache$1.saveCache = cache$1.restoreCache = cache$1.isFeatureAvailable = cache$1.FinalizeCacheError = cache$1.ReserveCacheError = cache$1.ValidationError = void 0;
 	const core = __importStar(requireCore());
-	const path = __importStar(require$$1$6);
+	const path = __importStar(require$$1$5);
 	const utils = __importStar(requireCacheUtils());
 	const cacheHttpClient = __importStar(requireCacheHttpClient());
 	const cacheTwirpClient = __importStar(requireCacheTwirpClient());
@@ -83712,7 +83721,7 @@ function requireToolCache () {
 	const fs = __importStar(require$$1__default);
 	const mm = __importStar(requireManifest());
 	const os = __importStar(require$$0$3);
-	const path = __importStar(require$$1$6);
+	const path = __importStar(require$$1$5);
 	const httpm = __importStar(requireLib());
 	const semver = __importStar(requireSemver());
 	const stream = __importStar(require$$0$7);
