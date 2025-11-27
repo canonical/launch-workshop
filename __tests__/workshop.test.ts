@@ -19,9 +19,8 @@ jest.unstable_mockModule('../src/release.js', () => release)
 jest.unstable_mockModule('../src/snap.js', () => snap)
 jest.unstable_mockModule('@actions/tool-cache', () => tc)
 
-const { launchWorkshop, restoreCache, saveCache, setupWorkshop } = await import(
-  '../src/workshop.js'
-)
+const { launchWorkshop, restoreCache, saveCache, setupWorkshop } =
+  await import('../src/workshop.js')
 
 describe('setupWorkshop', () => {
   beforeEach(async () => {
