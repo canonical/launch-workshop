@@ -30,14 +30,9 @@ import 'node:assert';
 import 'node:fs/promises';
 import 'node:os';
 import 'node:path';
-import 'node:crypto';
-import 'node:util';
-import 'node:process';
-import 'node:http';
-import 'node:https';
-import 'node:zlib';
-import 'node:stream';
 import 'tty';
+import 'node:crypto';
+import 'node:stream';
 import 'node:util/types';
 
 /* istanbul ignore next */
