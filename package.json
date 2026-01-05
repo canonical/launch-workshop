@@ -40,7 +40,7 @@
   "dependencies": {
     "@actions/cache": "^5.0.0",
     "@actions/core": "^2.0.0",
-    "@actions/exec": "^1.1.1",
+    "@actions/exec": "^2.0.0",
     "@actions/github": "^6.0.1",
     "@actions/tool-cache": "^2.0.2",
     "@octokit/plugin-rest-endpoint-methods": "^10.4.1",
