@@ -14,7 +14,9 @@ import 'stream';
 import 'buffer';
 import 'querystring';
 import 'stream/web';
-import 'node:module';
+import 'node:stream';
+import 'node:util';
+import 'node:events';
 import 'worker_threads';
 import 'perf_hooks';
 import 'util/types';
@@ -30,9 +32,14 @@ import 'node:assert';
 import 'node:fs/promises';
 import 'node:os';
 import 'node:path';
+import 'node:process';
+import 'node:http';
+import 'node:https';
+import 'node:zlib';
 import 'tty';
 import 'node:crypto';
-import 'node:stream';
+import 'node:buffer';
+import 'node:fs';
 import 'node:util/types';
 
 /* istanbul ignore next */
