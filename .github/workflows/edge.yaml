@@ -23,7 +23,7 @@ jobs:
         id: snapcraft
 
       - name: Upload Workshop snap
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: snap
           path: ${{ steps.snapcraft.outputs.snap }}
@@ -53,7 +53,7 @@ jobs:
         id: tool_cache
 
       - name: Download Workshop Snap
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v7
         with:
           name: snap
           path: ${{ steps.tool_cache.outputs.path }}
