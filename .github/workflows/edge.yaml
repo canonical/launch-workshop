@@ -12,7 +12,7 @@ jobs:
 
     steps:
       - name: Checkout Workshop
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: canonical/workshop
           token: ${{ secrets.WORKSHOP_TOKEN }}
@@ -59,7 +59,7 @@ jobs:
           path: ${{ steps.tool_cache.outputs.path }}
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Launch workshop
         uses: canonical/launch-workshop@v0
