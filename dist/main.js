@@ -80960,7 +80960,7 @@ function requireErrors () {
 	if (hasRequiredErrors) return errors;
 	hasRequiredErrors = 1;
 	Object.defineProperty(errors, "__esModule", { value: true });
-	errors.UsageError = errors.NetworkError = errors.GHESNotSupportedError = errors.CacheNotFoundError = errors.InvalidResponseError = errors.FilesNotFoundError = void 0;
+	errors.RateLimitError = errors.UsageError = errors.NetworkError = errors.GHESNotSupportedError = errors.CacheNotFoundError = errors.InvalidResponseError = errors.FilesNotFoundError = void 0;
 	class FilesNotFoundError extends Error {
 	    constructor(files = []) {
 	        let message = 'No files were found to upload';
@@ -81027,6 +81027,13 @@ function requireErrors () {
 	        return false;
 	    return msg.includes('insufficient usage');
 	};
+	class RateLimitError extends Error {
+	    constructor(message) {
+	        super(message);
+	        this.name = 'RateLimitError';
+	    }
+	}
+	errors.RateLimitError = RateLimitError;
 	
 	return errors;
 }
@@ -82200,7 +82207,7 @@ function requireConfig () {
 
 var userAgent$1 = {};
 
-var version = "5.0.2";
+var version = "5.0.3";
 var require$$0$1 = {
 	version: version};
 
@@ -87643,12 +87650,27 @@ function requireCacheTwirpClient () {
 	                        }
 	                        errorMessage = `${errorMessage}: ${body.msg}`;
 	                    }
+	                    // Handle rate limiting - don't retry, just warn and exit
+	                    // For more info, see https://docs.github.com/en/actions/reference/limits
+	                    if (statusCode === http_client_1.HttpCodes.TooManyRequests) {
+	                        const retryAfterHeader = response.message.headers['retry-after'];
+	                        if (retryAfterHeader) {
+	                            const parsedSeconds = parseInt(retryAfterHeader, 10);
+	                            if (!isNaN(parsedSeconds) && parsedSeconds > 0) {
+	                                (0, core_1.warning)(`You've hit a rate limit, your rate limit will reset in ${parsedSeconds} seconds`);
+	                            }
+	                        }
+	                        throw new errors_1.RateLimitError(`Rate limited: ${errorMessage}`);
+	                    }
 	                }
 	                catch (error) {
 	                    if (error instanceof SyntaxError) {
 	                        (0, core_1.debug)(`Raw Body: ${rawBody}`);
 	                    }
 	                    if (error instanceof errors_1.UsageError) {
+	                        throw error;
+	                    }
+	                    if (error instanceof errors_1.RateLimitError) {
 	                        throw error;
 	                    }
 	                    if (errors_1.NetworkError.isNetworkErrorCode(error === null || error === void 0 ? void 0 : error.code)) {
@@ -87683,8 +87705,7 @@ function requireCacheTwirpClient () {
 	            http_client_1.HttpCodes.BadGateway,
 	            http_client_1.HttpCodes.GatewayTimeout,
 	            http_client_1.HttpCodes.InternalServerError,
-	            http_client_1.HttpCodes.ServiceUnavailable,
-	            http_client_1.HttpCodes.TooManyRequests
+	            http_client_1.HttpCodes.ServiceUnavailable
 	        ];
 	        return retryableStatusCodes.includes(statusCode);
 	    }
