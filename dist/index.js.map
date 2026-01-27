@@ -1,1 +1,1 @@
-{"version":3,"file":"index.js","sources":["../src/index.ts"],"sourcesContent":["import { run } from './main.js'\n\n/* istanbul ignore next */\nrun()\n"],"names":[],"mappings":";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;AAEA;AACA,GAAG,EAAE"}
+{"version":3,"file":"index.js","sources":["../src/index.ts"],"sourcesContent":["import { run } from './main.js'\n\n/* istanbul ignore next */\nrun()\n"],"names":[],"mappings":";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;AAEA;AACA,GAAG,EAAE"}

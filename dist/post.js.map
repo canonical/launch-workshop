@@ -1,1 +1,1 @@
-{"version":3,"file":"post.js","sources":["../src/post.ts"],"sourcesContent":["import { postRun } from './main.js'\n\n/* istanbul ignore next */\npostRun()\n"],"names":[],"mappings":";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;AAEA;AACA,OAAO,EAAE"}
+{"version":3,"file":"post.js","sources":["../src/post.ts"],"sourcesContent":["import { postRun } from './main.js'\n\n/* istanbul ignore next */\npostRun()\n"],"names":[],"mappings":";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;AAEA;AACA,OAAO,EAAE"}
