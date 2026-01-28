@@ -31,25 +31,16 @@ import 'node:dns';
 import 'string_decoder';
 import 'child_process';
 import 'timers';
-import 'stream';
-import 'buffer';
-import 'querystring';
-import 'stream/web';
-import 'worker_threads';
-import 'perf_hooks';
-import 'util/types';
-import 'async_hooks';
-import 'console';
-import 'url';
-import 'zlib';
-import 'diagnostics_channel';
 import 'node:fs/promises';
 import 'node:os';
 import 'node:path';
+import 'stream';
+import 'url';
 import 'node:process';
 import 'node:https';
 import 'tty';
 import 'node:crypto';
+import 'buffer';
 import 'node:fs';
 
 /* istanbul ignore next */
