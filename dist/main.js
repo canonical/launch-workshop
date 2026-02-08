@@ -87655,8 +87655,8 @@ function requireRe () {
 
 		// ## Pre-release Version Identifier
 		// A numeric identifier, or a non-numeric identifier.
-		// Non-numberic identifiers include numberic identifiers but can be longer.
-		// Therefore non-numberic identifiers must go first.
+		// Non-numeric identifiers include numeric identifiers but can be longer.
+		// Therefore non-numeric identifiers must go first.
 
 		createToken('PRERELEASEIDENTIFIER', `(?:${src[t.NONNUMERICIDENTIFIER]
 		}|${src[t.NUMERICIDENTIFIER]})`);
@@ -88352,7 +88352,7 @@ function requireDiff () {
 	    return prefix + 'patch'
 	  }
 
-	  // high and low are preleases
+	  // high and low are prereleases
 	  return 'prerelease'
 	};
 
@@ -89911,7 +89911,7 @@ function requireSubset () {
 	// - If LT
 	//   - If LT.semver is greater than any < or <= comp in C, return false
 	//   - If LT is <=, and LT.semver does not satisfy every C, return false
-	//   - If GT.semver has a prerelease, and not in prerelease mode
+	//   - If LT.semver has a prerelease, and not in prerelease mode
 	//     - If no C has a prerelease and the LT.semver tuple, return false
 	// - Else return true
 
