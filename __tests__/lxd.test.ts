@@ -23,10 +23,13 @@ describe('setupLxd', () => {
         const snapInstall = exec.exec.mock.calls[1]?.[1]
         expect(snapInstall?.slice(0, 2)).toEqual(['snap', 'install'])
 
-        const lxdWaitready = exec.exec.mock.calls[2]?.[1]
+        const snapHold = exec.exec.mock.calls[2]?.[1]
+        expect(snapHold).toEqual(['snap', 'refresh', '--hold=24h', 'lxd'])
+
+        const lxdWaitready = exec.exec.mock.calls[3]?.[1]
         expect(lxdWaitready).toEqual(['lxd', 'waitready'])
 
-        expect(exec.exec).toHaveBeenCalledTimes(3)
+        expect(exec.exec).toHaveBeenCalledTimes(4)
       }
     )
   })
@@ -56,10 +59,13 @@ describe('setupLxd', () => {
     const snapRefresh = exec.exec.mock.calls[1]?.[1]
     expect(snapRefresh?.slice(0, 2)).toEqual(['snap', 'refresh'])
 
-    const lxdWaitready = exec.exec.mock.calls[2]?.[1]
+    const snapHold = exec.exec.mock.calls[2]?.[1]
+    expect(snapHold).toEqual(['snap', 'refresh', '--hold=24h', 'lxd'])
+
+    const lxdWaitready = exec.exec.mock.calls[3]?.[1]
     expect(lxdWaitready).toEqual(['lxd', 'waitready'])
 
-    expect(exec.exec).toHaveBeenCalledTimes(3)
+    expect(exec.exec).toHaveBeenCalledTimes(4)
     expect(exec.getExecOutput).toHaveBeenCalledTimes(1)
   })
 

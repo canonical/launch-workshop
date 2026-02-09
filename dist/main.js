@@ -90242,6 +90242,7 @@ async function setupLxd() {
     }
     const action = installed ? 'refresh' : 'install';
     await execExports.exec('sudo', ['snap', action, '--channel=6/stable', 'lxd']);
+    await execExports.exec('sudo', ['snap', 'refresh', '--hold=24h', 'lxd']);
     await execExports.exec('sudo', ['lxd', 'waitready']);
 }
 async function isLxdInstalled() {

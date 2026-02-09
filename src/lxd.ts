@@ -22,6 +22,7 @@ export async function setupLxd(): Promise<void> {
 
   const action = installed ? 'refresh' : 'install'
   await exec.exec('sudo', ['snap', action, '--channel=6/stable', 'lxd'])
+  await exec.exec('sudo', ['snap', 'refresh', '--hold=24h', 'lxd'])
   await exec.exec('sudo', ['lxd', 'waitready'])
 }
 
