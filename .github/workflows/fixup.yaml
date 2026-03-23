@@ -3,6 +3,10 @@ name: Check for fixup and squash commits
 on:
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   check:
-    uses: canonical/workshop/.github/workflows/fixup.yaml@main
+    # https://github.com/canonical/workshop/pull/675
+    uses: canonical/workshop/.github/workflows/fixup.yaml@3202bf592e2251561c97664162d04b377192ec62

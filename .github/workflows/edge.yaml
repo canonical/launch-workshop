@@ -5,25 +5,32 @@ on:
     - cron: '00 6 * * 4,5'
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   build-snap:
     name: Build Workshop snap
     runs-on: ubuntu-latest
+    environment:
+      name: workshop
+      deployment: false
 
     steps:
       - name: Checkout Workshop
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           repository: canonical/workshop
           token: ${{ secrets.WORKSHOP_TOKEN }}
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Build Workshop snap
-        uses: canonical/action-build@v1
+        uses: canonical/action-build@3bdaa03e1ba6bf59a65f84a751d943d549a54e79 # v1.3.0
         id: snapcraft
 
       - name: Upload Workshop snap
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: snap
           path: ${{ steps.snapcraft.outputs.snap }}
@@ -37,6 +44,9 @@ jobs:
       matrix:
         os: [ubuntu-22.04, ubuntu-24.04]
         workshop: [focal, jammy, noble]
+    environment:
+      name: workshop
+      deployment: false
 
     steps:
       # The Action can only download released versions of Workshop, but we can
@@ -53,16 +63,18 @@ jobs:
         id: tool_cache
 
       - name: Download Workshop Snap
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: snap
           path: ${{ steps.tool_cache.outputs.path }}
 
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
 
       - name: Launch workshop
-        uses: canonical/launch-workshop@v0
+        uses: ./
         with:
           token: ${{ secrets.WORKSHOP_TOKEN }}
           version: '0.1.0'
