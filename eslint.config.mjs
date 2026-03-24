@@ -1,21 +1,15 @@
 // See: https://eslint.org/docs/latest/use/configure/configuration-files
 
 import { FlatCompat } from '@eslint/eslintrc'
-import _import from 'eslint-plugin-import'
-import { fileURLToPath } from 'node:url'
-import { fixupPluginRules } from '@eslint/compat'
 import globals from 'globals'
 import jest from 'eslint-plugin-jest'
 import js from '@eslint/js'
-import path from 'node:path'
 import prettier from 'eslint-plugin-prettier'
 import tsParser from '@typescript-eslint/parser'
 import typescriptEslint from '@typescript-eslint/eslint-plugin'
 
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
 const compat = new FlatCompat({
-  baseDirectory: __dirname,
+  baseDirectory: import.meta.dirname,
   recommendedConfig: js.configs.recommended,
   allConfig: js.configs.all
 })
@@ -33,7 +27,6 @@ export default [
   ),
   {
     plugins: {
-      import: fixupPluginRules(_import),
       jest,
       prettier,
       '@typescript-eslint': typescriptEslint
@@ -52,7 +45,6 @@ export default [
       sourceType: 'module',
 
       parserOptions: {
-        project: ['tsconfig.eslint.json'],
         tsconfigRootDir: import.meta.dirname
       }
     },
@@ -61,7 +53,7 @@ export default [
       'import/resolver': {
         typescript: {
           alwaysTryTypes: true,
-          project: 'tsconfig.eslint.json'
+          project: 'tsconfig.json'
         }
       }
     },

@@ -19,7 +19,7 @@ inputs:
   cache:
     description: Mount plugs to cache across workflow runs.
 runs:
-  using: node20
+  using: node24
   main: dist/index.js
   post: dist/post.js
   post-if: success()
