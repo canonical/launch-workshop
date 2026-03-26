@@ -9,4 +9,4 @@ permissions:
 jobs:
   check:
     # https://github.com/canonical/workshop/pull/675
-    uses: canonical/workshop/.github/workflows/fixup.yaml@3202bf592e2251561c97664162d04b377192ec62
+    uses: canonical/workshop/.github/workflows/fixup.yaml@5832ca931f966c789b42d7e16928ce84af874abf
