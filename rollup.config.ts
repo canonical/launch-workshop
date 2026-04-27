@@ -6,6 +6,9 @@ import json from '@rollup/plugin-json'
 import nodeResolve from '@rollup/plugin-node-resolve'
 import typescript from '@rollup/plugin-typescript'
 
+// See: https://github.com/rollup/plugins/issues/1541
+const fix = <T>(f: { default: T }): T => f as unknown as T
+
 const config: RollupOptions = {
   input: ['src/index.ts', 'src/post.ts'],
   output: {
@@ -16,10 +19,10 @@ const config: RollupOptions = {
     sourcemap: true
   },
   plugins: [
-    typescript({ tsconfig: 'tsconfig.build.json' }),
-    nodeResolve({ preferBuiltins: true }),
-    json(),
-    commonjs()
+    fix(typescript)({ tsconfig: 'tsconfig.build.json' }),
+    fix(nodeResolve)({ preferBuiltins: true }),
+    fix(json)(),
+    fix(commonjs)()
   ]
 }
 
