@@ -9,8 +9,8 @@
     "forceConsistentCasingInFileNames": true,
     "isolatedModules": true,
     "lib": ["ES2022"],
-    "module": "ESNext",
-    "moduleResolution": "Bundler",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
     "newLine": "lf",
     "noImplicitAny": true,
     "noUnusedLocals": true,
@@ -18,9 +18,11 @@
     "outDir": "./dist",
     "pretty": true,
     "resolveJsonModule": true,
+    "rootDir": ".",
     "strict": true,
     "strictNullChecks": true,
-    "target": "ES2022"
+    "target": "ES2022",
+    "types": ["node"]
   },
   "exclude": ["coverage", "dist", "node_modules"],
   "include": [
