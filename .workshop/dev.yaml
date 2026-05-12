@@ -7,7 +7,7 @@ sdks:
         interface: tunnel
         endpoint: 9229
   - name: node
-    channel: 24.04/edge
+    channel: 24
 actions:
   all: npm run all -- "$@"
   format: npm run format:write -- "$@"
