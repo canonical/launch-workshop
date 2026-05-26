@@ -35991,13 +35991,13 @@ class Sanitizer {
                     message: value.message,
                 };
             }
-            if (key === "headers") {
+            if (key === "headers" && isObject(value)) {
                 return this.sanitizeHeaders(value);
             }
-            else if (key === "url") {
+            else if (key === "url" && typeof value === "string") {
                 return this.sanitizeUrl(value);
             }
-            else if (key === "query") {
+            else if (key === "query" && isObject(value)) {
                 return this.sanitizeQuery(value);
             }
             else if (key === "body") {
@@ -36574,16 +36574,16 @@ const allowedRedirect = ["GET", "HEAD"];
  * @param options - Options to control policy behavior.
  */
 function redirectPolicy$1(options = {}) {
-    const { maxRetries = 20 } = options;
+    const { maxRetries = 20, allowCrossOriginRedirects = false } = options;
     return {
         name: redirectPolicyName$1,
         async sendRequest(request, next) {
             const response = await next(request);
-            return handleRedirect(next, response, maxRetries);
+            return handleRedirect(next, response, maxRetries, allowCrossOriginRedirects);
         },
     };
 }
-async function handleRedirect(next, response, maxRetries, currentRetries = 0) {
+async function handleRedirect(next, response, maxRetries, allowCrossOriginRedirects, currentRetries = 0) {
     const { request, status, headers } = response;
     const locationHeader = headers.get("location");
     if (locationHeader &&
@@ -36594,6 +36594,14 @@ async function handleRedirect(next, response, maxRetries, currentRetries = 0) {
             status === 307) &&
         currentRetries < maxRetries) {
         const url = new URL(locationHeader, request.url);
+        // Only follow redirects to the same origin by default.
+        if (!allowCrossOriginRedirects) {
+            const originalUrl = new URL(request.url);
+            if (url.origin !== originalUrl.origin) {
+                logger$4.verbose(`Skipping cross-origin redirect from ${originalUrl.origin} to ${url.origin}.`);
+                return response;
+            }
+        }
         request.url = url.toString();
         // POST request with Status code 303 should be converted into a
         // redirected GET request if the redirect url is present in the location header
@@ -36604,7 +36612,7 @@ async function handleRedirect(next, response, maxRetries, currentRetries = 0) {
         }
         request.headers.delete("Authorization");
         const res = await next(request);
-        return handleRedirect(next, res, maxRetries, currentRetries + 1);
+        return handleRedirect(next, res, maxRetries, allowCrossOriginRedirects, currentRetries + 1);
     }
     return response;
 }
@@ -36899,11 +36907,11 @@ function retryPolicy(strategies, options = { maxRetries: DEFAULT_RETRY_POLICY_CO
                     // RestErrors are valid targets for the retry strategies.
                     // If none of the retry strategies can work with them, they will be thrown later in this policy.
                     // If the received error is not a RestError, it is immediately thrown.
-                    responseError = e;
-                    if (!e || responseError.name !== "RestError") {
+                    if (!isRestError$1(e)) {
                         throw e;
                     }
-                    response = responseError.response;
+                    responseError = e;
+                    response = e.response;
                 }
                 if (request.abortSignal?.aborted) {
                     logger.error(`Retry ${retryCount}: Request aborted.`);
@@ -39179,16 +39187,15 @@ function setProxyAgentOnRequest(request, cachedAgents, proxyUrl) {
     if (request.tlsSettings) {
         logger$4.warning("TLS settings are not supported in combination with custom Proxy, certificates provided to the client will be ignored.");
     }
-    const headers = request.headers.toJSON();
     if (isInsecure) {
         if (!cachedAgents.httpProxyAgent) {
-            cachedAgents.httpProxyAgent = new distExports.HttpProxyAgent(proxyUrl, { headers });
+            cachedAgents.httpProxyAgent = new distExports.HttpProxyAgent(proxyUrl);
         }
         request.agent = cachedAgents.httpProxyAgent;
     }
     else {
         if (!cachedAgents.httpsProxyAgent) {
-            cachedAgents.httpsProxyAgent = new distExports$1.HttpsProxyAgent(proxyUrl, { headers });
+            cachedAgents.httpsProxyAgent = new distExports$1.HttpsProxyAgent(proxyUrl);
         }
         request.agent = cachedAgents.httpsProxyAgent;
     }
@@ -39271,7 +39278,7 @@ function tlsPolicy$1(tlsSettings) {
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 function isBlob(x) {
-    return typeof x.stream === "function";
+    return typeof Blob !== "undefined" && x instanceof Blob;
 }
 
 // Copyright (c) Microsoft Corporation.
@@ -39535,7 +39542,7 @@ async function setPlatformSpecificData(map) {
 
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
-const SDK_VERSION$1 = "1.22.2";
+const SDK_VERSION$1 = "1.22.3";
 
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
@@ -69064,7 +69071,7 @@ NetworkError.isNetworkErrorCode = (code) => {
 };
 class UsageError extends Error {
     constructor() {
-        const message = `Cache storage quota has been hit. Unable to upload any new cache entries. Usage is recalculated every 6-12 hours.\nMore info on storage limits: https://docs.github.com/en/billing/managing-billing-for-github-actions/about-billing-for-github-actions#calculating-minute-and-storage-spending`;
+        const message = `Cache storage quota has been hit. Unable to upload any new cache entries.\nMore info on storage limits: https://docs.github.com/en/billing/managing-billing-for-github-actions/about-billing-for-github-actions#calculating-minute-and-storage-spending`;
         super(message);
         this.name = 'UsageError';
     }
@@ -69775,7 +69782,7 @@ function getCacheServiceURL() {
     }
 }
 
-var version = "6.0.0";
+var version = "6.0.1";
 var require$$0 = {
 	version: version};
 
