@@ -1,7 +1,7 @@
 {
   "name": "launch-workshop",
   "description": "GitHub Action to launch a workshop (development environment)",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "author": "Canonical",
   "type": "module",
   "private": true,
