@@ -4,10 +4,6 @@ import { jest } from '@jest/globals'
 
 export { SnapState }
 
-export const snapArch = jest
-  .fn<typeof snap.snapArch>()
-  .mockReturnValue('testarch')
-
 export const checkSnapState = jest
   .fn<typeof snap.checkSnapState>()
   .mockResolvedValue(SnapState.NotFound)

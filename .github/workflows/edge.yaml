@@ -9,65 +9,16 @@ permissions:
   contents: read
 
 jobs:
-  build-snap:
-    name: Build Workshop snap
-    runs-on: ubuntu-latest
-    environment:
-      name: workshop
-      deployment: false
-
-    steps:
-      - name: Checkout Workshop
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
-        with:
-          repository: canonical/workshop
-          token: ${{ secrets.WORKSHOP_TOKEN }}
-          fetch-depth: 0
-          persist-credentials: false
-
-      - name: Build Workshop snap
-        uses: canonical/action-build@3bdaa03e1ba6bf59a65f84a751d943d549a54e79 # v1.3.0
-        id: snapcraft
-
-      - name: Upload Workshop snap
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: snap
-          path: ${{ steps.snapcraft.outputs.snap }}
-
   os-tests:
     name: OS tests
-    needs: build-snap
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-22.04, ubuntu-24.04]
         workshop: [focal, jammy, noble]
-    environment:
-      name: workshop
-      deployment: false
 
     steps:
-      # The Action can only download released versions of Workshop, but we can
-      # make it use a development snap by putting it in the tool cache. This
-      # hack can be removed once we start publishing snaps for the main branch.
-      - name: Create tool cache
-        run: |
-          arch="$(node -e 'console.log(process.arch)')"
-          path="${RUNNER_TOOL_CACHE}/workshop/0.1.0/${arch}"
-          printf 'path=%s\n' "$path" >> "$GITHUB_OUTPUT"
-
-          mkdir -p "$path"
-          touch "${path}.complete"
-        id: tool_cache
-
-      - name: Download Workshop Snap
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        with:
-          name: snap
-          path: ${{ steps.tool_cache.outputs.path }}
-
       - name: Checkout
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
@@ -76,8 +27,7 @@ jobs:
       - name: Launch workshop
         uses: ./
         with:
-          token: ${{ secrets.WORKSHOP_TOKEN }}
-          version: '0.1.0'
+          channel: edge
           workshop: ${{ matrix.workshop }}
 
       - name: Check base image

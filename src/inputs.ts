@@ -7,14 +7,13 @@ import path from 'node:path'
  */
 export type Inputs = {
   /**
-   * Access token for canonical/workshop.
+   * Channel used to install Workshop snap.
    */
-  token: string
+  channel: string
   /**
-   * A version, range of versions or "latest."
-   * Determines which release of Workshop to install.
+   * Specific revision of Workshop snap to install.
    */
-  version: string
+  revision: string
   /**
    * Project directory.
    */
@@ -49,8 +48,11 @@ export type PlugRef = {
  * @returns The inputs.
  */
 export function getInputs(): Inputs {
-  const token = core.getInput('token', { required: true })
-  const version = core.getInput('version', { required: true })
+  const channel = fullChannel(core.getInput('channel'))
+  const revision = core.getInput('revision')
+  if (channel && revision) {
+    throw new Error('cannot specify both channel and revision')
+  }
 
   let project = core.getInput('project')
   if (project) {
@@ -69,7 +71,28 @@ export function getInputs(): Inputs {
     .filter(Boolean)
     .map(parsePlugRef)
 
-  return { token, version, project, workshop, cache }
+  return { channel, revision, project, workshop, cache }
+}
+
+function fullChannel(channel: string): string {
+  if (!channel) {
+    return ''
+  }
+
+  const parts = channel.split('/')
+  if (parts.length > 3) {
+    throw new Error(
+      `channel ${JSON.stringify(channel)} has too many components`
+    )
+  }
+
+  if (['stable', 'candidate', 'beta', 'edge'].includes(parts[0])) {
+    parts.unshift('latest')
+  } else if (parts.length <= 1) {
+    parts.push('stable')
+  }
+
+  return parts.join('/')
 }
 
 function parsePlugRef(ref: string): PlugRef {

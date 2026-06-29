@@ -21,7 +21,7 @@ test('launches workshop', async () => {
   await run()
 
   expect(core.setFailed.mock.calls).toEqual([])
-  expect(workshop.setupWorkshop).toHaveBeenCalledWith('abcxyz', '1.2.3')
+  expect(workshop.setupWorkshop).toHaveBeenCalledWith('latest/stable', '')
   expect(workshop.restoreCache).toHaveBeenCalledWith(
     { id: '42424242', path: '/project' },
     'dev',
@@ -41,8 +41,8 @@ test('launches workshop', async () => {
 test('infers workshop name', async () => {
   await inputs.getInputs.withImplementation(
     () => ({
-      token: 'abcxyz',
-      version: '1.2.3',
+      channel: 'latest/stable',
+      revision: '',
       project: '/project/ws',
       workshop: '',
       cache: []
@@ -51,7 +51,7 @@ test('infers workshop name', async () => {
       await run()
 
       expect(core.setFailed.mock.calls).toEqual([])
-      expect(workshop.setupWorkshop).toHaveBeenCalledWith('abcxyz', '1.2.3')
+      expect(workshop.setupWorkshop).toHaveBeenCalledWith('latest/stable', '')
       expect(workshop.restoreCache).toHaveBeenCalledWith(
         { id: '42424242', path: '/project/ws' },
         'ws',

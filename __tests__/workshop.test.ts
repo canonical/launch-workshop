@@ -4,9 +4,7 @@ import * as exec from '../__fixtures__/exec.js'
 import * as fs from 'node:fs/promises'
 import * as lxd from '../__fixtures__/lxd.js'
 import * as paths from '../__fixtures__/paths.js'
-import * as release from '../__fixtures__/release.js'
 import * as snap from '../__fixtures__/snap.js'
-import * as tc from '../__fixtures__/tool-cache.js'
 import { jest } from '@jest/globals'
 import path from 'node:path'
 
@@ -15,70 +13,56 @@ jest.unstable_mockModule('@actions/core', () => core)
 jest.unstable_mockModule('@actions/exec', () => exec)
 jest.unstable_mockModule('../src/lxd.js', () => lxd)
 jest.unstable_mockModule('../src/paths.js', () => paths)
-jest.unstable_mockModule('../src/release.js', () => release)
 jest.unstable_mockModule('../src/snap.js', () => snap)
-jest.unstable_mockModule('@actions/tool-cache', () => tc)
 
 const { launchWorkshop, restoreCache, saveCache, setupWorkshop } =
   await import('../src/workshop.js')
 
 describe('setupWorkshop', () => {
-  beforeEach(async () => {
+  beforeAll(async () => {
     await paths.tmpdir.create()
-    await release.tmpdir.create()
   })
-  afterEach(async () => {
-    await release.tmpdir.remove()
+  afterAll(async () => {
     await paths.tmpdir.remove()
   })
 
-  test('installs Workshop', async () => {
-    exec.getExecOutput.mockResolvedValueOnce({
-      exitCode: 127,
-      stdout: '',
-      stderr: 'workshop: command not found'
-    })
-
-    await setupWorkshop('', '0.1.0')
-
-    const workshopVersion = exec.getExecOutput.mock.calls[0]?.[1]
-    expect(workshopVersion).toEqual(['workshop', '--version'])
+  test('installs from channel', async () => {
+    await setupWorkshop('latest/edge', '')
 
     expect(lxd.setupLxd).toHaveBeenCalled()
-
-    const snapInstall = exec.exec.mock.calls[0]?.[1]
-    expect(snapInstall?.at(-1)).toMatch(/workshop_0.1.0_testarch.snap$/)
-
+    expect(snap.checkSnapState).toHaveBeenCalledWith(
+      'workshop',
+      'latest/edge',
+      ''
+    )
+    expect(snap.maybeInstallSnap).toHaveBeenCalledWith(
+      'workshop',
+      'latest/edge',
+      '',
+      true,
+      snap.SnapState.NotFound
+    )
     expect(lxd.pierceFirewall).toHaveBeenCalledWith('workshopbr0')
-
-    expect(exec.getExecOutput).toHaveBeenCalledTimes(1)
-    expect(exec.exec).toHaveBeenCalledTimes(1)
   })
 
-  test.each(['latest', '>=0.1.0'])('avoids reinstalling', async (version) => {
-    exec.getExecOutput.mockResolvedValueOnce({
-      exitCode: 0,
-      stdout: '0.1.2\n',
-      stderr: ''
-    })
+  test('refreshes to revision', async () => {
+    snap.checkSnapState.mockResolvedValueOnce(snap.SnapState.Installed)
 
-    await setupWorkshop('', version)
+    await setupWorkshop('', '42')
 
-    const workshopVersion = exec.getExecOutput.mock.calls[0]?.[1]
-    expect(workshopVersion).toEqual(['workshop', '--version'])
-
-    expect(lxd.setupLxd).toHaveBeenCalledTimes(0)
+    expect(lxd.setupLxd).toHaveBeenCalled()
+    expect(snap.checkSnapState).toHaveBeenCalledWith('workshop', '', '42')
+    expect(snap.maybeInstallSnap).toHaveBeenCalledWith(
+      'workshop',
+      '',
+      '42',
+      true,
+      snap.SnapState.Installed
+    )
     expect(lxd.pierceFirewall).toHaveBeenCalledTimes(0)
-    expect(exec.getExecOutput).toHaveBeenCalledTimes(1)
-    expect(exec.exec).toHaveBeenCalledTimes(0)
   })
 
   test('requires snap', async () => {
-    exec.getExecOutput.mockResolvedValueOnce({
-      exitCode: 0,
-      stdout: '0.0.1\n',
-      stderr: ''
-    })
     paths.isSocket.mockResolvedValueOnce(false)
 
     const promise = setupWorkshop('', '0.1.0')
@@ -86,13 +70,10 @@ describe('setupWorkshop', () => {
       'Workshop only supports Ubuntu-based runners at this time'
     )
 
-    const workshopVersion = exec.getExecOutput.mock.calls[0]?.[1]
-    expect(workshopVersion).toEqual(['workshop', '--version'])
-
     expect(lxd.setupLxd).toHaveBeenCalledTimes(0)
+    expect(snap.checkSnapState).toHaveBeenCalledTimes(0)
+    expect(snap.maybeInstallSnap).toHaveBeenCalledTimes(0)
     expect(lxd.pierceFirewall).toHaveBeenCalledTimes(0)
-    expect(exec.getExecOutput).toHaveBeenCalledTimes(1)
-    expect(exec.exec).toHaveBeenCalledTimes(0)
   })
 })
 

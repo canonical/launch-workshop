@@ -46,9 +46,6 @@ jobs:
       matrix:
         os: [ubuntu-22.04, ubuntu-24.04]
         workshop: [focal, jammy, noble]
-    environment:
-      name: workshop
-      deployment: false
 
     steps:
       - name: Checkout
@@ -59,7 +56,6 @@ jobs:
       - name: Launch workshop
         uses: ./
         with:
-          token: ${{ secrets.WORKSHOP_TOKEN }}
           workshop: ${{ matrix.workshop }}
 
       - name: Check base image
@@ -72,9 +68,6 @@ jobs:
   prepare-cache:
     name: Prepare cache
     runs-on: ubuntu-latest
-    environment:
-      name: workshop
-      deployment: false
     outputs:
       path: ${{ steps.copy.outputs.path }}
       one: ${{ steps.write.outputs.one }}
@@ -97,7 +90,6 @@ jobs:
       - name: Launch workshop
         uses: ./
         with:
-          token: ${{ secrets.WORKSHOP_TOKEN }}
           project: ${{ steps.copy.outputs.path }}
           workshop: cache
           cache: |
@@ -117,9 +109,6 @@ jobs:
   cache-tests:
     name: Cache tests
     runs-on: ubuntu-latest
-    environment:
-      name: workshop
-      deployment: false
     needs: prepare-cache
 
     steps:
@@ -144,7 +133,6 @@ jobs:
       - name: Launch workshop in known project
         uses: ./
         with:
-          token: ${{ secrets.WORKSHOP_TOKEN }}
           project: ${{ needs.prepare-cache.outputs.path }}
           workshop: cache
           cache: |
@@ -165,7 +153,6 @@ jobs:
       - name: Launch workshop in new project
         uses: ./
         with:
-          token: ${{ secrets.WORKSHOP_TOKEN }}
           project: ${{ steps.copy.outputs.path }}
           workshop: cache
           cache: |

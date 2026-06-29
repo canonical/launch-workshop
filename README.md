@@ -12,13 +12,13 @@ This action launches an ephemeral development environment using
 ```yaml
 - uses: canonical/launch-workshop@v0
   with:
-    # Access token for canonical/workshop.
-    # Required.
-    token: ${{ secrets.WORKSHOP_TOKEN }}
-
-    # Workshop version or range of versions.
+    # Channel used to install Workshop snap.
     # Optional.
-    version: latest
+    channel: latest/stable
+
+    # Specific revision of Workshop snap to install.
+    # Optional.
+    revision: ''
 
     # Directory containing a workshop to launch.
     # Optional.
@@ -44,8 +44,6 @@ steps:
   - uses: actions/checkout@v4
 
   - uses: canonical/launch-workshop@v0
-    with:
-      token: ${{ secrets.WORKSHOP_TOKEN }}
 
   - run: workshop exec -- pytest
 ```
@@ -62,7 +60,6 @@ steps:
 
   - uses: canonical/launch-workshop@v0
     with:
-      token: ${{ secrets.WORKSHOP_TOKEN }}
       workshop: ${{ matrix.workshop }}
 
   - run: workshop run "$WS" unit-tests
