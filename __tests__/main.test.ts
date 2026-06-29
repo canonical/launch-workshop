@@ -1,11 +1,11 @@
-import * as client from '../__fixtures__/client.js'
 import * as core from '../__fixtures__/core.js'
 import * as inputs from '../__fixtures__/inputs.js'
 import * as workshop from '../__fixtures__/workshop.js'
+import * as workshopd from '../__fixtures__/workshopd.js'
 import { closeAgent, newAgent } from '../__fixtures__/agent.js'
 import { jest } from '@jest/globals'
 
-jest.unstable_mockModule('../src/client.js', () => client)
+jest.unstable_mockModule('../src/workshopd.js', () => workshopd)
 jest.unstable_mockModule('@actions/core', () => core)
 jest.unstable_mockModule('../src/inputs.js', () => inputs)
 jest.unstable_mockModule('../src/workshop.js', () => workshop)
@@ -21,7 +21,7 @@ test('launches workshop', async () => {
   await run()
 
   expect(core.setFailed.mock.calls).toEqual([])
-  expect(workshop.setupWorkshop).toHaveBeenCalledWith('abcxyz', '1.2.3')
+  expect(workshop.setupWorkshop).toHaveBeenCalledWith('latest/stable', '')
   expect(workshop.restoreCache).toHaveBeenCalledWith(
     { id: '42424242', path: '/project' },
     'dev',
@@ -41,8 +41,8 @@ test('launches workshop', async () => {
 test('infers workshop name', async () => {
   await inputs.getInputs.withImplementation(
     () => ({
-      token: 'abcxyz',
-      version: '1.2.3',
+      channel: 'latest/stable',
+      revision: '',
       project: '/project/ws',
       workshop: '',
       cache: []
@@ -51,7 +51,7 @@ test('infers workshop name', async () => {
       await run()
 
       expect(core.setFailed.mock.calls).toEqual([])
-      expect(workshop.setupWorkshop).toHaveBeenCalledWith('abcxyz', '1.2.3')
+      expect(workshop.setupWorkshop).toHaveBeenCalledWith('latest/stable', '')
       expect(workshop.restoreCache).toHaveBeenCalledWith(
         { id: '42424242', path: '/project/ws' },
         'ws',

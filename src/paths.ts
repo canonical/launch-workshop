@@ -3,6 +3,15 @@ import os from 'node:os'
 import path from 'node:path'
 
 /**
+ * Determines the snapd API socket.
+ *
+ * @returns A unix domain socket path.
+ */
+export function snapdSocketPath(): string {
+  return '/run/snapd.socket'
+}
+
+/**
  * Determines the Workshop API socket.
  *
  * @returns A unix domain socket path.
@@ -24,6 +33,15 @@ export async function socketPath(): Promise<string> {
     return snapPath
   } catch {
     return '/var/lib/workshop/workshop.socket'
+  }
+}
+
+export async function isSocket(path: string): Promise<boolean> {
+  try {
+    const stats = await fs.stat(path)
+    return stats.isSocket()
+  } catch {
+    return false
   }
 }
 

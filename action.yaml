@@ -6,12 +6,10 @@ branding:
   icon: tool
   color: orange
 inputs:
-  token:
-    description: Access token for canonical/workshop.
-    required: true
-  version:
-    description: Workshop version or range of versions.
-    default: latest
+  channel:
+    description: Channel used to install Workshop snap.
+  revision:
+    description: Specific revision of Workshop snap to install.
   project:
     description: Directory containing a workshop to launch.
   workshop:

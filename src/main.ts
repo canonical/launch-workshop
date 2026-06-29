@@ -1,5 +1,5 @@
 import * as core from '@actions/core'
-import { Project, workshopClient, workshopDispatcher } from './client.js'
+import { Project, workshopClient, workshopDispatcher } from './workshopd.js'
 import {
   errorMessage,
   launchWorkshop,
@@ -23,9 +23,15 @@ type Workshop = {
  */
 export async function run(): Promise<void> {
   try {
-    const { token, version, project: path, workshop: name, cache } = getInputs()
+    const {
+      channel,
+      revision,
+      project: path,
+      workshop: name,
+      cache
+    } = getInputs()
 
-    await setupWorkshop(token, version)
+    await setupWorkshop(channel, revision)
 
     const { project, workshop } = await resolveWorkshop(path, name)
     saveWorkshop({ project, workshop })

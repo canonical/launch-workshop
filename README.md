@@ -10,15 +10,15 @@ This action launches an ephemeral development environment using
 ## Usage
 
 ```yaml
-- uses: canonical/launch-workshop@v0
+- uses: canonical/launch-workshop@v1
   with:
-    # Access token for canonical/workshop.
-    # Required.
-    token: ${{ secrets.WORKSHOP_TOKEN }}
-
-    # Workshop version or range of versions.
+    # Channel used to install Workshop snap.
     # Optional.
-    version: latest
+    channel: latest/stable
+
+    # Specific revision of Workshop snap to install.
+    # Optional.
+    revision: ''
 
     # Directory containing a workshop to launch.
     # Optional.
@@ -43,9 +43,7 @@ runs-on: ubuntu-latest
 steps:
   - uses: actions/checkout@v4
 
-  - uses: canonical/launch-workshop@v0
-    with:
-      token: ${{ secrets.WORKSHOP_TOKEN }}
+  - uses: canonical/launch-workshop@v1
 
   - run: workshop exec -- pytest
 ```
@@ -60,9 +58,8 @@ strategy:
 steps:
   - uses: actions/checkout@v4
 
-  - uses: canonical/launch-workshop@v0
+  - uses: canonical/launch-workshop@v1
     with:
-      token: ${{ secrets.WORKSHOP_TOKEN }}
       workshop: ${{ matrix.workshop }}
 
   - run: workshop run "$WS" unit-tests
@@ -73,23 +70,21 @@ steps:
 ## Caching
 
 Workshop SDKs can define mount plugs to persist data outside the workshop
-container. For example, a `python` SDK could define a `pip-cache` plug:
+container. For example, the `go` SDK defines a `mod-cache` plug:
 
 ```console
 $ workshop connections --all
-Interface  Plug                  Slot              Notes
-mount      dev/python:pip-cache  dev/system:mount  -
+Interface  Plug              Slot              Notes
+mount      dev/go:mod-cache  dev/system:mount  -
 ```
 
 Use the `cache` input to cache such data across workflow runs:
 
 ```yaml
-- uses: canonical/launch-workshop@v0
+- uses: canonical/launch-workshop@v1
   with:
-    token: ...
     cache: |
-      cargo:git
-      cargo:registry
       go:mod-cache
-      python:pip-cache
+      rust:cargo-registry
+      uv:cache
 ```

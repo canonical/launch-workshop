@@ -3,8 +3,7 @@ import { getInputs } from '../src/inputs.js'
 
 beforeEach(() => {
   env.replaceEnv({
-    INPUT_TOKEN: 'abcxyz',
-    INPUT_VERSION: '1.2.3',
+    INPUT_CHANNEL: 'latest/edge',
     INPUT_PROJECT: '/project',
     INPUT_WORKSHOP: 'dev',
     INPUT_CACHE: 'sdk:plug \n \n  :system-plug\n\n'
@@ -14,8 +13,8 @@ afterEach(env.restoreEnv)
 
 test('uses environment', () => {
   expect(getInputs()).toEqual({
-    token: 'abcxyz',
-    version: '1.2.3',
+    channel: 'latest/edge',
+    revision: '',
     project: '/project',
     workshop: 'dev',
     cache: [
@@ -25,16 +24,40 @@ test('uses environment', () => {
   })
 })
 
-test('requires token', () => {
-  delete process.env.INPUT_TOKEN
+test('rejects channel with revision', () => {
+  process.env.INPUT_REVISION = '42'
 
-  expect(getInputs).toThrow('Input required and not supplied: token')
+  expect(getInputs).toThrow('cannot specify both channel and revision')
 })
 
-test('requires version', () => {
-  delete process.env.INPUT_VERSION
+test('allows no channel', () => {
+  delete process.env.INPUT_CHANNEL
 
-  expect(getInputs).toThrow('Input required and not supplied: version')
+  expect(getInputs().channel).toBe('')
+})
+
+test('rejects invalid channel', () => {
+  process.env.INPUT_CHANNEL = 'latest/stable/foo/bar'
+
+  expect(getInputs).toThrow('has too many components')
+})
+
+test.each([
+  ['edge', 'latest/edge'],
+  ['6', '6/stable'],
+  ['edge/123', 'latest/edge/123'],
+  ['6/edge/123', '6/edge/123']
+])('fills out channel', (short, full) => {
+  process.env.INPUT_CHANNEL = short
+
+  expect(getInputs().channel).toBe(full)
+})
+
+test('allows revision', () => {
+  delete process.env.INPUT_CHANNEL
+  process.env.INPUT_REVISION = '42'
+
+  expect(getInputs().revision).toBe('42')
 })
 
 test('allows no project', () => {

@@ -36,11 +36,12 @@ import 'node:os';
 import 'node:path';
 import 'stream';
 import 'url';
+import 'node:module';
 import 'buffer';
 import 'node:process';
 import 'node:https';
-import 'tty';
 import 'node:crypto';
+import 'tty';
 import 'node:fs';
 
 /* istanbul ignore next */

@@ -44,11 +44,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-22.04, ubuntu-24.04]
-        workshop: [focal, jammy, noble]
-    environment:
-      name: workshop
-      deployment: false
+        os: [ubuntu-22.04, ubuntu-24.04, ubuntu-26.04]
+        workshop: [focal, jammy, noble, resolute]
 
     steps:
       - name: Checkout
@@ -59,7 +56,6 @@ jobs:
       - name: Launch workshop
         uses: ./
         with:
-          token: ${{ secrets.WORKSHOP_TOKEN }}
           workshop: ${{ matrix.workshop }}
 
       - name: Check base image
@@ -72,9 +68,6 @@ jobs:
   prepare-cache:
     name: Prepare cache
     runs-on: ubuntu-latest
-    environment:
-      name: workshop
-      deployment: false
     outputs:
       path: ${{ steps.copy.outputs.path }}
       one: ${{ steps.write.outputs.one }}
@@ -90,16 +83,14 @@ jobs:
         id: copy
         run: |
           path="prj-$(openssl rand -hex 8)"
-          mkdir "$path"
-          cp -a .workshop "$path"
+          mkdir -p "${path}/.workshop"
+          cp -a .workshop/{cache,cache.yaml} "${path}/.workshop/"
           printf 'path=%s\n' "$path" >> "$GITHUB_OUTPUT"
 
       - name: Launch workshop
         uses: ./
         with:
-          token: ${{ secrets.WORKSHOP_TOKEN }}
           project: ${{ steps.copy.outputs.path }}
-          workshop: cache
           cache: |
             cache:one
             cache:two
@@ -117,9 +108,6 @@ jobs:
   cache-tests:
     name: Cache tests
     runs-on: ubuntu-latest
-    environment:
-      name: workshop
-      deployment: false
     needs: prepare-cache
 
     steps:
@@ -144,7 +132,6 @@ jobs:
       - name: Launch workshop in known project
         uses: ./
         with:
-          token: ${{ secrets.WORKSHOP_TOKEN }}
           project: ${{ needs.prepare-cache.outputs.path }}
           workshop: cache
           cache: |
@@ -165,7 +152,6 @@ jobs:
       - name: Launch workshop in new project
         uses: ./
         with:
-          token: ${{ secrets.WORKSHOP_TOKEN }}
           project: ${{ steps.copy.outputs.path }}
           workshop: cache
           cache: |

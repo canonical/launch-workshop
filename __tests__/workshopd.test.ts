@@ -5,7 +5,8 @@ import { jest } from '@jest/globals'
 
 jest.unstable_mockModule('../src/paths.js', () => paths)
 
-const { workshopClient, workshopDispatcher } = await import('../src/client.js')
+const { workshopClient, workshopDispatcher } =
+  await import('../src/workshopd.js')
 
 describe('default dispatcher', () => {
   beforeAll(async () => {

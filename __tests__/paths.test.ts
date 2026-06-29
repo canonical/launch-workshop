@@ -6,11 +6,23 @@ import { jest } from '@jest/globals'
 jest.unstable_mockModule('node:fs/promises', () => fs)
 jest.unstable_mockModule('node:os', () => ({ default: os }))
 
-const { hostCachePath, mountHostSource, socketPath, userDataPath } =
-  await import('../src/paths.js')
+const {
+  hostCachePath,
+  isSocket,
+  mountHostSource,
+  snapdSocketPath,
+  socketPath,
+  userDataPath
+} = await import('../src/paths.js')
 
 beforeEach(() => env.replaceEnv({}))
 afterEach(env.restoreEnv)
+
+describe('snapdSocketPath', () => {
+  test('provides default', () => {
+    expect(snapdSocketPath()).toEqual('/run/snapd.socket')
+  })
+})
 
 describe('socketPath', () => {
   test('respects WORKSHOP_SOCKET', async () => {
@@ -36,6 +48,24 @@ describe('socketPath', () => {
     fs.access.mockRejectedValueOnce(new Error('no such file or directory'))
 
     expect(await socketPath()).toEqual('/var/lib/workshop/workshop.socket')
+  })
+})
+
+describe('isSocket', () => {
+  test('finds socket', async () => {
+    fs.isSocket.mockReturnValueOnce(true)
+
+    expect(await isSocket('/run/42.sock')).toBe(true)
+  })
+
+  test('ignores regular files', async () => {
+    expect(await isSocket('/run/42.sock')).toBe(false)
+  })
+
+  test('ignores errors', async () => {
+    fs.stat.mockRejectedValueOnce(new Error('no such file or directory'))
+
+    expect(await isSocket('/run/42.sock')).toBe(false)
   })
 })
 

@@ -1,7 +1,7 @@
 {
   "name": "launch-workshop",
   "description": "GitHub Action to launch a workshop (development environment)",
-  "version": "0.2.0",
+  "version": "1.0.0",
   "author": "Canonical",
   "type": "module",
   "private": true,
@@ -41,16 +41,12 @@
     "@actions/cache": "^6.0.0",
     "@actions/core": "^3.0.0",
     "@actions/exec": "^3.0.0",
-    "@actions/github": "^9.0.0",
-    "@actions/tool-cache": "^4.0.0",
-    "@octokit/plugin-rest-endpoint-methods": "^17.0.0",
-    "semver": "^7.7.2"
+    "@actions/github": "^9.0.0"
   },
   "devDependencies": {
     "@eslint/compat": "^2.0.0",
     "@eslint/eslintrc": "^3.3.5",
     "@eslint/js": "^10.0.1",
-    "@fetch-mock/jest": "^0.2.16",
     "@jest/globals": "^30.0.0",
     "@rollup/plugin-commonjs": "^29.0.0",
     "@rollup/plugin-json": "^6.1.0",
@@ -58,7 +54,6 @@
     "@rollup/plugin-typescript": "^12.1.4",
     "@types/jest": "^30.0.0",
     "@types/node": "^24.1.0",
-    "@types/semver": "^7.7.1",
     "@typescript-eslint/eslint-plugin": "^8.35.1",
     "eslint": "^10.0.0",
     "eslint-config-prettier": "^10.1.5",
