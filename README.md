@@ -73,12 +73,12 @@ steps:
 ## Caching
 
 Workshop SDKs can define mount plugs to persist data outside the workshop
-container. For example, a `python` SDK could define a `pip-cache` plug:
+container. For example, the `go` SDK defines a `mod-cache` plug:
 
 ```console
 $ workshop connections --all
-Interface  Plug                  Slot              Notes
-mount      dev/python:pip-cache  dev/system:mount  -
+Interface  Plug              Slot              Notes
+mount      dev/go:mod-cache  dev/system:mount  -
 ```
 
 Use the `cache` input to cache such data across workflow runs:
@@ -86,10 +86,8 @@ Use the `cache` input to cache such data across workflow runs:
 ```yaml
 - uses: canonical/launch-workshop@v0
   with:
-    token: ...
     cache: |
-      cargo:git
-      cargo:registry
       go:mod-cache
-      python:pip-cache
+      rust:cargo-registry
+      uv:cache
 ```
