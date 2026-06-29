@@ -10,7 +10,7 @@ This action launches an ephemeral development environment using
 ## Usage
 
 ```yaml
-- uses: canonical/launch-workshop@v0
+- uses: canonical/launch-workshop@v1
   with:
     # Channel used to install Workshop snap.
     # Optional.
@@ -43,7 +43,7 @@ runs-on: ubuntu-latest
 steps:
   - uses: actions/checkout@v4
 
-  - uses: canonical/launch-workshop@v0
+  - uses: canonical/launch-workshop@v1
 
   - run: workshop exec -- pytest
 ```
@@ -58,7 +58,7 @@ strategy:
 steps:
   - uses: actions/checkout@v4
 
-  - uses: canonical/launch-workshop@v0
+  - uses: canonical/launch-workshop@v1
     with:
       workshop: ${{ matrix.workshop }}
 
@@ -81,7 +81,7 @@ mount      dev/go:mod-cache  dev/system:mount  -
 Use the `cache` input to cache such data across workflow runs:
 
 ```yaml
-- uses: canonical/launch-workshop@v0
+- uses: canonical/launch-workshop@v1
   with:
     cache: |
       go:mod-cache
