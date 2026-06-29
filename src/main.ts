@@ -1,5 +1,5 @@
 import * as core from '@actions/core'
-import { Project, workshopClient, workshopDispatcher } from './client.js'
+import { Project, workshopClient, workshopDispatcher } from './workshopd.js'
 import {
   errorMessage,
   launchWorkshop,

@@ -2,10 +2,15 @@ import * as cache from '@actions/cache'
 import * as core from '@actions/core'
 import * as exec from '@actions/exec'
 import * as fs from 'node:fs/promises'
-import { hostCachePath, mountHostSource } from './paths.js'
+import {
+  hostCachePath,
+  isSocket,
+  mountHostSource,
+  snapdSocketPath
+} from './paths.js'
 import { pierceFirewall, setupLxd } from './lxd.js'
 import type { PlugRef } from './inputs.js'
-import type { Project } from './client.js'
+import type { Project } from './workshopd.js'
 import assert from 'node:assert'
 import { context } from '@actions/github'
 import { createHash } from 'node:crypto'
@@ -37,7 +42,7 @@ export async function setupWorkshop(
   }
 
   assert(
-    await isSnapInstalled(),
+    await isSocket(snapdSocketPath()),
     'Workshop only supports Ubuntu-based runners at this time'
   )
 
@@ -65,15 +70,6 @@ export async function setupWorkshop(
   }
 
   await pierceFirewall('workshopbr0')
-}
-
-async function isSnapInstalled(): Promise<boolean> {
-  // Use env so exec doesn't throw if snap isn't installed.
-  const code = await exec.exec('env', ['snap', '--version'], {
-    silent: true,
-    ignoreReturnCode: true
-  })
-  return code == 0
 }
 
 async function workshopVersion(): Promise<string> {

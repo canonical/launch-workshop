@@ -1,12 +1,12 @@
 import * as core from '@actions/core'
-import { Dispatcher, Client as UndiciClient } from 'undici'
+import { Client, Dispatcher } from 'undici'
 import assert from 'node:assert'
 import { socketPath } from './paths.js'
 
 /**
  * Client for the Workshop API.
  */
-export type Client = {
+export type WorkshopClient = {
   /**
    * Create or load a project from the given path.
    *
@@ -44,7 +44,7 @@ export type Project = {
  * @param dispatcher An HTTP client.
  * @returns A Workshop client.
  */
-export function workshopClient(dispatcher: Dispatcher): Client {
+export function workshopClient(dispatcher: Dispatcher): WorkshopClient {
   return new HttpClient(dispatcher)
 }
 
@@ -54,12 +54,12 @@ export function workshopClient(dispatcher: Dispatcher): Client {
  * @returns An HTTP client.
  */
 export async function workshopDispatcher(): Promise<Dispatcher> {
-  return new UndiciClient('http://localhost', {
+  return new Client('http://localhost', {
     socketPath: await socketPath()
   })
 }
 
-class HttpClient implements Client {
+class HttpClient implements WorkshopClient {
   constructor(protected readonly dispatcher: Dispatcher) {}
 
   async project(path: string): Promise<Project> {
@@ -119,20 +119,15 @@ type WorkshopFile = {
 
 function syncResult(body: unknown): unknown {
   core.debug(`Response from workshopd: ${JSON.stringify(body, null, 2)}`)
-  handleError(body)
-
-  const { type, result = undefined } = body as ResponseBody
+  const { type, result = undefined, status } = body as ResponseBody
+  if (type === 'error') {
+    handleError(result, status)
+  }
   assert(type === 'sync', `expected sync response, got ${JSON.stringify(type)}`)
   return result
 }
 
-function handleError(body: unknown) {
-  const { type, result = undefined, status } = body as ResponseBody
-
-  if (type !== 'error') {
-    return
-  }
-
+function handleError(result: unknown, status: string) {
   if (result !== undefined) {
     const { message } = result as ErrorResult
     if (message) {

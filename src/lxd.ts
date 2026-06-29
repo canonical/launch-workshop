@@ -1,6 +1,5 @@
-import * as core from '@actions/core'
 import * as exec from '@actions/exec'
-import { coerce, satisfies } from 'semver'
+import { SnapState, checkSnapState, maybeInstallSnap } from './snap.js'
 
 /**
  * Installs and initializes the LXD snap.
@@ -9,44 +8,11 @@ import { coerce, satisfies } from 'semver'
  * @returns Resolves when complete.
  */
 export async function setupLxd(): Promise<void> {
-  const installed = await isLxdInstalled()
-
-  if (installed) {
-    const version = await lxdVersion()
-    const semver = coerce(version)
-    if (semver !== null && satisfies(semver, '>=6.3')) {
-      core.debug(`LXD ${version} already installed`)
-      return
-    }
+  const state = await checkSnapState('lxd', '6/stable', '')
+  await maybeInstallSnap('lxd', '6/stable', '', false, state)
+  if (state === SnapState.NotFound || state === SnapState.Installed) {
+    await exec.exec('sudo', ['lxd', 'waitready'])
   }
-
-  const action = installed ? 'refresh' : 'install'
-  await exec.exec('sudo', ['snap', action, '--channel=6/stable', 'lxd'])
-  await exec.exec('sudo', ['snap', 'refresh', '--hold=24h', 'lxd'])
-  await exec.exec('sudo', ['lxd', 'waitready'])
-}
-
-async function isLxdInstalled(): Promise<boolean> {
-  const code = await exec.exec('env', ['snap', 'list', 'lxd'], {
-    silent: true,
-    ignoreReturnCode: true
-  })
-  return code == 0
-}
-
-async function lxdVersion(): Promise<string> {
-  const { exitCode, stdout } = await exec.getExecOutput(
-    'env',
-    ['lxd', '--version'],
-    {
-      silent: true,
-      ignoreReturnCode: true
-    }
-  )
-  if (exitCode == 0) {
-    return stdout.trim()
-  }
-  return ''
 }
 
 /**

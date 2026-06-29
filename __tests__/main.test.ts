@@ -1,11 +1,11 @@
-import * as client from '../__fixtures__/client.js'
 import * as core from '../__fixtures__/core.js'
 import * as inputs from '../__fixtures__/inputs.js'
 import * as workshop from '../__fixtures__/workshop.js'
+import * as workshopd from '../__fixtures__/workshopd.js'
 import { closeAgent, newAgent } from '../__fixtures__/agent.js'
 import { jest } from '@jest/globals'
 
-jest.unstable_mockModule('../src/client.js', () => client)
+jest.unstable_mockModule('../src/workshopd.js', () => workshopd)
 jest.unstable_mockModule('@actions/core', () => core)
 jest.unstable_mockModule('../src/inputs.js', () => inputs)
 jest.unstable_mockModule('../src/workshop.js', () => workshop)

@@ -1,92 +1,51 @@
 import * as exec from '../__fixtures__/exec.js'
+import * as snap from '../__fixtures__/snap.js'
 import { jest } from '@jest/globals'
 
 jest.unstable_mockModule('@actions/exec', () => exec)
+jest.unstable_mockModule('../src/snap.js', () => snap)
 
 const { pierceFirewall, setupLxd } = await import('../src/lxd.js')
 
 describe('setupLxd', () => {
-  test('installs', async () => {
-    await exec.exec.withImplementation(
-      async (command, args) => {
-        if (command === 'env' && args?.[0] === 'snap') {
-          return 1
-        }
-        return 0
-      },
-      async () => {
-        await setupLxd()
+  test.each([[snap.SnapState.NotFound], [snap.SnapState.Installed]])(
+    'installs',
+    async (state) => {
+      snap.checkSnapState.mockResolvedValueOnce(state)
 
-        const snapList = exec.exec.mock.calls[0]?.[1]
-        expect(snapList).toEqual(['snap', 'list', 'lxd'])
+      await setupLxd()
 
-        const snapInstall = exec.exec.mock.calls[1]?.[1]
-        expect(snapInstall?.slice(0, 2)).toEqual(['snap', 'install'])
-
-        const snapHold = exec.exec.mock.calls[2]?.[1]
-        expect(snapHold).toEqual(['snap', 'refresh', '--hold=24h', 'lxd'])
-
-        const lxdWaitready = exec.exec.mock.calls[3]?.[1]
-        expect(lxdWaitready).toEqual(['lxd', 'waitready'])
-
-        expect(exec.exec).toHaveBeenCalledTimes(4)
-      }
-    )
-  })
-
-  test.each([
-    {
-      exitCode: 0,
-      stdout: '5.0.4',
-      stderr: ''
-    },
-    {
-      exitCode: 127,
-      stdout: '',
-      stderr: '/usr/bin/env: ‘lxd’: No such file or directory\n'
+      expect(snap.checkSnapState).toHaveBeenCalledWith('lxd', '6/stable', '')
+      expect(snap.maybeInstallSnap).toHaveBeenCalledWith(
+        'lxd',
+        '6/stable',
+        '',
+        false,
+        state
+      )
+      expect(exec.exec).toHaveBeenCalledWith('sudo', ['lxd', 'waitready'])
+      expect(exec.exec).toHaveBeenCalledTimes(1)
     }
-  ])('refreshes', async (output) => {
-    exec.getExecOutput.mockResolvedValueOnce(output)
+  )
 
-    await setupLxd()
+  test.each([[snap.SnapState.SameChannel], [snap.SnapState.SameRevision]])(
+    'avoids reinstalling',
+    async (state) => {
+      snap.checkSnapState.mockResolvedValueOnce(state)
 
-    const snapList = exec.exec.mock.calls[0]?.[1]
-    expect(snapList).toEqual(['snap', 'list', 'lxd'])
+      await setupLxd()
 
-    const lxdVersion = exec.getExecOutput.mock.calls[0]?.[1]
-    expect(lxdVersion).toEqual(['lxd', '--version'])
-
-    const snapRefresh = exec.exec.mock.calls[1]?.[1]
-    expect(snapRefresh?.slice(0, 2)).toEqual(['snap', 'refresh'])
-
-    const snapHold = exec.exec.mock.calls[2]?.[1]
-    expect(snapHold).toEqual(['snap', 'refresh', '--hold=24h', 'lxd'])
-
-    const lxdWaitready = exec.exec.mock.calls[3]?.[1]
-    expect(lxdWaitready).toEqual(['lxd', 'waitready'])
-
-    expect(exec.exec).toHaveBeenCalledTimes(4)
-    expect(exec.getExecOutput).toHaveBeenCalledTimes(1)
-  })
-
-  test('avoids reinstalling', async () => {
-    exec.getExecOutput.mockResolvedValueOnce({
-      exitCode: 0,
-      stdout: '6.5',
-      stderr: ''
-    })
-
-    await setupLxd()
-
-    const snapList = exec.exec.mock.calls[0]?.[1]
-    expect(snapList).toEqual(['snap', 'list', 'lxd'])
-
-    const lxdVersion = exec.getExecOutput.mock.calls[0]?.[1]
-    expect(lxdVersion).toEqual(['lxd', '--version'])
-
-    expect(exec.exec).toHaveBeenCalledTimes(1)
-    expect(exec.getExecOutput).toHaveBeenCalledTimes(1)
-  })
+      expect(snap.checkSnapState).toHaveBeenCalledWith('lxd', '6/stable', '')
+      expect(snap.maybeInstallSnap).toHaveBeenCalledWith(
+        'lxd',
+        '6/stable',
+        '',
+        false,
+        state
+      )
+      expect(exec.exec).toHaveBeenCalledTimes(0)
+    }
+  )
 })
 
 describe('pierceFirewall', () => {

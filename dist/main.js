@@ -29116,6 +29116,14 @@ function getState(name) {
 }
 
 /**
+ * Determines the snapd API socket.
+ *
+ * @returns A unix domain socket path.
+ */
+function snapdSocketPath() {
+    return '/run/snapd.socket';
+}
+/**
  * Determines the Workshop API socket.
  *
  * @returns A unix domain socket path.
@@ -29136,6 +29144,15 @@ async function socketPath() {
     }
     catch {
         return '/var/lib/workshop/workshop.socket';
+    }
+}
+async function isSocket(path) {
+    try {
+        const stats = await fs$1.stat(path);
+        return stats.isSocket();
+    }
+    catch {
+        return false;
     }
 }
 /**
@@ -29183,7 +29200,7 @@ function xdgDataHome() {
  * @returns A Workshop client.
  */
 function workshopClient(dispatcher) {
-    return new HttpClient$1(dispatcher);
+    return new HttpClient$2(dispatcher);
 }
 /**
  * Creates a generic HTTP client which connects to the Workshop API socket.
@@ -29195,7 +29212,7 @@ async function workshopDispatcher() {
         socketPath: await socketPath()
     });
 }
-let HttpClient$1 = class HttpClient {
+let HttpClient$2 = class HttpClient {
     dispatcher;
     constructor(dispatcher) {
         this.dispatcher = dispatcher;
@@ -29207,7 +29224,7 @@ let HttpClient$1 = class HttpClient {
             path: '/v1/projects',
             body: JSON.stringify({ path })
         });
-        const result = syncResult(await response.body.json());
+        const result = syncResult$1(await response.body.json());
         require$$0$2(result !== undefined, 'expected project response');
         return result;
     }
@@ -29217,7 +29234,7 @@ let HttpClient$1 = class HttpClient {
             method: 'GET',
             path: `/v1/projects/${encodeURIComponent(project.id)}/workshops`
         });
-        const result = syncResult(await response.body.json());
+        const result = syncResult$1(await response.body.json());
         require$$0$2(result !== undefined, 'expected workshops response');
         const { workshops, files } = result;
         const names = workshops.map((w) => w.name);
@@ -29236,18 +29253,16 @@ let HttpClient$1 = class HttpClient {
         return names[0];
     }
 };
-function syncResult(body) {
+function syncResult$1(body) {
     debug(`Response from workshopd: ${JSON.stringify(body, null, 2)}`);
-    handleError(body);
-    const { type, result = undefined } = body;
+    const { type, result = undefined, status } = body;
+    if (type === 'error') {
+        handleError$1(result, status);
+    }
     require$$0$2(type === 'sync', `expected sync response, got ${JSON.stringify(type)}`);
     return result;
 }
-function handleError(body) {
-    const { type, result = undefined, status } = body;
-    if (type !== 'error') {
-        return;
-    }
+function handleError$1(result, status) {
     if (result !== undefined) {
         const { message } = result;
         if (message) {
@@ -34570,7 +34585,7 @@ class HttpClientResponse {
         });
     }
 }
-class HttpClient {
+let HttpClient$1 = class HttpClient {
     constructor(userAgent, handlers, requestOptions) {
         this._ignoreSslError = false;
         this._allowRedirects = true;
@@ -35143,7 +35158,7 @@ class HttpClient {
             }));
         });
     }
-}
+};
 const lowercaseKeys$1 = (obj) => Object.keys(obj).reduce((c, k) => ((c[k.toLowerCase()] = obj[k]), c), {});
 
 var __awaiter$9 = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
@@ -69493,7 +69508,7 @@ class DownloadProgress {
 function downloadCacheHttpClient(archiveLocation, archivePath) {
     return __awaiter$6(this, void 0, void 0, function* () {
         const writeStream = fs.createWriteStream(archivePath);
-        const httpClient = new HttpClient('actions/cache');
+        const httpClient = new HttpClient$1('actions/cache');
         const downloadResponse = yield retryHttpClientResponse('downloadCache', () => __awaiter$6(this, void 0, void 0, function* () { return httpClient.get(archiveLocation); }));
         // Abort download if no traffic received over the socket.
         downloadResponse.message.socket.setTimeout(SocketTimeout, () => {
@@ -69525,7 +69540,7 @@ function downloadCacheHttpClientConcurrent(archiveLocation, archivePath, options
     return __awaiter$6(this, void 0, void 0, function* () {
         var _a;
         const archiveDescriptor = yield fs.promises.open(archivePath, 'w');
-        const httpClient = new HttpClient('actions/cache', undefined, {
+        const httpClient = new HttpClient$1('actions/cache', undefined, {
             socketTimeout: options.timeoutInMs,
             keepAlive: true
         });
@@ -69880,7 +69895,7 @@ function getRequestOptions() {
 function createHttpClient() {
     const token = process.env['ACTIONS_RUNTIME_TOKEN'] || '';
     const bearerCredentialHandler = new BearerCredentialHandler(token);
-    return new HttpClient(getUserAgentString(), [bearerCredentialHandler], getRequestOptions());
+    return new HttpClient$1(getUserAgentString(), [bearerCredentialHandler], getRequestOptions());
 }
 function getCacheEntry(keys, paths, options) {
     return __awaiter$5(this, void 0, void 0, function* () {
@@ -73680,7 +73695,7 @@ class CacheServiceClient {
         if (retryMultiplier) {
             this.retryMultiplier = retryMultiplier;
         }
-        this.httpClient = new HttpClient(userAgent, [
+        this.httpClient = new HttpClient$1(userAgent, [
             new BearerCredentialHandler(token)
         ]);
     }
@@ -74568,42 +74583,196 @@ function saveCacheV2(paths_1, key_1, options_1) {
 }
 
 /**
+ * Error thrown when a snap is not installed.
+ */
+class SnapNotFoundError extends Error {
+    snap;
+    constructor(snap, message) {
+        super(message);
+        this.snap = snap;
+    }
+}
+/**
+ * Creates a snapd client from a generic HTTP client.
+ *
+ * @param dispatcher An HTTP client.
+ * @returns A snapd client.
+ */
+function snapdClient(dispatcher) {
+    return new HttpClient(dispatcher);
+}
+/**
+ * Creates a generic HTTP client which connects to the snapd API socket.
+ *
+ * @returns An HTTP client.
+ */
+function snapdDispatcher() {
+    return new undiciExports.Client('http://localhost', {
+        socketPath: snapdSocketPath()
+    });
+}
+class HttpClient {
+    dispatcher;
+    constructor(dispatcher) {
+        this.dispatcher = dispatcher;
+    }
+    async info(name) {
+        debug('GET /v2/snaps/:name');
+        const response = await this.dispatcher.request({
+            method: 'GET',
+            path: `/v2/snaps/${encodeURIComponent(name)}`
+        });
+        const result = syncResult(await response.body.json());
+        require$$0$2(result !== undefined, 'expected snap response');
+        return result;
+    }
+}
+function syncResult(body) {
+    debug(`Response from snapd: ${JSON.stringify(body, null, 2)}`);
+    const { type, result = undefined, status } = body;
+    if (type === 'error') {
+        handleError(result, status);
+    }
+    require$$0$2(type === 'sync', `expected sync response, got ${JSON.stringify(type)}`);
+    return result;
+}
+function handleError(result, status) {
+    if (result !== undefined) {
+        const { message, kind = undefined, value = undefined } = result;
+        if (kind === 'snap-not-found' && typeof value === 'string') {
+            throw new SnapNotFoundError(value, message);
+        }
+        if (message) {
+            throw new Error(message);
+        }
+    }
+    if (status) {
+        throw new Error(`server error: ${status}`);
+    }
+    throw new Error('unknown server error');
+}
+
+/**
+ * Detects the current CPU architecture.
+ *
+ * @returns Architecture name (according to Debian).
+ */
+function snapArch() {
+    const machine = os$1.machine();
+    const arch = KERNEL_ARCH_MAPPING.get(machine);
+    require$$0$2(arch, `unknown architecture ${JSON.stringify(machine)}`);
+    return arch;
+}
+// Based on snapd/arch/arch.go.
+const KERNEL_ARCH_MAPPING = new Map([
+    ['aarch64', 'arm64'],
+    ['armv7l', 'armhf'],
+    ['armv8l', 'arm64'],
+    ['i686', 'i386'],
+    ['ppc', 'powerpc'],
+    ['ppc64', 'ppc64'],
+    ['ppc64le', 'ppc64el'],
+    ['riscv64', 'riscv64'],
+    ['s390x', 's390x'],
+    ['x86_64', 'amd64']
+]);
+/**
+ * Installation state of a snap.
+ */
+var SnapState;
+(function (SnapState) {
+    /**
+     * Snap is not installed.
+     */
+    SnapState[SnapState["NotFound"] = 0] = "NotFound";
+    /**
+     * Snap is installed, but not on the expected channel or revision (if any).
+     */
+    SnapState[SnapState["Installed"] = 1] = "Installed";
+    /**
+     * Snap is already tracking the expected channel.
+     */
+    SnapState[SnapState["SameChannel"] = 2] = "SameChannel";
+    /**
+     * Snap is already at the expected revision.
+     */
+    SnapState[SnapState["SameRevision"] = 3] = "SameRevision";
+})(SnapState || (SnapState = {}));
+/**
+ * Queries the installation state of a snap.
+ *
+ * @param name Snap name.
+ * @param channel Expected channel.
+ * @param revision Expected revision.
+ * @returns The current installation state.
+ */
+async function checkSnapState(name, channel, revision) {
+    const dispatcher = snapdDispatcher();
+    try {
+        const client = snapdClient(dispatcher);
+        try {
+            const snap = await client.info(name);
+            if (channel && snap['tracking-channel'] === channel) {
+                return SnapState.SameChannel;
+            }
+            if (revision && snap.revision === revision) ;
+            return SnapState.Installed;
+        }
+        catch (error) {
+            if (error instanceof SnapNotFoundError) {
+                return SnapState.NotFound;
+            }
+            throw error;
+        }
+    }
+    finally {
+        await dispatcher.close();
+    }
+}
+/**
+ * Installs or refreshes a snap to match the expected channel or revision.
+ *
+ * @param name Snap name.
+ * @param channel Channel used to install the snap.
+ * @param revision Specific revision to install.
+ * @param classic Whether to use classic confinement.
+ * @param state Current installation state.
+ * @returns Resolves when complete.
+ */
+async function maybeInstallSnap(name, channel, revision, classic, state) {
+    if (state === SnapState.SameChannel ||
+        state === SnapState.SameRevision ||
+        (state === SnapState.Installed && !channel)) {
+        debug(`Snap ${JSON.stringify(name)} already installed`);
+        return;
+    }
+    const args = ['snap'];
+    if (state === SnapState.NotFound) {
+        args.push('install');
+    }
+    else {
+        args.push('refresh');
+    }
+    {
+        args.push(`--channel=${channel}`);
+    }
+    args.push(name);
+    await exec('sudo', args);
+    await exec('sudo', ['snap', 'refresh', '--hold=24h', name]);
+}
+
+/**
  * Installs and initializes the LXD snap.
  * Does nothing if already installed.
  *
  * @returns Resolves when complete.
  */
 async function setupLxd() {
-    const installed = await isLxdInstalled();
-    if (installed) {
-        const version = await lxdVersion();
-        const semver = semverExports.coerce(version);
-        if (semver !== null && semverExports.satisfies(semver, '>=6.3')) {
-            debug(`LXD ${version} already installed`);
-            return;
-        }
+    const state = await checkSnapState('lxd', '6/stable', '');
+    await maybeInstallSnap('lxd', '6/stable', '', false, state);
+    if (state === SnapState.NotFound || state === SnapState.Installed) {
+        await exec('sudo', ['lxd', 'waitready']);
     }
-    const action = installed ? 'refresh' : 'install';
-    await exec('sudo', ['snap', action, '--channel=6/stable', 'lxd']);
-    await exec('sudo', ['snap', 'refresh', '--hold=24h', 'lxd']);
-    await exec('sudo', ['lxd', 'waitready']);
-}
-async function isLxdInstalled() {
-    const code = await exec('env', ['snap', 'list', 'lxd'], {
-        silent: true,
-        ignoreReturnCode: true
-    });
-    return code == 0;
-}
-async function lxdVersion() {
-    const { exitCode, stdout } = await getExecOutput('env', ['lxd', '--version'], {
-        silent: true,
-        ignoreReturnCode: true
-    });
-    if (exitCode == 0) {
-        return stdout.trim();
-    }
-    return '';
 }
 /**
  * Bypasses the default firewall rules on GitHub runners,
@@ -79735,31 +79904,6 @@ async function downloadReleaseAsset(octokit, asset, target) {
 }
 
 /**
- * Detects the current CPU architecture.
- *
- * @returns Architecture name (according to Debian).
- */
-function snapArch() {
-    const machine = os$1.machine();
-    const arch = KERNEL_ARCH_MAPPING.get(machine);
-    require$$0$2(arch, `unknown architecture ${JSON.stringify(machine)}`);
-    return arch;
-}
-// Based on snapd/arch/arch.go.
-const KERNEL_ARCH_MAPPING = new Map([
-    ['aarch64', 'arm64'],
-    ['armv7l', 'armhf'],
-    ['armv8l', 'arm64'],
-    ['i686', 'i386'],
-    ['ppc', 'powerpc'],
-    ['ppc64', 'ppc64'],
-    ['ppc64le', 'ppc64el'],
-    ['riscv64', 'riscv64'],
-    ['s390x', 's390x'],
-    ['x86_64', 'amd64']
-]);
-
-/**
  * Downloads and installs the Workshop snap.
  * Does nothing if already installed.
  *
@@ -79774,7 +79918,7 @@ async function setupWorkshop(token, version) {
         debug(`Workshop ${installed} already installed`);
         return;
     }
-    require$$0$2(await isSnapInstalled(), 'Workshop only supports Ubuntu-based runners at this time');
+    require$$0$2(await isSocket(snapdSocketPath()), 'Workshop only supports Ubuntu-based runners at this time');
     const arch = snapArch();
     const download = downloadRelease(token, {
         owner: 'canonical',
@@ -79792,14 +79936,6 @@ async function setupWorkshop(token, version) {
         ]);
     }
     await pierceFirewall('workshopbr0');
-}
-async function isSnapInstalled() {
-    // Use env so exec doesn't throw if snap isn't installed.
-    const code = await exec('env', ['snap', '--version'], {
-        silent: true,
-        ignoreReturnCode: true
-    });
-    return code == 0;
 }
 async function workshopVersion() {
     // Use env so exec doesn't throw if workshop isn't installed.

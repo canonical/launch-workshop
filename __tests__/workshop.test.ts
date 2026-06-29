@@ -24,10 +24,12 @@ const { launchWorkshop, restoreCache, saveCache, setupWorkshop } =
 
 describe('setupWorkshop', () => {
   beforeEach(async () => {
+    await paths.tmpdir.create()
     await release.tmpdir.create()
   })
   afterEach(async () => {
     await release.tmpdir.remove()
+    await paths.tmpdir.remove()
   })
 
   test('installs Workshop', async () => {
@@ -42,18 +44,15 @@ describe('setupWorkshop', () => {
     const workshopVersion = exec.getExecOutput.mock.calls[0]?.[1]
     expect(workshopVersion).toEqual(['workshop', '--version'])
 
-    const snapVersion = exec.exec.mock.calls[0]?.[1]
-    expect(snapVersion).toEqual(['snap', '--version'])
-
     expect(lxd.setupLxd).toHaveBeenCalled()
 
-    const snapInstall = exec.exec.mock.calls[1]?.[1]
+    const snapInstall = exec.exec.mock.calls[0]?.[1]
     expect(snapInstall?.at(-1)).toMatch(/workshop_0.1.0_testarch.snap$/)
 
     expect(lxd.pierceFirewall).toHaveBeenCalledWith('workshopbr0')
 
     expect(exec.getExecOutput).toHaveBeenCalledTimes(1)
-    expect(exec.exec).toHaveBeenCalledTimes(2)
+    expect(exec.exec).toHaveBeenCalledTimes(1)
   })
 
   test.each(['latest', '>=0.1.0'])('avoids reinstalling', async (version) => {
@@ -80,7 +79,7 @@ describe('setupWorkshop', () => {
       stdout: '0.0.1\n',
       stderr: ''
     })
-    exec.exec.mockResolvedValueOnce(1)
+    paths.isSocket.mockResolvedValueOnce(false)
 
     const promise = setupWorkshop('', '0.1.0')
     await expect(promise).rejects.toThrow(
@@ -90,13 +89,10 @@ describe('setupWorkshop', () => {
     const workshopVersion = exec.getExecOutput.mock.calls[0]?.[1]
     expect(workshopVersion).toEqual(['workshop', '--version'])
 
-    const snapVersion = exec.exec.mock.calls[0]?.[1]
-    expect(snapVersion).toEqual(['snap', '--version'])
-
     expect(lxd.setupLxd).toHaveBeenCalledTimes(0)
     expect(lxd.pierceFirewall).toHaveBeenCalledTimes(0)
     expect(exec.getExecOutput).toHaveBeenCalledTimes(1)
-    expect(exec.exec).toHaveBeenCalledTimes(1)
+    expect(exec.exec).toHaveBeenCalledTimes(0)
   })
 })
 
