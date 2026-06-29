@@ -5,10 +5,10 @@ import * as workshopd from '../__fixtures__/workshopd.js'
 import { closeAgent, newAgent } from '../__fixtures__/agent.js'
 import { jest } from '@jest/globals'
 
-jest.unstable_mockModule('../src/workshopd.js', () => workshopd)
 jest.unstable_mockModule('@actions/core', () => core)
 jest.unstable_mockModule('../src/inputs.js', () => inputs)
 jest.unstable_mockModule('../src/workshop.js', () => workshop)
+jest.unstable_mockModule('../src/workshopd.js', () => workshopd)
 
 const { postRun, run } = await import('../src/main.js')
 
