@@ -1,10 +1,8 @@
-import * as core from '../__fixtures__/core.js'
 import * as exec from '../__fixtures__/exec.js'
 import * as snapd from '../__fixtures__/snapd.js'
 import { closeAgent, newAgent } from '../__fixtures__/agent.js'
 import { jest } from '@jest/globals'
 
-jest.unstable_mockModule('@actions/core', () => core)
 jest.unstable_mockModule('@actions/exec', () => exec)
 jest.unstable_mockModule('../src/snapd.js', () => snapd)
 
