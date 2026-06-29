@@ -83,15 +83,14 @@ jobs:
         id: copy
         run: |
           path="prj-$(openssl rand -hex 8)"
-          mkdir "$path"
-          cp -a .workshop "$path"
+          mkdir -p "${path}/.workshop"
+          cp -a .workshop/{cache,cache.yaml} "${path}/.workshop/"
           printf 'path=%s\n' "$path" >> "$GITHUB_OUTPUT"
 
       - name: Launch workshop
         uses: ./
         with:
           project: ${{ steps.copy.outputs.path }}
-          workshop: cache
           cache: |
             cache:one
             cache:two
