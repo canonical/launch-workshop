@@ -3,7 +3,7 @@ description:
   Install Workshop and use it to launch an ephemeral development environment
 author: Canonical
 branding:
-  icon: tool
+  icon: layers
   color: orange
 inputs:
   channel:
