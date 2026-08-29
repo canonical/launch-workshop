@@ -82832,6 +82832,13 @@ async function setupLxd() {
     await maybeInstallSnap('lxd', '6/stable', '', false, state);
     if (state === SnapState.NotFound || state === SnapState.Installed) {
         await exec('sudo', ['lxd', 'waitready']);
+        await exec('sudo', [
+            'lxc',
+            'config',
+            'set',
+            'images.compression_algorithm',
+            'none'
+        ]);
     }
 }
 /**

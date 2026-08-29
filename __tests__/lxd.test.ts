@@ -24,7 +24,14 @@ describe('setupLxd', () => {
         state
       )
       expect(exec.exec).toHaveBeenCalledWith('sudo', ['lxd', 'waitready'])
-      expect(exec.exec).toHaveBeenCalledTimes(1)
+      expect(exec.exec).toHaveBeenCalledWith('sudo', [
+        'lxc',
+        'config',
+        'set',
+        'images.compression_algorithm',
+        'none'
+      ])
+      expect(exec.exec).toHaveBeenCalledTimes(2)
     }
   )
 
