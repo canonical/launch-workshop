@@ -12,6 +12,13 @@ export async function setupLxd(): Promise<void> {
   await maybeInstallSnap('lxd', '6/stable', '', false, state)
   if (state === SnapState.NotFound || state === SnapState.Installed) {
     await exec.exec('sudo', ['lxd', 'waitready'])
+    await exec.exec('sudo', [
+      'lxc',
+      'config',
+      'set',
+      'images.compression_algorithm',
+      'none'
+    ])
   }
 }
 
