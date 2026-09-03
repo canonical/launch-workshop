@@ -25,7 +25,7 @@ jobs:
           persist-credentials: false
 
       - name: Launch workshop
-        uses: ./
+        uses: $/
         with:
           channel: edge
           workshop: ${{ matrix.workshop }}
