@@ -54,7 +54,7 @@ jobs:
           persist-credentials: false
 
       - name: Launch workshop
-        uses: ./
+        uses: $/
         with:
           workshop: ${{ matrix.workshop }}
 
@@ -88,7 +88,7 @@ jobs:
           printf 'path=%s\n' "$path" >> "$GITHUB_OUTPUT"
 
       - name: Launch workshop
-        uses: ./
+        uses: $/
         with:
           project: ${{ steps.copy.outputs.path }}
           cache: |
@@ -130,7 +130,7 @@ jobs:
           PROJECT: ${{ needs.prepare-cache.outputs.path }}
 
       - name: Launch workshop in known project
-        uses: ./
+        uses: $/
         with:
           project: ${{ needs.prepare-cache.outputs.path }}
           workshop: cache
@@ -150,7 +150,7 @@ jobs:
         working-directory: ${{ needs.prepare-cache.outputs.path }}
 
       - name: Launch workshop in new project
-        uses: ./
+        uses: $/
         with:
           project: ${{ steps.copy.outputs.path }}
           workshop: cache
