@@ -151,7 +151,7 @@ async function mv(source: string, target: string): Promise<boolean> {
  * Launches a workshop.
  *
  * @param project Project directory.
- * @param workshop Name of workshop to launch.
+ * @param workshop Workshop name.
  * @returns Resolves when complete.
  */
 export async function launchWorkshop(

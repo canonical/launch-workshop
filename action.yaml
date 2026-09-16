@@ -15,7 +15,9 @@ inputs:
   workshop:
     description: Name of workshop to launch.
   cache:
-    description: Mount plugs to cache across workflow runs.
+    description: Mount plugs to restore before and save after the workflow.
+  restore:
+    description: Mount plugs to restore before the workflow without saving after.
 runs:
   using: node24
   main: dist/index.js

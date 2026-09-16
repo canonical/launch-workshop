@@ -28,10 +28,15 @@ This action launches an ephemeral development environment using
     # Required if the project has multiple workshops.
     workshop: dev
 
-    # Mount plugs to cache across workflow runs.
+    # Mount plugs to restore before and save after the workflow.
     # Each line has the format <SDK>:<PLUG>.
     # Optional.
     cache: ''
+
+    # Mount plugs to restore before the workflow without saving after.
+    # Each line has the format <SDK>:<PLUG>.
+    # Optional.
+    restore: ''
 ```
 
 ## Example jobs
@@ -78,7 +83,9 @@ Interface  Plug              Slot              Notes
 mount      dev/go:mod-cache  dev/system:mount  -
 ```
 
-Use the `cache` input to cache such data across workflow runs:
+Use the `cache` input to restore such data before the job and save it after a
+successful job. Use `restore` for additional plugs that should be restored but
+never saved:
 
 ```yaml
 - uses: canonical/launch-workshop@v1
@@ -86,5 +93,9 @@ Use the `cache` input to cache such data across workflow runs:
     cache: |
       go:mod-cache
       rust:cargo-registry
+    restore: |
       uv:cache
 ```
+
+The action owns cache identity, so compatible SDK artifacts can be reused
+across Workshop configuration changes. A plug cannot appear in both lists.

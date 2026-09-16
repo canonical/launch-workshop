@@ -106,7 +106,7 @@ describe('cache', () => {
     )
   })
 
-  test('preserves single mount', async () => {
+  test('preserves single mount with the default identity', async () => {
     const source = paths.mountHostSource('42', 'dev', 'go', 'mod-cache')
     await fs.mkdir(source, { recursive: true })
     await fs.writeFile(path.join(source, 'content'), 'go modules')

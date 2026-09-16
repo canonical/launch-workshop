@@ -28,7 +28,8 @@ export async function run(): Promise<void> {
       revision,
       project: path,
       workshop: name,
-      cache
+      cache,
+      restore
     } = getInputs()
 
     await setupWorkshop(channel, revision)
@@ -36,7 +37,7 @@ export async function run(): Promise<void> {
     const { project, workshop } = await resolveWorkshop(path, name)
     saveWorkshop({ project, workshop })
 
-    await restoreCache(project, workshop, cache)
+    await restoreCache(project, workshop, [...cache, ...restore])
 
     await launchWorkshop(project.path, workshop)
   } catch (error) {

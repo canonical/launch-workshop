@@ -25,7 +25,10 @@ test('launches workshop', async () => {
   expect(workshop.restoreCache).toHaveBeenCalledWith(
     { id: '42424242', path: '/project' },
     'dev',
-    [{ sdk: 'go', name: 'mod-cache' }]
+    [
+      { sdk: 'go', name: 'mod-cache' },
+      { sdk: 'rust', name: 'cargo-registry' }
+    ]
   )
   expect(workshop.launchWorkshop).toHaveBeenCalledWith('/project', 'dev')
 
@@ -45,7 +48,8 @@ test('infers workshop name', async () => {
       revision: '',
       project: '/project/ws',
       workshop: '',
-      cache: []
+      cache: [],
+      restore: []
     }),
     async () => {
       await run()

@@ -6,7 +6,8 @@ beforeEach(() => {
     INPUT_CHANNEL: 'latest/edge',
     INPUT_PROJECT: '/project',
     INPUT_WORKSHOP: 'dev',
-    INPUT_CACHE: 'sdk:plug \n \n  :system-plug\n\n'
+    INPUT_CACHE: 'sdk:plug \n \n  :system-plug\n\n',
+    INPUT_RESTORE: 'rust:cargo-registry\n'
   })
 })
 afterEach(env.restoreEnv)
@@ -20,7 +21,8 @@ test('uses environment', () => {
     cache: [
       { sdk: 'sdk', name: 'plug' },
       { sdk: 'system', name: 'system-plug' }
-    ]
+    ],
+    restore: [{ sdk: 'rust', name: 'cargo-registry' }]
   })
 })
 
@@ -78,6 +80,12 @@ test('allows no cache', () => {
   expect(getInputs().cache).toEqual([])
 })
 
+test('allows no restore', () => {
+  delete process.env.INPUT_RESTORE
+
+  expect(getInputs().restore).toEqual([])
+})
+
 test.each([
   [
     'workshop:sdk:plug',
@@ -95,4 +103,21 @@ test.each([
   process.env.INPUT_CACHE = cache
 
   expect(getInputs).toThrow(message)
+})
+
+test('rejects invalid restore', () => {
+  process.env.INPUT_RESTORE = 'sdk:!@#'
+
+  expect(getInputs).toThrow(
+    '"sdk:!@#" is not a valid plug reference: invalid plug name "!@#"'
+  )
+})
+
+test('rejects plugs in both cache and restore', () => {
+  process.env.INPUT_CACHE = ':cache'
+  process.env.INPUT_RESTORE = 'system:cache'
+
+  expect(getInputs).toThrow(
+    'system:cache cannot appear in both cache and restore'
+  )
 })
