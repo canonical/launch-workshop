@@ -49,15 +49,17 @@ export async function setupWorkshop(
  *
  * @param project Project ID and directory.
  * @param workshop Workshop name.
+ * @param cacheKey Caller-supplied cache identity.
  * @param plugs Mount plugs to cache.
  * @returns Resolves when complete.
  */
 export async function saveCache(
   project: Project,
   workshop: string,
+  cacheKey: string,
   plugs: PlugRef[]
 ): Promise<void> {
-  const hashes = plugHashes(project, workshop, plugs)
+  const hashes = plugHashes(project, workshop, cacheKey, plugs)
 
   const existing = []
   for (const [i, plug] of plugs.entries()) {
@@ -82,15 +84,17 @@ export async function saveCache(
  *
  * @param project Project ID and directory.
  * @param workshop Workshop name.
+ * @param cacheKey Caller-supplied cache identity.
  * @param plugs Mount plugs to restore.
  * @returns Resolves when complete.
  */
 export async function restoreCache(
   project: Project,
   workshop: string,
+  cacheKey: string,
   plugs: PlugRef[]
 ): Promise<void> {
-  const hashes = plugHashes(project, workshop, plugs)
+  const hashes = plugHashes(project, workshop, cacheKey, plugs)
 
   const downloads = hashes.map((hash) => {
     const paths = [hostCachePath(hash)]
@@ -112,10 +116,18 @@ export async function restoreCache(
 function plugHashes(
   project: Project,
   workshop: string,
+  cacheKey: string,
   plugs: PlugRef[]
 ): string[] {
   const hashes = plugs.map((plug) => {
-    const metadata = ['v1', project.path, workshop, plug.sdk, plug.name]
+    const metadata = [
+      'v2',
+      project.path,
+      workshop,
+      cacheKey,
+      plug.sdk,
+      plug.name
+    ]
     return createHash('sha256').update(JSON.stringify(metadata)).digest('hex')
   })
 
@@ -151,7 +163,7 @@ async function mv(source: string, target: string): Promise<boolean> {
  * Launches a workshop.
  *
  * @param project Project directory.
- * @param workshop Name of workshop to launch.
+ * @param workshop Workshop name.
  * @returns Resolves when complete.
  */
 export async function launchWorkshop(

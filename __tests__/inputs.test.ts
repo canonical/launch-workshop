@@ -6,6 +6,7 @@ beforeEach(() => {
     INPUT_CHANNEL: 'latest/edge',
     INPUT_PROJECT: '/project',
     INPUT_WORKSHOP: 'dev',
+    ['INPUT_CACHE-KEY']: 'project-config',
     INPUT_CACHE: 'sdk:plug \n \n  :system-plug\n\n'
   })
 })
@@ -17,6 +18,7 @@ test('uses environment', () => {
     revision: '',
     project: '/project',
     workshop: 'dev',
+    cacheKey: 'project-config',
     cache: [
       { sdk: 'sdk', name: 'plug' },
       { sdk: 'system', name: 'system-plug' }
@@ -70,6 +72,12 @@ test('allows no workshop', () => {
   delete process.env.INPUT_WORKSHOP
 
   expect(getInputs().workshop).toBe('')
+})
+
+test('allows no cache key', () => {
+  delete process.env['INPUT_CACHE-KEY']
+
+  expect(getInputs().cacheKey).toBe('')
 })
 
 test('allows no cache', () => {

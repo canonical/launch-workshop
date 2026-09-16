@@ -28,6 +28,10 @@ This action launches an ephemeral development environment using
     # Required if the project has multiple workshops.
     workshop: dev
 
+    # Caller-supplied identity appended to every mount-plug cache key.
+    # Optional.
+    cache-key: ''
+
     # Mount plugs to cache across workflow runs.
     # Each line has the format <SDK>:<PLUG>.
     # Optional.
@@ -83,8 +87,13 @@ Use the `cache` input to cache such data across workflow runs:
 ```yaml
 - uses: canonical/launch-workshop@v1
   with:
+    cache-key: ${{ hashFiles('workshop.yaml', '.workshop/**') }}
     cache: |
       go:mod-cache
       rust:cargo-registry
       uv:cache
 ```
+
+When configuration can affect mounted data, set `cache-key` to a stable
+configuration identity. Changing this value selects a separate cache for every
+plug; leaving it empty preserves the default cache identity.

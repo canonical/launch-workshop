@@ -14,6 +14,11 @@ inputs:
     description: Directory containing a workshop to launch.
   workshop:
     description: Name of workshop to launch.
+  cache-key:
+    description:
+      Caller-supplied cache identity appended to every mount-plug cache key.
+    required: false
+    default: ''
   cache:
     description: Mount plugs to cache across workflow runs.
 runs:

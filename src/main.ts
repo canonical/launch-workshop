@@ -28,6 +28,7 @@ export async function run(): Promise<void> {
       revision,
       project: path,
       workshop: name,
+      cacheKey,
       cache
     } = getInputs()
 
@@ -36,7 +37,7 @@ export async function run(): Promise<void> {
     const { project, workshop } = await resolveWorkshop(path, name)
     saveWorkshop({ project, workshop })
 
-    await restoreCache(project, workshop, cache)
+    await restoreCache(project, workshop, cacheKey, cache)
 
     await launchWorkshop(project.path, workshop)
   } catch (error) {
@@ -92,14 +93,14 @@ function restoreState(name: string): string {
  */
 export async function postRun(): Promise<void> {
   try {
-    const { cache } = getInputs()
+    const { cacheKey, cache } = getInputs()
 
     const { project, workshop } = restoreWorkshop()
     core.debug(`Project ID: ${project.id}`)
     core.debug(`Project directory: ${project.path}`)
     core.debug(`Workshop: ${workshop}`)
 
-    await saveCache(project, workshop, cache)
+    await saveCache(project, workshop, cacheKey, cache)
   } catch (error) {
     core.setFailed(errorMessage(error))
   }
