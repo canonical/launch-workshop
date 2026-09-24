@@ -12,7 +12,7 @@ export const saveCache = jest
 
 export const restoreCache = jest
   .fn<typeof workshop.restoreCache>()
-  .mockResolvedValue(undefined)
+  .mockResolvedValue([])
 
 export const launchWorkshop = jest
   .fn<typeof workshop.launchWorkshop>()

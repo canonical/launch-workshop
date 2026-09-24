@@ -28,6 +28,14 @@ This action launches an ephemeral development environment using
     # Required if the project has multiple workshops.
     workshop: dev
 
+    # Primary key for cached mount plugs.
+    # Optional.
+    cache-key: ''
+
+    # Ordered fallback key prefixes for cached mount plugs.
+    # Optional.
+    restore-keys: ''
+
     # Mount plugs to restore before and save after the workflow.
     # Each line has the format <SDK>:<PLUG>.
     # Optional.
@@ -90,6 +98,10 @@ never saved:
 ```yaml
 - uses: canonical/launch-workshop@v1
   with:
+    cache-key:
+      ${{ github.ref_name }}-${{ hashFiles('workshop.yaml', '.workshop/**') }}
+    restore-keys: |
+      ${{ github.event.repository.default_branch }}-
     cache: |
       go:mod-cache
       rust:cargo-registry
@@ -97,5 +109,7 @@ never saved:
       uv:cache
 ```
 
-The action owns cache identity, so compatible SDK artifacts can be reused
-across Workshop configuration changes. A plug cannot appear in both lists.
+`cache-key` selects the exact primary key saved after a successful job.
+`restore-keys` is an ordered list of fallback prefixes used when the primary key
+is absent. An exact primary-key hit is not saved again; a fallback hit is saved
+under the primary key. A plug cannot appear in both `cache` and `restore`.

@@ -39,6 +39,7 @@ import 'url';
 import 'buffer';
 import 'node:process';
 import 'node:https';
+import 'node:module';
 import 'node:crypto';
 import 'tty';
 import 'node:fs';

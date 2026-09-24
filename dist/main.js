@@ -1,9 +1,9 @@
 import * as os from 'os';
-import os__default, { EOL as EOL$2 } from 'os';
-import * as crypto from 'crypto';
+import os__default from 'os';
+import * as crypto$1 from 'crypto';
 import * as fs from 'fs';
-import { promises, existsSync, writeFileSync, readFileSync } from 'fs';
-import * as path from 'path';
+import { promises, existsSync, writeFileSync } from 'fs';
+import * as path$1 from 'path';
 import * as http from 'http';
 import http__default from 'http';
 import * as https from 'https';
@@ -29,7 +29,7 @@ import zlib from 'node:zlib';
 import require$$5$1 from 'node:perf_hooks';
 import require$$8$1, { isNativeError } from 'node:util/types';
 import require$$1$1 from 'node:worker_threads';
-import require$$1$2 from 'node:url';
+import require$$1$2, { fileURLToPath } from 'node:url';
 import require$$5$2 from 'node:async_hooks';
 import require$$1$3 from 'node:console';
 import require$$1$4 from 'node:dns';
@@ -38,7 +38,7 @@ import * as child from 'child_process';
 import { setTimeout as setTimeout$1 } from 'timers';
 import * as fs$1 from 'node:fs/promises';
 import os$1, { EOL as EOL$1 } from 'node:os';
-import path$1 from 'node:path';
+import path$2, { dirname as dirname$1 } from 'node:path';
 import * as stream from 'stream';
 import { Readable } from 'stream';
 import require$$5$4, { URL as URL$1 } from 'url';
@@ -46,6 +46,7 @@ import * as buffer from 'buffer';
 import { Buffer as Buffer$1 } from 'buffer';
 import process$1 from 'node:process';
 import https$1 from 'node:https';
+import { createRequire } from 'node:module';
 import { createHmac, createHash } from 'node:crypto';
 import require$$1$5 from 'tty';
 import fs$2 from 'node:fs';
@@ -187,7 +188,7 @@ function issueFileCommand(command, message) {
     });
 }
 function prepareKeyValueMessage(key, value) {
-    const delimiter = `ghadelimiter_${crypto.randomUUID()}`;
+    const delimiter = `ghadelimiter_${crypto$1.randomUUID()}`;
     const convertedValue = toCommandValue(value);
     // These should realistically never happen, but just in case someone finds a
     // way to exploit uuid generation let's not allow keys or values that contain
@@ -292,10 +293,6 @@ class DecodedURL extends URL {
 }
 
 var commonjsGlobal = typeof globalThis !== 'undefined' ? globalThis : typeof window !== 'undefined' ? window : typeof global !== 'undefined' ? global : typeof self !== 'undefined' ? self : {};
-
-function getDefaultExportFromCjs (x) {
-	return x && x.__esModule && Object.prototype.hasOwnProperty.call(x, 'default') ? x['default'] : x;
-}
 
 var tunnel$1 = {};
 
@@ -2313,11 +2310,11 @@ function requireDiagnostics () {
 	return diagnostics;
 }
 
-var request$2;
+var request$1;
 var hasRequiredRequest$1;
 
 function requireRequest$1 () {
-	if (hasRequiredRequest$1) return request$2;
+	if (hasRequiredRequest$1) return request$1;
 	hasRequiredRequest$1 = 1;
 
 	const {
@@ -2670,13 +2667,7 @@ function requireRequest$1 () {
 	      } else if (typeof val[i] === 'object') {
 	        throw new InvalidArgumentError(`invalid ${key} header`)
 	      } else {
-	        // Coerce primitives (and reject unsafe coercions such as functions
-	        // with a crafted toString/Symbol.toPrimitive).
-	        const str = `${val[i]}`;
-	        if (!isValidHeaderValue(str)) {
-	          throw new InvalidArgumentError(`invalid ${key} header`)
-	        }
-	        arr.push(str);
+	        arr.push(`${val[i]}`);
 	      }
 	    }
 	    val = arr;
@@ -2687,12 +2678,7 @@ function requireRequest$1 () {
 	  } else if (val === null) {
 	    val = '';
 	  } else {
-	    // Coerce primitives (and reject unsafe coercions such as functions
-	    // with a crafted toString/Symbol.toPrimitive).
 	    val = `${val}`;
-	    if (!isValidHeaderValue(val)) {
-	      throw new InvalidArgumentError(`invalid ${key} header`)
-	    }
 	  }
 
 	  if (headerName === 'host') {
@@ -2733,8 +2719,8 @@ function requireRequest$1 () {
 	  }
 	}
 
-	request$2 = Request;
-	return request$2;
+	request$1 = Request;
+	return request$1;
 }
 
 var dispatcher;
@@ -8748,7 +8734,6 @@ function requireClientH1 () {
 	  RequestContentLengthMismatchError,
 	  ResponseContentLengthMismatchError,
 	  RequestAbortedError,
-	  InvalidArgumentError,
 	  HeadersTimeoutError,
 	  HeadersOverflowError,
 	  SocketError,
@@ -9614,7 +9599,7 @@ function requireClientH1 () {
 
 	function clearIdleSocketValidation (socket) {
 	  if (socket[kIdleSocketValidationTimeout]) {
-	    clearImmediate(socket[kIdleSocketValidationTimeout]);
+	    clearTimeout(socket[kIdleSocketValidationTimeout]);
 	    socket[kIdleSocketValidationTimeout] = null;
 	  }
 
@@ -9623,23 +9608,15 @@ function requireClientH1 () {
 
 	function scheduleIdleSocketValidation (client, socket) {
 	  socket[kIdleSocketValidation] = 1;
-	  // Yield to the check phase (after poll) so unsolicited bytes / FIN / RST
-	  // already pending on this idle keep-alive socket are processed before the
-	  // next request is written (GHSA-35p6-xmwp-9g52).
-	  //
-	  // setTimeout(0) pays Node's ~1ms timer floor on every sequential reuse
-	  // (#5493). setImmediate avoids that, but an *unref'd* Immediate lets poll
-	  // block for ~500ms when the event loop is otherwise idle (#5600 / #5606).
-	  // A ref'd Immediate both keeps the pending request alive and makes poll
-	  // return immediately — the hybrid those issues asked for.
-	  socket[kIdleSocketValidationTimeout] = setImmediate(() => {
+	  socket[kIdleSocketValidationTimeout] = setTimeout(() => {
 	    socket[kIdleSocketValidationTimeout] = null;
 	    socket[kIdleSocketValidation] = 2;
 
 	    if (client[kSocket] === socket && !socket.destroyed) {
 	      client[kResume]();
 	    }
-	  });
+	  }, 0);
+	  socket[kIdleSocketValidationTimeout].unref?.();
 	}
 
 	/**
@@ -9740,16 +9717,8 @@ function requireClientH1 () {
 	    }
 	    body = bodyStream.stream;
 	    contentLength = bodyStream.length;
-	  } else if (util.isBlobLike(body) && request.contentType == null) {
-	    const contentType = body.type;
-	    if (contentType) {
-	      const contentTypeValue = `${contentType}`;
-	      if (!util.isValidHeaderValue(contentTypeValue)) {
-	        util.errorRequest(client, request, new InvalidArgumentError('invalid content-type header'));
-	        return false
-	      }
-	      headers.push('content-type', contentTypeValue);
-	    }
+	  } else if (util.isBlobLike(body) && request.contentType == null && body.type) {
+	    headers.push('content-type', body.type);
 	  }
 
 	  if (body && typeof body.read === 'function') {
@@ -13184,28 +13153,6 @@ function requireRetryHandler () {
 	  return new Date(retryAfter).getTime() - current
 	}
 
-	function validatePartialResponseContentLength (headers, range, statusCode, retryCount) {
-	  const contentLength = headers['content-length'];
-	  if (contentLength == null) {
-	    return null
-	  }
-
-	  if (!Number.isFinite(range.start) || !Number.isFinite(range.end)) {
-	    return null
-	  }
-
-	  const length = Number(contentLength);
-	  const expectedLength = range.end - range.start + 1;
-	  if (!Number.isFinite(length) || length !== expectedLength) {
-	    return new RequestRetryError('Content-Length mismatch', statusCode, {
-	      headers,
-	      data: { count: retryCount }
-	    })
-	  }
-
-	  return null
-	}
-
 	class RetryHandler {
 	  constructor (opts, handlers) {
 	    const { retryOptions, ...dispatchOpts } = opts;
@@ -13259,7 +13206,6 @@ function requireRetryHandler () {
 	    this.end = null;
 	    this.etag = null;
 	    this.resume = null;
-	    this.headersSent = false;
 
 	    // Handle possible onConnect duplication
 	    this.handler.onConnect(reason => {
@@ -13270,20 +13216,6 @@ function requireRetryHandler () {
 	        this.reason = reason;
 	      }
 	    });
-	  }
-
-	  checkpointResponseEnd (headers, resume) {
-	    if (this.end == null && this.opts.method !== 'HEAD') {
-	      const contentLength = headers['content-length'];
-	      this.end = contentLength != null ? Number(contentLength) - 1 : null;
-
-	      assert(
-	        this.end == null || Number.isFinite(this.end),
-	        'invalid content-length'
-	      );
-	    }
-
-	    this.resume = this.end != null ? resume : null;
 	  }
 
 	  onRequestSent () {
@@ -13375,8 +13307,6 @@ function requireRetryHandler () {
 
 	    if (statusCode >= 300) {
 	      if (this.retryOpts.statusCodes.includes(statusCode) === false) {
-	        this.headersSent = true;
-	        this.checkpointResponseEnd(headers, resume);
 	        return this.handler.onHeaders(
 	          statusCode,
 	          rawHeaders,
@@ -13437,23 +13367,10 @@ function requireRetryHandler () {
 	        return false
 	      }
 
-	      const contentLengthError = validatePartialResponseContentLength(headers, contentRange, statusCode, this.retryCount);
-	      if (contentLengthError != null) {
-	        this.abort(contentLengthError);
-	        return false
-	      }
-
 	      const { start, size, end = size - 1 } = contentRange;
 
-	      if (this.start !== start || (this.end != null && this.end !== end)) {
-	        this.abort(
-	          new RequestRetryError('Content-Range mismatch', statusCode, {
-	            headers,
-	            data: { count: this.retryCount }
-	          })
-	        );
-	        return false
-	      }
+	      assert(this.start === start, 'content-range mismatch');
+	      assert(this.end == null || this.end === end, 'content-range mismatch');
 
 	      this.resume = resume;
 	      return true
@@ -13465,19 +13382,12 @@ function requireRetryHandler () {
 	        const range = parseRangeHeader(headers['content-range']);
 
 	        if (range == null) {
-	          this.headersSent = true;
 	          return this.handler.onHeaders(
 	            statusCode,
 	            rawHeaders,
 	            resume,
 	            statusMessage
 	          )
-	        }
-
-	        const contentLengthError = validatePartialResponseContentLength(headers, range, statusCode, this.retryCount);
-	        if (contentLengthError != null) {
-	          this.abort(contentLengthError);
-	          return false
 	        }
 
 	        const { start, size, end = size - 1 } = range;
@@ -13504,7 +13414,6 @@ function requireRetryHandler () {
 	      );
 
 	      this.resume = resume;
-	      this.headersSent = true;
 	      this.etag = headers.etag != null ? headers.etag : null;
 
 	      // Weak etags are not useful for comparison nor cache
@@ -13544,7 +13453,7 @@ function requireRetryHandler () {
 	  }
 
 	  onError (err) {
-	    if (this.aborted || isDisturbed(this.opts.body) || (this.headersSent && this.resume == null)) {
+	    if (this.aborted || isDisturbed(this.opts.body)) {
 	      return this.handler.onError(err)
 	    }
 
@@ -18244,11 +18153,11 @@ function requireDispatcherWeakref () {
 
 /* globals AbortController */
 
-var request$1;
+var request;
 var hasRequiredRequest;
 
 function requireRequest () {
-	if (hasRequiredRequest) return request$1;
+	if (hasRequiredRequest) return request;
 	hasRequiredRequest = 1;
 
 	const { extractBody, mixinBody, cloneBody, bodyUnusable } = requireBody();
@@ -19283,8 +19192,8 @@ function requireRequest () {
 	  }
 	]);
 
-	request$1 = { Request, makeRequest, fromInnerRequest, cloneRequest };
-	return request$1;
+	request = { Request, makeRequest, fromInnerRequest, cloneRequest };
+	return request;
 }
 
 var fetch_1;
@@ -23869,7 +23778,7 @@ function requireUtil$2 () {
 
 	    if (
 	      code < 0x20 || // exclude CTLs (0-31)
-	      code > 0x7E || // exclude DEL and non-ascii
+	      code === 0x7F || // DEL
 	      code === 0x3B // ;
 	    ) {
 	      throw new Error('Invalid cookie path')
@@ -23878,80 +23787,16 @@ function requireUtil$2 () {
 	}
 
 	/**
-	 * <let-dig> ::= <letter> | <digit>
-	 *
-	 * <letter> ::= any one of the 52 alphabetic characters A through Z in
-	 * upper case and a through z in lower case
-	 *
-	 * <digit> ::= any one of the ten digits 0 through 9r
-	 *
-	 * @see https://www.rfc-editor.org/rfc/rfc1034#section-3.5
-	 * @param {number} code
-	 */
-	function isLetterOrDigit (code) {
-	  return (
-	    (code >= 0x30 && code <= 0x39) || // 0-9
-	    (code >= 0x41 && code <= 0x5A) || // A-Z
-	    (code >= 0x61 && code <= 0x7A) // a-z
-	  )
-	}
-
-	/**
-	 * Validates a cookie domain against the "preferred name syntax".
-	 *
-	 * <domain>      ::= <subdomain> | " "
-	 * <subdomain>   ::= <label> | <subdomain> "." <label>
-	 * <label>       ::= <let-dig> [ [ <ldh-str> ] <let-dig> ]
-	 * <ldh-str>     ::= <let-dig-hyp> | <let-dig-hyp> <ldh-str>
-	 * <let-dig-hyp> ::= <let-dig> | "-"
-	 *
-	 * @see https://www.rfc-editor.org/rfc/rfc1034#section-3.5
-	 * @see https://www.rfc-editor.org/rfc/rfc1123#section-2.1
-	 * @see https://www.rfc-editor.org/rfc/rfc1035#section-2.3.4
+	 * I have no idea why these values aren't allowed to be honest,
+	 * but Deno tests these. - Khafra
 	 * @param {string} domain
 	 */
 	function validateCookieDomain (domain) {
-	  // <domain> ::= <subdomain> | " "
-	  if (domain === ' ') {
-	    return
-	  }
-
-	  if (domain.length > 255) {
-	    throw new Error('Invalid cookie domain')
-	  }
-
-	  let labelLength = 0;
-
-	  for (let i = 0; i < domain.length; ++i) {
-	    const code = domain.charCodeAt(i);
-
-	    if (code === 0x2E) {
-	      if (labelLength === 0) {
-	        throw new Error('Invalid cookie domain')
-	      }
-
-	      if (domain.charCodeAt(i - 1) === 0x2D) { // "-"
-	        throw new Error('Invalid cookie domain')
-	      }
-
-	      labelLength = 0;
-	      continue
-	    }
-
-	    if (labelLength === 0 && !isLetterOrDigit(code)) {
-	      throw new Error('Invalid cookie domain')
-	    }
-
-	    if (!isLetterOrDigit(code) && code !== 0x2D) { // "-"
-	      throw new Error('Invalid cookie domain')
-	    }
-
-	    if (++labelLength > 63) {
-	      throw new Error('Invalid cookie domain')
-	    }
-	  }
-
-	  if (labelLength === 0 || domain.charCodeAt(domain.length - 1) === 0x2D) { // "-"
+	  if (
+	    domain.startsWith('-') ||
+	    domain.endsWith('.') ||
+	    domain.endsWith('-')
+	  ) {
 	    throw new Error('Invalid cookie domain')
 	  }
 	}
@@ -24094,13 +23939,7 @@ function requireUtil$2 () {
 
 	    const [key, ...value] = part.split('=');
 
-	    const trimmedKey = key.trim();
-	    const joinedValue = value.join('=');
-
-	    validateCookieName(trimmedKey);
-	    validateCookieValue(joinedValue);
-
-	    out.push(`${trimmedKey}=${joinedValue}`);
+	    out.push(`${key.trim()}=${value.join('=')}`);
 	  }
 
 	  return out.join('; ')
@@ -24117,11 +23956,11 @@ function requireUtil$2 () {
 	return util$2;
 }
 
-var parse$3;
+var parse$1;
 var hasRequiredParse$1;
 
 function requireParse$1 () {
-	if (hasRequiredParse$1) return parse$3;
+	if (hasRequiredParse$1) return parse$1;
 	hasRequiredParse$1 = 1;
 
 	const { maxNameValuePairSize, maxAttributeValueSize } = requireConstants$2();
@@ -24428,11 +24267,11 @@ function requireParse$1 () {
 	  return parseUnparsedAttributes(unparsedAttributes, cookieAttributeList)
 	}
 
-	parse$3 = {
+	parse$1 = {
 	  parseSetCookie,
 	  parseUnparsedAttributes
 	};
-	return parse$3;
+	return parse$1;
 }
 
 var cookies;
@@ -25691,7 +25530,7 @@ function requireConnection () {
 	        // is specified, the server needs to include the same field and one of
 	        // the selected subprotocol values in its response for the connection to
 	        // be established.
-	        if (requestProtocols === null || !requestProtocols.includes(secProtocol)) {
+	        if (!requestProtocols.includes(secProtocol)) {
 	          failWebsocketConnection(ws, 'Protocol was not set in the opening handshake.');
 	          return
 	        }
@@ -25938,12 +25777,7 @@ function requirePermessageDeflate () {
 
 	        if (this.#maxPayloadSize > 0 && this.#inflate[kLength] > this.#maxPayloadSize) {
 	          callback(new MessageSizeExceededError());
-	          // The inflater may still hold buffered input that can emit a late
-	          // zlib error. Remove the data listener, then deterministically stop
-	          // the stream so a subsequent 'error' cannot fire without a listener
-	          // (which would terminate the process as an unhandled error event).
 	          this.#inflate.removeAllListeners();
-	          this.#inflate.destroy();
 	          this.#inflate = null;
 	          return
 	        }
@@ -27292,49 +27126,6 @@ function requireEventsourceStream () {
 	 */
 	const SPACE = 0x20;
 
-	const DATA = Buffer.from('data');
-	const EVENT = Buffer.from('event');
-	const ID = Buffer.from('id');
-	const RETRY = Buffer.from('retry');
-
-	function isASCIINumberBytes (buffer, start) {
-	  if (start >= buffer.length) {
-	    return false
-	  }
-
-	  for (let i = start; i < buffer.length; i++) {
-	    if (buffer[i] < 0x30 || buffer[i] > 0x39) {
-	      return false
-	    }
-	  }
-
-	  return true
-	}
-
-	function isValidLastEventIdBytes (buffer, start) {
-	  for (let i = start; i < buffer.length; i++) {
-	    if (buffer[i] === 0x00) {
-	      return false
-	    }
-	  }
-
-	  return true
-	}
-
-	function isFieldName (line, length, field) {
-	  if (length !== field.length) {
-	    return false
-	  }
-
-	  for (let i = 0; i < length; i++) {
-	    if (line[i] !== field[i]) {
-	      return false
-	    }
-	  }
-
-	  return true
-	}
-
 	/**
 	 * @typedef {object} EventSourceStreamEvent
 	 * @type {object}
@@ -27375,14 +27166,11 @@ function requireEventsourceStream () {
 	  eventEndCheck = false
 
 	  /**
-	   * @type {Buffer[]}
+	   * @type {Buffer}
 	   */
-	  chunks = []
+	  buffer = null
 
-	  chunkIndex = 0
 	  pos = 0
-	  lineChunkIndex = 0
-	  linePos = 0
 
 	  event = {
 	    data: undefined,
@@ -27421,20 +27209,92 @@ function requireEventsourceStream () {
 	      return
 	    }
 
-	    this.chunks.push(chunk);
+	    // Cache the chunk in the buffer, as the data might not be complete while
+	    // processing it
+	    // TODO: Investigate if there is a more performant way to handle
+	    // incoming chunks
+	    // see: https://github.com/nodejs/undici/issues/2630
+	    if (this.buffer) {
+	      this.buffer = Buffer.concat([this.buffer, chunk]);
+	    } else {
+	      this.buffer = chunk;
+	    }
 
 	    // Strip leading byte-order-mark if we opened the stream and started
 	    // the processing of the incoming data
 	    if (this.checkBOM) {
-	      if (this.handleBOM()) {
-	        callback();
-	        return
+	      switch (this.buffer.length) {
+	        case 1:
+	          // Check if the first byte is the same as the first byte of the BOM
+	          if (this.buffer[0] === BOM[0]) {
+	            // If it is, we need to wait for more data
+	            callback();
+	            return
+	          }
+	          // Set the checkBOM flag to false as we don't need to check for the
+	          // BOM anymore
+	          this.checkBOM = false;
+
+	          // The buffer only contains one byte so we need to wait for more data
+	          callback();
+	          return
+	        case 2:
+	          // Check if the first two bytes are the same as the first two bytes
+	          // of the BOM
+	          if (
+	            this.buffer[0] === BOM[0] &&
+	            this.buffer[1] === BOM[1]
+	          ) {
+	            // If it is, we need to wait for more data, because the third byte
+	            // is needed to determine if it is the BOM or not
+	            callback();
+	            return
+	          }
+
+	          // Set the checkBOM flag to false as we don't need to check for the
+	          // BOM anymore
+	          this.checkBOM = false;
+	          break
+	        case 3:
+	          // Check if the first three bytes are the same as the first three
+	          // bytes of the BOM
+	          if (
+	            this.buffer[0] === BOM[0] &&
+	            this.buffer[1] === BOM[1] &&
+	            this.buffer[2] === BOM[2]
+	          ) {
+	            // If it is, we can drop the buffered data, as it is only the BOM
+	            this.buffer = Buffer.alloc(0);
+	            // Set the checkBOM flag to false as we don't need to check for the
+	            // BOM anymore
+	            this.checkBOM = false;
+
+	            // Await more data
+	            callback();
+	            return
+	          }
+	          // If it is not the BOM, we can start processing the data
+	          this.checkBOM = false;
+	          break
+	        default:
+	          // The buffer is longer than 3 bytes, so we can drop the BOM if it is
+	          // present
+	          if (
+	            this.buffer[0] === BOM[0] &&
+	            this.buffer[1] === BOM[1] &&
+	            this.buffer[2] === BOM[2]
+	          ) {
+	            // Remove the BOM from the buffer
+	            this.buffer = this.buffer.subarray(3);
+	          }
+
+	          // Set the checkBOM flag to false as we don't need to check for the
+	          this.checkBOM = false;
+	          break
 	      }
 	    }
 
-	    while (this.hasCurrentByte()) {
-	      const byte = this.currentByte();
-
+	    while (this.pos < this.buffer.length) {
 	      // If the previous line ended with an end-of-line, we need to check
 	      // if the next character is also an end-of-line.
 	      if (this.eventEndCheck) {
@@ -27447,9 +27307,10 @@ function requireEventsourceStream () {
 	        if (this.crlfCheck) {
 	          // If the current character is a line feed, we can remove it
 	          // from the buffer and reset the crlfCheck flag
-	          if (byte === LF) {
+	          if (this.buffer[this.pos] === LF) {
+	            this.buffer = this.buffer.subarray(this.pos + 1);
+	            this.pos = 0;
 	            this.crlfCheck = false;
-	            this.consumeCurrentByte();
 
 	            // It is possible that the line feed is not the end of the
 	            // event. We need to check if the next character is an
@@ -27465,17 +27326,19 @@ function requireEventsourceStream () {
 	          this.crlfCheck = false;
 	        }
 
-	        if (byte === LF || byte === CR) {
+	        if (this.buffer[this.pos] === LF || this.buffer[this.pos] === CR) {
 	          // If the current character is a carriage return, we need to
 	          // set the crlfCheck flag to true, as we need to check if the
 	          // next character is a line feed so we can remove it from the
 	          // buffer
-	          if (byte === CR) {
+	          if (this.buffer[this.pos] === CR) {
 	            this.crlfCheck = true;
 	          }
 
-	          this.consumeCurrentByte();
-	          if (this.hasPendingEvent()) {
+	          this.buffer = this.buffer.subarray(this.pos + 1);
+	          this.pos = 0;
+	          if (
+	            this.event.data !== undefined || this.event.event || this.event.id || this.event.retry) {
 	            this.processEvent(this.event);
 	          }
 	          this.clearEvent();
@@ -27489,18 +27352,22 @@ function requireEventsourceStream () {
 
 	      // If the current character is an end-of-line, we can process the
 	      // line
-	      if (byte === LF || byte === CR) {
+	      if (this.buffer[this.pos] === LF || this.buffer[this.pos] === CR) {
 	        // If the current character is a carriage return, we need to
 	        // set the crlfCheck flag to true, as we need to check if the
 	        // next character is a line feed
-	        if (byte === CR) {
+	        if (this.buffer[this.pos] === CR) {
 	          this.crlfCheck = true;
 	        }
 
 	        // In any case, we can process the line as we reached an
 	        // end-of-line character
-	        this.parseLine(this.readLine(), this.event);
-	        this.consumeCurrentByte();
+	        this.parseLine(this.buffer.subarray(0, this.pos), this.event);
+
+	        // Remove the processed line from the buffer
+	        this.buffer = this.buffer.subarray(this.pos + 1);
+	        // Reset the position as we removed the processed line from the buffer
+	        this.pos = 0;
 	        // A line was processed and this could be the end of the event. We need
 	        // to check if the next line is empty to determine if the event is
 	        // finished.
@@ -27508,7 +27375,7 @@ function requireEventsourceStream () {
 	        continue
 	      }
 
-	      this.advanceCursor();
+	      this.pos++;
 	    }
 
 	    callback();
@@ -27533,53 +27400,64 @@ function requireEventsourceStream () {
 	      return
 	    }
 
-	    let fieldLength = line.length;
-	    let valueStart = line.length;
+	    let field = '';
+	    let value = '';
 
 	    // If the line contains a U+003A COLON character (:)
 	    if (colonPosition !== -1) {
-	      fieldLength = colonPosition;
+	      // Collect the characters on the line before the first U+003A COLON
+	      // character (:), and let field be that string.
+	      // TODO: Investigate if there is a more performant way to extract the
+	      // field
+	      // see: https://github.com/nodejs/undici/issues/2630
+	      field = line.subarray(0, colonPosition).toString('utf8');
 
 	      // Collect the characters on the line after the first U+003A COLON
 	      // character (:), and let value be that string.
 	      // If value starts with a U+0020 SPACE character, remove it from value.
-	      valueStart = colonPosition + 1;
+	      let valueStart = colonPosition + 1;
 	      if (line[valueStart] === SPACE) {
 	        ++valueStart;
 	      }
+	      // TODO: Investigate if there is a more performant way to extract the
+	      // value
+	      // see: https://github.com/nodejs/undici/issues/2630
+	      value = line.subarray(valueStart).toString('utf8');
+
+	      // Otherwise, the string is not empty but does not contain a U+003A COLON
+	      // character (:)
+	    } else {
+	      // Process the field using the steps described below, using the whole
+	      // line as the field name, and the empty string as the field value.
+	      field = line.toString('utf8');
+	      value = '';
 	    }
 
-	    if (isFieldName(line, fieldLength, DATA)) {
-	      const value = line.toString('utf8', valueStart);
-
-	      if (event.data === undefined) {
-	        event.data = value;
-	      } else {
-	        event.data += `\n${value}`;
-	      }
-	      return
-	    }
-
-	    if (isFieldName(line, fieldLength, RETRY)) {
-	      if (isASCIINumberBytes(line, valueStart)) {
-	        event.retry = line.toString('utf8', valueStart);
-	      }
-	      return
-	    }
-
-	    if (isFieldName(line, fieldLength, ID)) {
-	      if (isValidLastEventIdBytes(line, valueStart)) {
-	        event.id = line.toString('utf8', valueStart);
-	      }
-	      return
-	    }
-
-	    if (isFieldName(line, fieldLength, EVENT)) {
-	      const value = line.toString('utf8', valueStart);
-
-	      if (value.length > 0) {
-	        event.event = value;
-	      }
+	    // Modify the event with the field name and value. The value is also
+	    // decoded as UTF-8
+	    switch (field) {
+	      case 'data':
+	        if (event[field] === undefined) {
+	          event[field] = value;
+	        } else {
+	          event[field] += `\n${value}`;
+	        }
+	        break
+	      case 'retry':
+	        if (isASCIINumber(value)) {
+	          event[field] = value;
+	        }
+	        break
+	      case 'id':
+	        if (isValidLastEventId(value)) {
+	          event[field] = value;
+	        }
+	        break
+	      case 'event':
+	        if (value.length > 0) {
+	          event[field] = value;
+	        }
+	        break
 	    }
 	  }
 
@@ -27609,151 +27487,12 @@ function requireEventsourceStream () {
 	  }
 
 	  clearEvent () {
-	    this.event.data = undefined;
-	    this.event.event = undefined;
-	    this.event.id = undefined;
-	    this.event.retry = undefined;
-	  }
-
-	  hasPendingEvent () {
-	    return this.event.data !== undefined ||
-	      this.event.event !== undefined ||
-	      this.event.id !== undefined ||
-	      this.event.retry !== undefined
-	  }
-
-	  hasCurrentByte () {
-	    return this.chunkIndex < this.chunks.length &&
-	      this.pos < this.chunks[this.chunkIndex].length
-	  }
-
-	  currentByte () {
-	    return this.chunks[this.chunkIndex][this.pos]
-	  }
-
-	  consumeCurrentByte () {
-	    this.advanceCursor();
-	    this.syncLineStartToCursor();
-	  }
-
-	  advanceCursor () {
-	    this.pos++;
-
-	    while (this.chunkIndex < this.chunks.length && this.pos >= this.chunks[this.chunkIndex].length) {
-	      this.chunkIndex++;
-	      this.pos = 0;
-	    }
-	  }
-
-	  syncLineStartToCursor () {
-	    this.lineChunkIndex = this.chunkIndex;
-	    this.linePos = this.pos;
-	    this.dropConsumedChunks();
-	  }
-
-	  dropConsumedChunks () {
-	    while (this.lineChunkIndex > 0) {
-	      this.chunks.shift();
-	      this.lineChunkIndex--;
-	      this.chunkIndex--;
-	    }
-
-	    if (this.chunkIndex === this.chunks.length) {
-	      this.chunks.length = 0;
-	      this.chunkIndex = 0;
-	      this.pos = 0;
-	      this.lineChunkIndex = 0;
-	      this.linePos = 0;
-	    }
-	  }
-
-	  readLine () {
-	    if (this.lineChunkIndex === this.chunkIndex) {
-	      return this.chunks[this.chunkIndex].subarray(this.linePos, this.pos)
-	    }
-
-	    const chunks = [];
-	    let length = 0;
-
-	    for (let i = this.lineChunkIndex; i <= this.chunkIndex; i++) {
-	      const chunk = this.chunks[i];
-	      const start = i === this.lineChunkIndex ? this.linePos : 0;
-	      const end = i === this.chunkIndex ? this.pos : chunk.length;
-	      const slice = chunk.subarray(start, end);
-	      length += slice.length;
-	      chunks.push(slice);
-	    }
-
-	    return Buffer.concat(chunks, length)
-	  }
-
-	  peekBufferedByte (offset) {
-	    let chunkIndex = this.lineChunkIndex;
-	    let pos = this.linePos;
-
-	    while (chunkIndex < this.chunks.length) {
-	      const chunk = this.chunks[chunkIndex];
-	      const remaining = chunk.length - pos;
-
-	      if (offset < remaining) {
-	        return chunk[pos + offset]
-	      }
-
-	      offset -= remaining;
-	      chunkIndex++;
-	      pos = 0;
-	    }
-	  }
-
-	  discardLeadingBytes (count) {
-	    while (count > 0 && this.lineChunkIndex < this.chunks.length) {
-	      const chunk = this.chunks[this.lineChunkIndex];
-	      const remaining = chunk.length - this.linePos;
-
-	      if (count < remaining) {
-	        this.linePos += count;
-	        count = 0;
-	      } else {
-	        count -= remaining;
-	        this.lineChunkIndex++;
-	        this.linePos = 0;
-	      }
-	    }
-
-	    this.chunkIndex = this.lineChunkIndex;
-	    this.pos = this.linePos;
-	    this.dropConsumedChunks();
-	  }
-
-	  handleBOM () {
-	    const first = this.peekBufferedByte(0);
-	    const second = this.peekBufferedByte(1);
-	    const third = this.peekBufferedByte(2);
-
-	    if (second === undefined) {
-	      if (first === BOM[0]) {
-	        return true
-	      }
-
-	      this.checkBOM = false;
-	      return true
-	    }
-
-	    if (third === undefined) {
-	      if (first === BOM[0] && second === BOM[1]) {
-	        return true
-	      }
-
-	      this.checkBOM = false;
-	      return false
-	    }
-
-	    if (first === BOM[0] && second === BOM[1] && third === BOM[2]) {
-	      this.discardLeadingBytes(3);
-	    }
-
-	    this.checkBOM = false;
-	    return !this.hasCurrentByte()
+	    this.event = {
+	      data: undefined,
+	      event: undefined,
+	      id: undefined,
+	      retry: undefined
+	    };
 	  }
 	}
 
@@ -28430,7 +28169,7 @@ function requireUndici () {
 var undiciExports = requireUndici();
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-var __awaiter$g = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
+var __awaiter$f = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
         function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
@@ -28506,8 +28245,8 @@ class HttpClientResponse {
         this.message = message;
     }
     readBody() {
-        return __awaiter$g(this, void 0, void 0, function* () {
-            return new Promise((resolve) => __awaiter$g(this, void 0, void 0, function* () {
+        return __awaiter$f(this, void 0, void 0, function* () {
+            return new Promise((resolve) => __awaiter$f(this, void 0, void 0, function* () {
                 let output = Buffer.alloc(0);
                 this.message.on('data', (chunk) => {
                     output = Buffer.concat([output, chunk]);
@@ -28519,8 +28258,8 @@ class HttpClientResponse {
         });
     }
     readBodyBuffer() {
-        return __awaiter$g(this, void 0, void 0, function* () {
-            return new Promise((resolve) => __awaiter$g(this, void 0, void 0, function* () {
+        return __awaiter$f(this, void 0, void 0, function* () {
+            return new Promise((resolve) => __awaiter$f(this, void 0, void 0, function* () {
                 const chunks = [];
                 this.message.on('data', (chunk) => {
                     chunks.push(chunk);
@@ -28571,42 +28310,42 @@ let HttpClient$2 = class HttpClient {
         }
     }
     options(requestUrl, additionalHeaders) {
-        return __awaiter$g(this, void 0, void 0, function* () {
+        return __awaiter$f(this, void 0, void 0, function* () {
             return this.request('OPTIONS', requestUrl, null, additionalHeaders || {});
         });
     }
     get(requestUrl, additionalHeaders) {
-        return __awaiter$g(this, void 0, void 0, function* () {
+        return __awaiter$f(this, void 0, void 0, function* () {
             return this.request('GET', requestUrl, null, additionalHeaders || {});
         });
     }
     del(requestUrl, additionalHeaders) {
-        return __awaiter$g(this, void 0, void 0, function* () {
+        return __awaiter$f(this, void 0, void 0, function* () {
             return this.request('DELETE', requestUrl, null, additionalHeaders || {});
         });
     }
     post(requestUrl, data, additionalHeaders) {
-        return __awaiter$g(this, void 0, void 0, function* () {
+        return __awaiter$f(this, void 0, void 0, function* () {
             return this.request('POST', requestUrl, data, additionalHeaders || {});
         });
     }
     patch(requestUrl, data, additionalHeaders) {
-        return __awaiter$g(this, void 0, void 0, function* () {
+        return __awaiter$f(this, void 0, void 0, function* () {
             return this.request('PATCH', requestUrl, data, additionalHeaders || {});
         });
     }
     put(requestUrl, data, additionalHeaders) {
-        return __awaiter$g(this, void 0, void 0, function* () {
+        return __awaiter$f(this, void 0, void 0, function* () {
             return this.request('PUT', requestUrl, data, additionalHeaders || {});
         });
     }
     head(requestUrl, additionalHeaders) {
-        return __awaiter$g(this, void 0, void 0, function* () {
+        return __awaiter$f(this, void 0, void 0, function* () {
             return this.request('HEAD', requestUrl, null, additionalHeaders || {});
         });
     }
     sendStream(verb, requestUrl, stream, additionalHeaders) {
-        return __awaiter$g(this, void 0, void 0, function* () {
+        return __awaiter$f(this, void 0, void 0, function* () {
             return this.request(verb, requestUrl, stream, additionalHeaders);
         });
     }
@@ -28615,14 +28354,14 @@ let HttpClient$2 = class HttpClient {
      * Be aware that not found returns a null.  Other errors (4xx, 5xx) reject the promise
      */
     getJson(requestUrl_1) {
-        return __awaiter$g(this, arguments, void 0, function* (requestUrl, additionalHeaders = {}) {
+        return __awaiter$f(this, arguments, void 0, function* (requestUrl, additionalHeaders = {}) {
             additionalHeaders[Headers.Accept] = this._getExistingOrDefaultHeader(additionalHeaders, Headers.Accept, MediaTypes.ApplicationJson);
             const res = yield this.get(requestUrl, additionalHeaders);
             return this._processResponse(res, this.requestOptions);
         });
     }
     postJson(requestUrl_1, obj_1) {
-        return __awaiter$g(this, arguments, void 0, function* (requestUrl, obj, additionalHeaders = {}) {
+        return __awaiter$f(this, arguments, void 0, function* (requestUrl, obj, additionalHeaders = {}) {
             const data = JSON.stringify(obj, null, 2);
             additionalHeaders[Headers.Accept] = this._getExistingOrDefaultHeader(additionalHeaders, Headers.Accept, MediaTypes.ApplicationJson);
             additionalHeaders[Headers.ContentType] =
@@ -28632,7 +28371,7 @@ let HttpClient$2 = class HttpClient {
         });
     }
     putJson(requestUrl_1, obj_1) {
-        return __awaiter$g(this, arguments, void 0, function* (requestUrl, obj, additionalHeaders = {}) {
+        return __awaiter$f(this, arguments, void 0, function* (requestUrl, obj, additionalHeaders = {}) {
             const data = JSON.stringify(obj, null, 2);
             additionalHeaders[Headers.Accept] = this._getExistingOrDefaultHeader(additionalHeaders, Headers.Accept, MediaTypes.ApplicationJson);
             additionalHeaders[Headers.ContentType] =
@@ -28642,7 +28381,7 @@ let HttpClient$2 = class HttpClient {
         });
     }
     patchJson(requestUrl_1, obj_1) {
-        return __awaiter$g(this, arguments, void 0, function* (requestUrl, obj, additionalHeaders = {}) {
+        return __awaiter$f(this, arguments, void 0, function* (requestUrl, obj, additionalHeaders = {}) {
             const data = JSON.stringify(obj, null, 2);
             additionalHeaders[Headers.Accept] = this._getExistingOrDefaultHeader(additionalHeaders, Headers.Accept, MediaTypes.ApplicationJson);
             additionalHeaders[Headers.ContentType] =
@@ -28657,7 +28396,7 @@ let HttpClient$2 = class HttpClient {
      * Prefer get, del, post and patch
      */
     request(verb, requestUrl, data, headers) {
-        return __awaiter$g(this, void 0, void 0, function* () {
+        return __awaiter$f(this, void 0, void 0, function* () {
             if (this._disposed) {
                 throw new Error('Client has already been disposed.');
             }
@@ -28753,7 +28492,7 @@ let HttpClient$2 = class HttpClient {
      * @param data
      */
     requestRaw(info, data) {
-        return __awaiter$g(this, void 0, void 0, function* () {
+        return __awaiter$f(this, void 0, void 0, function* () {
             return new Promise((resolve, reject) => {
                 function callbackForResult(err, res) {
                     if (err) {
@@ -28871,9 +28610,9 @@ let HttpClient$2 = class HttpClient {
     }
     _mergeHeaders(headers) {
         if (this.requestOptions && this.requestOptions.headers) {
-            return Object.assign({}, lowercaseKeys$1(this.requestOptions.headers), lowercaseKeys$1(headers || {}));
+            return Object.assign({}, lowercaseKeys(this.requestOptions.headers), lowercaseKeys(headers || {}));
         }
-        return lowercaseKeys$1(headers || {});
+        return lowercaseKeys(headers || {});
     }
     /**
      * Gets an existing header value or returns a default.
@@ -28885,7 +28624,7 @@ let HttpClient$2 = class HttpClient {
     _getExistingOrDefaultHeader(additionalHeaders, header, _default) {
         let clientHeader;
         if (this.requestOptions && this.requestOptions.headers) {
-            const headerValue = lowercaseKeys$1(this.requestOptions.headers)[header];
+            const headerValue = lowercaseKeys(this.requestOptions.headers)[header];
             if (headerValue) {
                 clientHeader =
                     typeof headerValue === 'number' ? headerValue.toString() : headerValue;
@@ -28912,7 +28651,7 @@ let HttpClient$2 = class HttpClient {
     _getExistingOrDefaultContentTypeHeader(additionalHeaders, _default) {
         let clientHeader;
         if (this.requestOptions && this.requestOptions.headers) {
-            const headerValue = lowercaseKeys$1(this.requestOptions.headers)[Headers.ContentType];
+            const headerValue = lowercaseKeys(this.requestOptions.headers)[Headers.ContentType];
             if (headerValue) {
                 if (typeof headerValue === 'number') {
                     clientHeader = String(headerValue);
@@ -29034,15 +28773,15 @@ let HttpClient$2 = class HttpClient {
         return baseUserAgent;
     }
     _performExponentialBackoff(retryNumber) {
-        return __awaiter$g(this, void 0, void 0, function* () {
+        return __awaiter$f(this, void 0, void 0, function* () {
             retryNumber = Math.min(ExponentialBackoffCeiling, retryNumber);
             const ms = ExponentialBackoffTimeSlice * Math.pow(2, retryNumber);
             return new Promise(resolve => setTimeout(() => resolve(), ms));
         });
     }
     _processResponse(res, options) {
-        return __awaiter$g(this, void 0, void 0, function* () {
-            return new Promise((resolve, reject) => __awaiter$g(this, void 0, void 0, function* () {
+        return __awaiter$f(this, void 0, void 0, function* () {
+            return new Promise((resolve, reject) => __awaiter$f(this, void 0, void 0, function* () {
                 const statusCode = res.message.statusCode || 0;
                 const response = {
                     statusCode,
@@ -29106,9 +28845,9 @@ let HttpClient$2 = class HttpClient {
         });
     }
 };
-const lowercaseKeys$1 = (obj) => Object.keys(obj).reduce((c, k) => ((c[k.toLowerCase()] = obj[k]), c), {});
+const lowercaseKeys = (obj) => Object.keys(obj).reduce((c, k) => ((c[k.toLowerCase()] = obj[k]), c), {});
 
-var __awaiter$f = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
+var __awaiter$e = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
         function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
@@ -29134,7 +28873,7 @@ class BearerCredentialHandler {
         return false;
     }
     handleAuthentication() {
-        return __awaiter$f(this, void 0, void 0, function* () {
+        return __awaiter$e(this, void 0, void 0, function* () {
             throw new Error('not implemented');
         });
     }
@@ -29161,7 +28900,7 @@ class BearerCredentialHandler {
 };
 const { access: access$1, appendFile, writeFile } = promises;
 
-var __awaiter$e = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
+var __awaiter$d = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
         function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
@@ -29175,7 +28914,7 @@ const { chmod, copyFile, lstat, mkdir, open, readdir, rename, rm, rmdir, stat, s
 const IS_WINDOWS$7 = process.platform === 'win32';
 fs.constants.O_RDONLY;
 function exists(fsPath) {
-    return __awaiter$e(this, void 0, void 0, function* () {
+    return __awaiter$d(this, void 0, void 0, function* () {
         try {
             yield stat(fsPath);
         }
@@ -29210,7 +28949,7 @@ function isRooted(p) {
  * @return if file exists and is executable, returns the file path. otherwise empty string.
  */
 function tryGetExecutablePath(filePath, extensions) {
-    return __awaiter$e(this, void 0, void 0, function* () {
+    return __awaiter$d(this, void 0, void 0, function* () {
         let stats = undefined;
         try {
             // test file exists
@@ -29225,7 +28964,7 @@ function tryGetExecutablePath(filePath, extensions) {
         if (stats && stats.isFile()) {
             if (IS_WINDOWS$7) {
                 // on Windows, test for valid extension
-                const upperExt = path.extname(filePath).toUpperCase();
+                const upperExt = path$1.extname(filePath).toUpperCase();
                 if (extensions.some(validExt => validExt.toUpperCase() === upperExt)) {
                     return filePath;
                 }
@@ -29254,11 +28993,11 @@ function tryGetExecutablePath(filePath, extensions) {
                 if (IS_WINDOWS$7) {
                     // preserve the case of the actual file (since an extension was appended)
                     try {
-                        const directory = path.dirname(filePath);
-                        const upperName = path.basename(filePath).toUpperCase();
+                        const directory = path$1.dirname(filePath);
+                        const upperName = path$1.basename(filePath).toUpperCase();
                         for (const actualName of yield readdir(directory)) {
                             if (upperName === actualName.toUpperCase()) {
-                                filePath = path.join(directory, actualName);
+                                filePath = path$1.join(directory, actualName);
                                 break;
                             }
                         }
@@ -29303,7 +29042,7 @@ function isUnixExecutable(stats) {
             stats.uid === process.getuid()));
 }
 
-var __awaiter$d = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
+var __awaiter$c = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
         function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
@@ -29313,6 +29052,34 @@ var __awaiter$d = (undefined && undefined.__awaiter) || function (thisArg, _argu
     });
 };
 /**
+ * Remove a path recursively with force
+ *
+ * @param inputPath path to remove
+ */
+function rmRF(inputPath) {
+    return __awaiter$c(this, void 0, void 0, function* () {
+        if (IS_WINDOWS$7) {
+            // Check for invalid characters
+            // https://docs.microsoft.com/en-us/windows/win32/fileio/naming-a-file
+            if (/[*"<>|]/.test(inputPath)) {
+                throw new Error('File path must not contain `*`, `"`, `<`, `>` or `|` on Windows');
+            }
+        }
+        try {
+            // note if path does not exist, error is silent
+            yield rm(inputPath, {
+                force: true,
+                maxRetries: 3,
+                recursive: true,
+                retryDelay: 300
+            });
+        }
+        catch (err) {
+            throw new Error(`File was unable to be removed ${err}`);
+        }
+    });
+}
+/**
  * Make a directory.  Creates the full path with folders in between
  * Will throw if it fails
  *
@@ -29320,7 +29087,7 @@ var __awaiter$d = (undefined && undefined.__awaiter) || function (thisArg, _argu
  * @returns Promise<void>
  */
 function mkdirP(fsPath) {
-    return __awaiter$d(this, void 0, void 0, function* () {
+    return __awaiter$c(this, void 0, void 0, function* () {
         ok(fsPath, 'a path argument must be provided');
         yield mkdir(fsPath, { recursive: true });
     });
@@ -29334,7 +29101,7 @@ function mkdirP(fsPath) {
  * @returns   Promise<string>   path to tool
  */
 function which(tool, check) {
-    return __awaiter$d(this, void 0, void 0, function* () {
+    return __awaiter$c(this, void 0, void 0, function* () {
         if (!tool) {
             throw new Error("parameter 'tool' is required");
         }
@@ -29364,14 +29131,14 @@ function which(tool, check) {
  * @returns   Promise<string[]>  the paths of the tool
  */
 function findInPath(tool) {
-    return __awaiter$d(this, void 0, void 0, function* () {
+    return __awaiter$c(this, void 0, void 0, function* () {
         if (!tool) {
             throw new Error("parameter 'tool' is required");
         }
         // build the list of extensions to try
         const extensions = [];
         if (IS_WINDOWS$7 && process.env['PATHEXT']) {
-            for (const extension of process.env['PATHEXT'].split(path.delimiter)) {
+            for (const extension of process.env['PATHEXT'].split(path$1.delimiter)) {
                 if (extension) {
                     extensions.push(extension);
                 }
@@ -29386,7 +29153,7 @@ function findInPath(tool) {
             return [];
         }
         // if any path separators, return empty
-        if (tool.includes(path.sep)) {
+        if (tool.includes(path$1.sep)) {
             return [];
         }
         // build the list of directories
@@ -29397,7 +29164,7 @@ function findInPath(tool) {
         // across platforms.
         const directories = [];
         if (process.env.PATH) {
-            for (const p of process.env.PATH.split(path.delimiter)) {
+            for (const p of process.env.PATH.split(path$1.delimiter)) {
                 if (p) {
                     directories.push(p);
                 }
@@ -29406,7 +29173,7 @@ function findInPath(tool) {
         // find all matches
         const matches = [];
         for (const directory of directories) {
-            const filePath = yield tryGetExecutablePath(path.join(directory, tool), extensions);
+            const filePath = yield tryGetExecutablePath(path$1.join(directory, tool), extensions);
             if (filePath) {
                 matches.push(filePath);
             }
@@ -29415,7 +29182,7 @@ function findInPath(tool) {
     });
 }
 
-var __awaiter$c = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
+var __awaiter$b = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
         function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
@@ -29763,18 +29530,18 @@ class ToolRunner extends events$1.EventEmitter {
      * @returns   number
      */
     exec() {
-        return __awaiter$c(this, void 0, void 0, function* () {
+        return __awaiter$b(this, void 0, void 0, function* () {
             // root the tool path if it is unrooted and contains relative pathing
             if (!isRooted(this.toolPath) &&
                 (this.toolPath.includes('/') ||
                     (IS_WINDOWS$6 && this.toolPath.includes('\\')))) {
                 // prefer options.cwd if it is specified, however options.cwd may also need to be rooted
-                this.toolPath = path.resolve(process.cwd(), this.options.cwd || process.cwd(), this.toolPath);
+                this.toolPath = path$1.resolve(process.cwd(), this.options.cwd || process.cwd(), this.toolPath);
             }
             // if the tool is only a file name, then resolve it from the PATH
             // otherwise verify it exists (add extension on Windows if necessary)
             this.toolPath = yield which(this.toolPath, true);
-            return new Promise((resolve, reject) => __awaiter$c(this, void 0, void 0, function* () {
+            return new Promise((resolve, reject) => __awaiter$b(this, void 0, void 0, function* () {
                 this._debug(`exec tool: ${this.toolPath}`);
                 this._debug('arguments:');
                 for (const arg of this.args) {
@@ -29995,7 +29762,7 @@ class ExecState extends events$1.EventEmitter {
     }
 }
 
-var __awaiter$b = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
+var __awaiter$a = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
         function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
@@ -30015,7 +29782,7 @@ var __awaiter$b = (undefined && undefined.__awaiter) || function (thisArg, _argu
  * @returns   Promise<number>    exit code
  */
 function exec(commandLine, args, options) {
-    return __awaiter$b(this, void 0, void 0, function* () {
+    return __awaiter$a(this, void 0, void 0, function* () {
         const commandArgs = argStringToArray(commandLine);
         if (commandArgs.length === 0) {
             throw new Error(`Parameter 'commandLine' cannot be null or empty.`);
@@ -30206,7 +29973,7 @@ async function socketPath() {
     }
     const workshopdPath = process.env.WORKSHOP;
     if (workshopdPath) {
-        return path$1.join(workshopdPath, 'workshop.socket');
+        return path$2.join(workshopdPath, 'workshop.socket');
     }
     const snapPath = '/var/snap/workshop/common/workshop/workshop.socket';
     try {
@@ -30236,7 +30003,7 @@ async function isSocket(path) {
  * @returns A directory.
  */
 function mountHostSource(projectId, workshop, sdk, plug) {
-    return path$1.join(userDataPath(), 'id', projectId, workshop, 'mount', sdk, plug);
+    return path$2.join(userDataPath(), 'id', projectId, workshop, 'mount', sdk, plug);
 }
 /**
  * Determines a directory suitable for caching.
@@ -30246,7 +30013,7 @@ function mountHostSource(projectId, workshop, sdk, plug) {
  * @returns A directory.
  */
 function hostCachePath(hash) {
-    return path$1.join(userDataPath(), 'launch-workshop', hash);
+    return path$2.join(userDataPath(), 'launch-workshop', hash);
 }
 /**
  * Determines the workshop user data directory.
@@ -30254,14 +30021,14 @@ function hostCachePath(hash) {
  * @returns A directory.
  */
 function userDataPath() {
-    return path$1.join(xdgDataHome(), 'workshop');
+    return path$2.join(xdgDataHome(), 'workshop');
 }
 function xdgDataHome() {
     const dataHome = process.env.XDG_DATA_HOME;
     if (dataHome) {
         return dataHome;
     }
-    return path$1.join(os$1.homedir(), '.local', 'share');
+    return path$2.join(os$1.homedir(), '.local', 'share');
 }
 
 /**
@@ -30408,7 +30175,7 @@ function dirname(p) {
         return p;
     }
     // Get dirname
-    let result = path.dirname(p);
+    let result = path$1.dirname(p);
     // Trim trailing slash for Windows UNC root, e.g. \\hello\world\
     if (IS_WINDOWS$5 && /^\\\\[^\\]+\\[^\\]+\\$/.test(result)) {
         result = safeTrimTrailingSeparator(result);
@@ -30465,7 +30232,7 @@ function ensureAbsoluteRoot(root, itemPath) {
     if (root.endsWith('/') || (IS_WINDOWS$5 && root.endsWith('\\'))) ;
     else {
         // Append separator
-        root += path.sep;
+        root += path$1.sep;
     }
     return root + itemPath;
 }
@@ -30530,11 +30297,11 @@ function safeTrimTrailingSeparator(p) {
     // Normalize separators
     p = normalizeSeparators(p);
     // No trailing slash
-    if (!p.endsWith(path.sep)) {
+    if (!p.endsWith(path$1.sep)) {
         return p;
     }
     // Check '/' on Linux/macOS and '\' on Windows
-    if (p === path.sep) {
+    if (p === path$1.sep) {
         return p;
     }
     // On Windows check if drive root. E.g. C:\
@@ -30608,7 +30375,7 @@ function getSearchPaths(patterns) {
 /**
  * Matches the patterns against the path
  */
-function match(patterns, itemPath) {
+function match$1(patterns, itemPath) {
     let result = MatchKind.None;
     for (const pattern of patterns) {
         if (pattern.negate) {
@@ -30627,1534 +30394,2547 @@ function partialMatch(patterns, itemPath) {
     return patterns.some(x => !x.negate && x.partialMatch(itemPath));
 }
 
-var balancedMatch;
-var hasRequiredBalancedMatch;
+const balanced = (a, b, str) => {
+    const ma = a instanceof RegExp ? maybeMatch(a, str) : a;
+    const mb = b instanceof RegExp ? maybeMatch(b, str) : b;
+    const r = ma !== null && mb != null && range$2(ma, mb, str);
+    return (r && {
+        start: r[0],
+        end: r[1],
+        pre: str.slice(0, r[0]),
+        body: str.slice(r[0] + ma.length, r[1]),
+        post: str.slice(r[1] + mb.length),
+    });
+};
+const maybeMatch = (reg, str) => {
+    const m = str.match(reg);
+    return m ? m[0] : null;
+};
+const range$2 = (a, b, str) => {
+    let begs, beg, left, right = undefined, result;
+    let ai = str.indexOf(a);
+    let bi = str.indexOf(b, ai + 1);
+    let i = ai;
+    if (ai >= 0 && bi > 0) {
+        if (a === b) {
+            return [ai, bi];
+        }
+        begs = [];
+        left = str.length;
+        while (i >= 0 && !result) {
+            if (i === ai) {
+                begs.push(i);
+                ai = str.indexOf(a, i + 1);
+            }
+            else if (begs.length === 1) {
+                const r = begs.pop();
+                if (r !== undefined)
+                    result = [r, bi];
+            }
+            else {
+                beg = begs.pop();
+                if (beg !== undefined && beg < left) {
+                    left = beg;
+                    right = bi;
+                }
+                bi = str.indexOf(b, i + 1);
+            }
+            i = ai < bi && ai >= 0 ? ai : bi;
+        }
+        if (begs.length && right !== undefined) {
+            result = [left, right];
+        }
+    }
+    return result;
+};
 
-function requireBalancedMatch () {
-	if (hasRequiredBalancedMatch) return balancedMatch;
-	hasRequiredBalancedMatch = 1;
-	balancedMatch = balanced;
-	function balanced(a, b, str) {
-	  if (a instanceof RegExp) a = maybeMatch(a, str);
-	  if (b instanceof RegExp) b = maybeMatch(b, str);
-
-	  var r = range(a, b, str);
-
-	  return r && {
-	    start: r[0],
-	    end: r[1],
-	    pre: str.slice(0, r[0]),
-	    body: str.slice(r[0] + a.length, r[1]),
-	    post: str.slice(r[1] + b.length)
-	  };
-	}
-
-	function maybeMatch(reg, str) {
-	  var m = str.match(reg);
-	  return m ? m[0] : null;
-	}
-
-	balanced.range = range;
-	function range(a, b, str) {
-	  var begs, beg, left, right, result;
-	  var ai = str.indexOf(a);
-	  var bi = str.indexOf(b, ai + 1);
-	  var i = ai;
-
-	  if (ai >= 0 && bi > 0) {
-	    if(a===b) {
-	      return [ai, bi];
-	    }
-	    begs = [];
-	    left = str.length;
-
-	    while (i >= 0 && !result) {
-	      if (i == ai) {
-	        begs.push(i);
-	        ai = str.indexOf(a, i + 1);
-	      } else if (begs.length == 1) {
-	        result = [ begs.pop(), bi ];
-	      } else {
-	        beg = begs.pop();
-	        if (beg < left) {
-	          left = beg;
-	          right = bi;
-	        }
-
-	        bi = str.indexOf(b, i + 1);
-	      }
-
-	      i = ai < bi && ai >= 0 ? ai : bi;
-	    }
-
-	    if (begs.length) {
-	      result = [ left, right ];
-	    }
-	  }
-
-	  return result;
-	}
-	return balancedMatch;
+const escSlash = '\0SLASH' + Math.random() + '\0';
+const escOpen = '\0OPEN' + Math.random() + '\0';
+const escClose = '\0CLOSE' + Math.random() + '\0';
+const escComma = '\0COMMA' + Math.random() + '\0';
+const escPeriod = '\0PERIOD' + Math.random() + '\0';
+const escSlashPattern = new RegExp(escSlash, 'g');
+const escOpenPattern = new RegExp(escOpen, 'g');
+const escClosePattern = new RegExp(escClose, 'g');
+const escCommaPattern = new RegExp(escComma, 'g');
+const escPeriodPattern = new RegExp(escPeriod, 'g');
+const slashPattern = /\\\\/g;
+const openPattern = /\\{/g;
+const closePattern = /\\}/g;
+const commaPattern = /\\,/g;
+const periodPattern = /\\\./g;
+const EXPANSION_MAX = 100_000;
+// `EXPANSION_MAX` caps the *number* of expansions, but not their length. An
+// input like `'{a,b}'.repeat(1500)` stays under that count - its output is
+// truncated to 100k results - while making every result ~1500 characters
+// long. The result set, and the intermediate arrays built while combining
+// brace sets, then grow large enough to exhaust memory and crash the process
+// (CVE-2026-14257). `EXPANSION_MAX_LENGTH` bounds the total number of
+// characters the accumulator may hold at any point, so memory stays flat no
+// matter how many brace groups are chained. The limit sits well above any
+// realistic expansion (100k results hitting `EXPANSION_MAX` measure ~1M
+// characters) so legitimate input is unaffected.
+const EXPANSION_MAX_LENGTH = 4_000_000;
+// `expand_` recurses once per level of brace *nesting* - both when expanding a
+// set's comma members and when re-wrapping a set whose body is a single part.
+// The CVE-2026-14257 fix made the *tail* iterative (recursion on `m.post`, one
+// level per chained group), which left nesting depth unbounded: about 3,100
+// levels of `{{{...a,b...}}}` - only ~6KB of input - exhausted the native stack
+// and crashed the process. `EXPANSION_MAX_DEPTH` bounds how deep the parser
+// will follow nesting. It sits far above any realistic pattern and well below
+// the depth at which the stack runs out.
+const EXPANSION_MAX_DEPTH = 1_000;
+// Bash keeps a quirk where a brace group followed by a comma set still expands
+// (`{a},b}`). The parser implements it by rewriting the string and restarting
+// the scan, absorbing one `}` per pass. `n` trailing braces therefore cost `n`
+// full passes over a string that itself grows by one `escClose` sentinel each
+// time - quadratic in `n`, with a ~26x constant from the sentinel's length.
+// 128KB of `'{a}' + '}'.repeat(n) + ',z}'` blocked the event loop for 27
+// seconds to produce two results. `EXPANSION_MAX_REWRITES` bounds how many
+// times the scan may restart. Real `{a},b}` input needs a handful.
+const EXPANSION_MAX_REWRITES = 1_000;
+function numeric(str) {
+    return !isNaN(str) ? parseInt(str, 10) : str.charCodeAt(0);
+}
+function escapeBraces(str) {
+    return str
+        .replace(slashPattern, escSlash)
+        .replace(openPattern, escOpen)
+        .replace(closePattern, escClose)
+        .replace(commaPattern, escComma)
+        .replace(periodPattern, escPeriod);
+}
+function unescapeBraces(str) {
+    return str
+        .replace(escSlashPattern, '\\')
+        .replace(escOpenPattern, '{')
+        .replace(escClosePattern, '}')
+        .replace(escCommaPattern, ',')
+        .replace(escPeriodPattern, '.');
+}
+// Like `target.push(...items)` but doesn't overflow the stack
+function pushAll(target, items) {
+    for (let i = 0; i < items.length; i++) {
+        target.push(items[i]);
+    }
+}
+/**
+ * Basically just str.split(","), but handling cases
+ * where we have nested braced sections, which should be
+ * treated as individual members, like {a,{b,c},d}
+ */
+function parseCommaParts(str) {
+    const parts = [];
+    // Walk the brace groups iteratively. Recursing on `post` once per group let a
+    // chain of them exhaust the stack - the parsing-side counterpart to
+    // the `expand_` overflow fixed for CVE-2026-14257, and not something `max` or
+    // `maxLength` can bound, since it happens before expansion.
+    //
+    // The part the next chunk continues
+    let carry = '';
+    for (;;) {
+        const m = balanced('{', '}', str);
+        if (!m) {
+            const tail = str.split(',');
+            tail[0] = carry + tail[0];
+            pushAll(parts, tail);
+            return parts;
+        }
+        const { pre, body, post } = m;
+        const p = pre.split(',');
+        p[0] = carry + p[0];
+        p[p.length - 1] += '{' + body + '}';
+        if (!post.length) {
+            pushAll(parts, p);
+            return parts;
+        }
+        carry = p.pop();
+        pushAll(parts, p);
+        str = post;
+    }
+}
+function expand(str, options = {}) {
+    if (!str) {
+        return [];
+    }
+    const { max = EXPANSION_MAX, maxLength = EXPANSION_MAX_LENGTH, maxDepth = EXPANSION_MAX_DEPTH, maxRewrites = EXPANSION_MAX_REWRITES, } = options;
+    // I don't know why Bash 4.3 does this, but it does.
+    // Anything starting with {} will have the first two bytes preserved
+    // but *only* at the top level, so {},a}b will not expand to anything,
+    // but a{},b}c will be expanded to [a}c,abc].
+    // One could argue that this is a bug in Bash, but since the goal of
+    // this module is to match Bash's rules, we escape a leading {}
+    if (str.slice(0, 2) === '{}') {
+        str = '\\{\\}' + str.slice(2);
+    }
+    return expand_(escapeBraces(str), max, maxLength, maxDepth, 0, maxRewrites, true).map(unescapeBraces);
+}
+function embrace(str) {
+    return '{' + str + '}';
+}
+function isPadded(el) {
+    return /^-?0\d/.test(el);
+}
+function lte(i, y) {
+    return i <= y;
+}
+function gte(i, y) {
+    return i >= y;
+}
+// Build `{ acc[a] + pre + values[v] }` for every combination, capping the
+// number of results at `max` and the total number of characters at `maxLength`.
+// This is the one place output grows, so bounding it here keeps the single
+// accumulator - and therefore memory - flat regardless of how many brace groups
+// are combined (CVE-2026-14257).
+function combine(acc, pre, values, max, maxLength, dropEmpties) {
+    const out = [];
+    let length = 0;
+    for (let a = 0; a < acc.length; a++) {
+        for (let v = 0; v < values.length; v++) {
+            if (out.length >= max)
+                return out;
+            const expansion = acc[a] + pre + values[v];
+            // Bash drops empty results at the top level. Skip them before they count
+            // against `max`, so `max` bounds the number of *kept* results.
+            if (dropEmpties && !expansion)
+                continue;
+            if (length + expansion.length > maxLength)
+                return out;
+            out.push(expansion);
+            length += expansion.length;
+        }
+    }
+    return out;
+}
+// The expansion values of a single numeric (`1..5`) or alphabetic (`a..e..2`)
+// sequence body.
+function expandSequence(body, isAlphaSequence, max, maxLength) {
+    const n = body.split(/\.\./);
+    const N = [];
+    // A sequence body always splits into two or three parts, but the compiler
+    // can't know that.
+    /* c8 ignore start */
+    if (n[0] === undefined || n[1] === undefined) {
+        return N;
+    }
+    /* c8 ignore stop */
+    const x = numeric(n[0]);
+    const y = numeric(n[1]);
+    const width = Math.max(n[0].length, n[1].length);
+    let incr = n.length === 3 && n[2] !== undefined ?
+        Math.max(Math.abs(numeric(n[2])), 1)
+        : 1;
+    let test = lte;
+    const reverse = y < x;
+    if (reverse) {
+        incr *= -1;
+        test = gte;
+    }
+    const pad = n.some(isPadded);
+    let length = 0;
+    for (let i = x; test(i, y) && N.length < max; i += incr) {
+        let c;
+        if (isAlphaSequence) {
+            c = String.fromCharCode(i);
+            if (c === '\\') {
+                c = '';
+            }
+        }
+        else {
+            c = String(i);
+            if (pad) {
+                const need = width - c.length;
+                if (need > 0) {
+                    const z = new Array(need + 1).join('0');
+                    if (i < 0) {
+                        c = '-' + z + c.slice(1);
+                    }
+                    else {
+                        c = z + c;
+                    }
+                }
+            }
+        }
+        if (length + c.length > maxLength)
+            break;
+        N.push(c);
+        length += c.length;
+    }
+    return N;
+}
+function expand_(str, max, maxLength, maxDepth, depth, maxRewrites, isTop) {
+    // Too deeply nested to keep following: treat the rest as literal, the same
+    // way a group that cannot expand is already handled. Truncating rather than
+    // throwing keeps `expand` total, matching `max` and `maxLength`.
+    if (depth > maxDepth) {
+        return [str];
+    }
+    // Consume the string's top-level brace groups left to right, threading a
+    // running set of combined prefixes (`acc`). Expanding the tail iteratively -
+    // rather than recursing on `m.post` once per group - keeps the native stack
+    // depth constant, so deeply chained input (`'{a,b}'.repeat(3000)`) can no
+    // longer overflow the stack, and leaves a single accumulator whose size
+    // `maxLength` bounds directly (CVE-2026-14257).
+    let acc = [''];
+    // Bash drops empty results, but only when the *first* top-level group is a
+    // comma set - a sequence like `{a..\}` may legitimately yield ''. The drop
+    // is on the final strings, so it is applied to whichever `combine` produces
+    // them (the one with no brace set left in the tail).
+    // How many times the `{a},b}` rewrite below has restarted the scan. Each pass
+    // re-reads the whole string, so leaving this unbounded is quadratic.
+    let rewrites = 0;
+    let dropEmpties = false;
+    let firstGroup = true;
+    for (;;) {
+        const m = balanced('{', '}', str);
+        // No brace set left: the rest of the string is literal.
+        if (!m) {
+            return combine(acc, str, [''], max, maxLength, dropEmpties);
+        }
+        // no need to expand pre, since it is guaranteed to be free of brace-sets
+        const pre = m.pre;
+        if (/\$$/.test(pre)) {
+            acc = combine(acc, pre + '{' + m.body + '}', [''], max, maxLength, dropEmpties && !m.post.length);
+            firstGroup = false;
+            if (!m.post.length)
+                break;
+            str = m.post;
+            continue;
+        }
+        const isNumericSequence = /^-?\d+\.\.-?\d+(?:\.\.-?\d+)?$/.test(m.body);
+        const isAlphaSequence = /^[a-zA-Z]\.\.[a-zA-Z](?:\.\.-?\d+)?$/.test(m.body);
+        const isSequence = isNumericSequence || isAlphaSequence;
+        const isOptions = m.body.indexOf(',') >= 0;
+        if (!isSequence && !isOptions) {
+            // {a},b}
+            if (rewrites < maxRewrites && m.post.match(/,(?!,).*\}/)) {
+                rewrites++;
+                str = m.pre + '{' + m.body + escClose + m.post;
+                isTop = true;
+                continue;
+            }
+            // Nothing here expands, so the whole remaining string is literal.
+            return combine(acc, pre + '{' + m.body + '}' + m.post, [''], max, maxLength, dropEmpties);
+        }
+        if (firstGroup) {
+            dropEmpties = isTop && !isSequence;
+            firstGroup = false;
+        }
+        let values;
+        if (isSequence) {
+            values = expandSequence(m.body, isAlphaSequence, max, maxLength);
+        }
+        else {
+            let n = parseCommaParts(m.body);
+            if (n.length === 1 && n[0] !== undefined) {
+                // x{{a,b}}y ==> x{a}y x{b}y
+                n = expand_(n[0], max, maxLength, maxDepth, depth + 1, maxRewrites, false).map(embrace);
+                //XXX is this necessary? Can't seem to hit it in tests.
+                /* c8 ignore start */
+                if (n.length === 1) {
+                    acc = combine(acc, pre + n[0], [''], max, maxLength, dropEmpties && !m.post.length);
+                    if (!m.post.length)
+                        break;
+                    str = m.post;
+                    continue;
+                }
+                /* c8 ignore stop */
+            }
+            // Values that `combine` is going to drop as empty produce no result, so
+            // they must not count against `max` - otherwise `{a,,b}` with `max: 2`
+            // would stop at `['a', '']` and yield one result instead of two. Skipping
+            // them outright keeps `values` bounded while leaving `max` a bound on
+            // *kept* results.
+            let dropsEmpties = dropEmpties && !m.post.length && !pre;
+            for (let d = 0; dropsEmpties && d < acc.length; d++) {
+                if (acc[d]) {
+                    dropsEmpties = false;
+                }
+            }
+            values = [];
+            let valuesLength = 0;
+            outer: for (let j = 0; j < n.length; j++) {
+                const expanded = expand_(n[j], max, maxLength, maxDepth, depth + 1, maxRewrites, false);
+                for (let k = 0; k < expanded.length; k++) {
+                    const v = expanded[k];
+                    if (dropsEmpties && !v)
+                        continue;
+                    if (values.length >= max ||
+                        valuesLength + v.length > maxLength) {
+                        break outer;
+                    }
+                    values.push(v);
+                    valuesLength += v.length;
+                }
+            }
+        }
+        acc = combine(acc, pre, values, max, maxLength, dropEmpties && !m.post.length);
+        if (!m.post.length)
+            break;
+        str = m.post;
+    }
+    return acc;
 }
 
-var braceExpansion;
-var hasRequiredBraceExpansion;
+const MAX_PATTERN_LENGTH = 1024 * 64;
+const assertValidPattern = (pattern) => {
+    if (typeof pattern !== 'string') {
+        throw new TypeError('invalid pattern');
+    }
+    if (pattern.length > MAX_PATTERN_LENGTH) {
+        throw new TypeError('pattern is too long');
+    }
+};
 
-function requireBraceExpansion () {
-	if (hasRequiredBraceExpansion) return braceExpansion;
-	hasRequiredBraceExpansion = 1;
-	var balanced = requireBalancedMatch();
+// translate the various posix character classes into unicode properties
+// this works across all unicode locales
+// { <posix class>: [<translation>, /u flag required, negated]
+const posixClasses = {
+    '[:alnum:]': ['\\p{L}\\p{Nl}\\p{Nd}', true],
+    '[:alpha:]': ['\\p{L}\\p{Nl}', true],
+    '[:ascii:]': ['\\x' + '00-\\x' + '7f', false],
+    '[:blank:]': ['\\p{Zs}\\t', true],
+    '[:cntrl:]': ['\\p{Cc}', true],
+    '[:digit:]': ['\\p{Nd}', true],
+    '[:graph:]': ['\\p{Z}\\p{C}', true, true],
+    '[:lower:]': ['\\p{Ll}', true],
+    '[:print:]': ['\\p{C}', true],
+    '[:punct:]': ['\\p{P}', true],
+    '[:space:]': ['\\p{Z}\\t\\r\\n\\v\\f', true],
+    '[:upper:]': ['\\p{Lu}', true],
+    '[:word:]': ['\\p{L}\\p{Nl}\\p{Nd}\\p{Pc}', true],
+    '[:xdigit:]': ['A-Fa-f0-9', false],
+};
+// only need to escape a few things inside of brace expressions
+// escapes: [ \ ] -
+const braceEscape = (s) => s.replace(/[[\]\\-]/g, '\\$&');
+// escape all regexp magic characters
+const regexpEscape = (s) => s.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
+// everything has already been escaped, we just have to join
+const rangesToString = (ranges) => ranges.join('');
+// takes a glob string at a posix brace expression, and returns
+// an equivalent regular expression source, and boolean indicating
+// whether the /u flag needs to be applied, and the number of chars
+// consumed to parse the character class.
+// This also removes out of order ranges, and returns ($.) if the
+// entire class just no good.
+const parseClass = (glob, position) => {
+    const pos = position;
+    /* c8 ignore start */
+    if (glob.charAt(pos) !== '[') {
+        throw new Error('not in a brace expression');
+    }
+    /* c8 ignore stop */
+    const ranges = [];
+    const negs = [];
+    let i = pos + 1;
+    let sawStart = false;
+    let uflag = false;
+    let escaping = false;
+    let negate = false;
+    let endPos = pos;
+    let rangeStart = '';
+    WHILE: while (i < glob.length) {
+        const c = glob.charAt(i);
+        if ((c === '!' || c === '^') && i === pos + 1) {
+            negate = true;
+            i++;
+            continue;
+        }
+        if (c === ']' && sawStart && !escaping) {
+            endPos = i + 1;
+            break;
+        }
+        sawStart = true;
+        if (c === '\\') {
+            if (!escaping) {
+                escaping = true;
+                i++;
+                continue;
+            }
+            // escaped \ char, fall through and treat like normal char
+        }
+        if (c === '[' && !escaping) {
+            // either a posix class, a collation equivalent, or just a [
+            for (const [cls, [unip, u, neg]] of Object.entries(posixClasses)) {
+                if (glob.startsWith(cls, i)) {
+                    // invalid, [a-[] is fine, but not [a-[:alpha]]
+                    if (rangeStart) {
+                        return ['$.', false, glob.length - pos, true];
+                    }
+                    i += cls.length;
+                    if (neg)
+                        negs.push(unip);
+                    else
+                        ranges.push(unip);
+                    uflag = uflag || u;
+                    continue WHILE;
+                }
+            }
+        }
+        // now it's just a normal character, effectively
+        escaping = false;
+        if (rangeStart) {
+            // throw this range away if it's not valid, but others
+            // can still match.
+            if (c > rangeStart) {
+                ranges.push(braceEscape(rangeStart) + '-' + braceEscape(c));
+            }
+            else if (c === rangeStart) {
+                ranges.push(braceEscape(c));
+            }
+            rangeStart = '';
+            i++;
+            continue;
+        }
+        // now might be the start of a range.
+        // can be either c-d or c-] or c<more...>] or c] at this point
+        if (glob.startsWith('-]', i + 1)) {
+            ranges.push(braceEscape(c + '-'));
+            i += 2;
+            continue;
+        }
+        if (glob.startsWith('-', i + 1)) {
+            rangeStart = c;
+            i += 2;
+            continue;
+        }
+        // not the start of a range, just a single character
+        ranges.push(braceEscape(c));
+        i++;
+    }
+    if (endPos < i) {
+        // didn't see the end of the class, not a valid class,
+        // but might still be valid as a literal match.
+        return ['', false, 0, false];
+    }
+    // if we got no ranges and no negates, then we have a range that
+    // cannot possibly match anything, and that poisons the whole glob
+    if (!ranges.length && !negs.length) {
+        return ['$.', false, glob.length - pos, true];
+    }
+    // if we got one positive range, and it's a single character, then that's
+    // not actually a magic pattern, it's just that one literal character.
+    // we should not treat that as "magic", we should just return the literal
+    // character. [_] is a perfectly valid way to escape glob magic chars.
+    if (negs.length === 0 &&
+        ranges.length === 1 &&
+        /^\\?.$/.test(ranges[0]) &&
+        !negate) {
+        const r = ranges[0].length === 2 ? ranges[0].slice(-1) : ranges[0];
+        return [regexpEscape(r), false, endPos - pos, false];
+    }
+    const sranges = '[' + (negate ? '^' : '') + rangesToString(ranges) + ']';
+    const snegs = '[' + (negate ? '' : '^') + rangesToString(negs) + ']';
+    const comb = ranges.length && negs.length ? '(' + sranges + '|' + snegs + ')'
+        : ranges.length ? sranges
+            : snegs;
+    return [comb, uflag, endPos - pos, true];
+};
 
-	braceExpansion = expandTop;
+/**
+ * Un-escape a string that has been escaped with {@link escape}.
+ *
+ * If the {@link MinimatchOptions.windowsPathsNoEscape} option is used, then
+ * square-bracket escapes are removed, but not backslash escapes.
+ *
+ * For example, it will turn the string `'[*]'` into `*`, but it will not
+ * turn `'\\*'` into `'*'`, because `\` is a path separator in
+ * `windowsPathsNoEscape` mode.
+ *
+ * When `windowsPathsNoEscape` is not set, then both square-bracket escapes and
+ * backslash escapes are removed.
+ *
+ * Slashes (and backslashes in `windowsPathsNoEscape` mode) cannot be escaped
+ * or unescaped.
+ *
+ * When `magicalBraces` is not set, escapes of braces (`{` and `}`) will not be
+ * unescaped.
+ */
+const unescape = (s, { windowsPathsNoEscape = false, magicalBraces = true, } = {}) => {
+    if (magicalBraces) {
+        return windowsPathsNoEscape ?
+            s.replace(/\[([^/\\])\]/g, '$1')
+            : s
+                .replace(/((?!\\).|^)\[([^/\\])\]/g, '$1$2')
+                .replace(/\\([^/])/g, '$1');
+    }
+    return windowsPathsNoEscape ?
+        s.replace(/\[([^/\\{}])\]/g, '$1')
+        : s
+            .replace(/((?!\\).|^)\[([^/\\{}])\]/g, '$1$2')
+            .replace(/\\([^/{}])/g, '$1');
+};
 
-	var escSlash = '\0SLASH'+Math.random()+'\0';
-	var escOpen = '\0OPEN'+Math.random()+'\0';
-	var escClose = '\0CLOSE'+Math.random()+'\0';
-	var escComma = '\0COMMA'+Math.random()+'\0';
-	var escPeriod = '\0PERIOD'+Math.random()+'\0';
-
-	var EXPANSION_MAX = 100000;
-
-	// `EXPANSION_MAX` caps the *number* of expansions, but not their length. An
-	// input like `'{a,b}'.repeat(1500)` stays under that count - its output is
-	// truncated to 100k results - while making every result ~1500 characters
-	// long. The result set, and the intermediate arrays built while combining
-	// brace sets, then grow large enough to exhaust memory and crash the process
-	// (CVE-2026-14257). `EXPANSION_MAX_LENGTH` bounds the total number of
-	// characters the accumulator may hold at any point, so memory stays flat no
-	// matter how many brace groups are chained. The limit sits well above any
-	// realistic expansion (100k results hitting `EXPANSION_MAX` measure ~1M
-	// characters) so legitimate input is unaffected.
-	var EXPANSION_MAX_LENGTH = 4000000;
-
-	// `expand` recurses once per level of brace *nesting* - both when expanding a
-	// set's comma members and when re-wrapping a set whose body is a single part.
-	// The CVE-2026-14257 fix made the *tail* iterative (recursion on `m.post`, one
-	// level per chained group), which left nesting depth unbounded: about 3,100
-	// levels of `{{{...a,b...}}}` - only ~6KB of input - exhausted the native stack
-	// and crashed the process. `EXPANSION_MAX_DEPTH` bounds how deep the parser
-	// will follow nesting. It sits far above any realistic pattern and well below
-	// the depth at which the stack runs out.
-	var EXPANSION_MAX_DEPTH = 1000;
-
-	// Bash keeps a quirk where a brace group followed by a comma set still expands
-	// (`{a},b}`). The parser implements it by rewriting the string and restarting
-	// the scan, absorbing one `}` per pass. `n` trailing braces therefore cost `n`
-	// full passes over a string that itself grows by one `escClose` sentinel each
-	// time - quadratic in `n`, with a ~26x constant from the sentinel's length.
-	// 128KB of `'{a}' + '}'.repeat(n) + ',z}'` blocked the event loop for 27
-	// seconds to produce two results. `EXPANSION_MAX_REWRITES` bounds how many
-	// times the scan may restart. Real `{a},b}` input needs a handful.
-	var EXPANSION_MAX_REWRITES = 1000;
-
-	function numeric(str) {
-	  return parseInt(str, 10) == str
-	    ? parseInt(str, 10)
-	    : str.charCodeAt(0);
-	}
-
-	function escapeBraces(str) {
-	  return str.split('\\\\').join(escSlash)
-	            .split('\\{').join(escOpen)
-	            .split('\\}').join(escClose)
-	            .split('\\,').join(escComma)
-	            .split('\\.').join(escPeriod);
-	}
-
-	function unescapeBraces(str) {
-	  return str.split(escSlash).join('\\')
-	            .split(escOpen).join('{')
-	            .split(escClose).join('}')
-	            .split(escComma).join(',')
-	            .split(escPeriod).join('.');
-	}
-
-
-	// Like `target.push(...items)` but doesn't overflow the stack
-	function pushAll(target, items) {
-	  for (var i = 0; i < items.length; i++) {
-	    target.push(items[i]);
-	  }
-	}
-
-	// Basically just str.split(","), but handling cases
-	// where we have nested braced sections, which should be
-	// treated as individual members, like {a,{b,c},d}
-	function parseCommaParts(str) {
-	  var parts = [];
-
-	  // Walk the brace groups iteratively. Recursing on `post` once per group let a
-	  // chain of them exhaust the stack - the parsing-side counterpart to
-	  // the `expand` overflow fixed for CVE-2026-14257, and not something `max` or
-	  // `maxLength` can bound, since it happens before expansion.
-	  //
-	  // The part the next chunk continues
-	  var carry = '';
-
-	  for (;;) {
-	    var m = balanced('{', '}', str);
-
-	    if (!m) {
-	      var tail = str.split(',');
-	      tail[0] = carry + tail[0];
-	      pushAll(parts, tail);
-	      return parts;
-	    }
-
-	    var pre = m.pre;
-	    var body = m.body;
-	    var post = m.post;
-	    var p = pre.split(',');
-
-	    p[0] = carry + p[0];
-	    p[p.length-1] += '{' + body + '}';
-
-	    if (!post.length) {
-	      pushAll(parts, p);
-	      return parts;
-	    }
-
-	    carry = p.pop();
-	    pushAll(parts, p);
-	    str = post;
-	  }
-	}
-
-	function expandTop(str, options) {
-	  if (!str)
-	    return [];
-
-	  options = options || {};
-	  var max = options.max == null ? EXPANSION_MAX : options.max;
-	  var maxLength = options.maxLength == null ? EXPANSION_MAX_LENGTH : options.maxLength;
-	  var maxDepth = options.maxDepth == null ? EXPANSION_MAX_DEPTH : options.maxDepth;
-	  var maxRewrites = options.maxRewrites == null ? EXPANSION_MAX_REWRITES : options.maxRewrites;
-
-	  // I don't know why Bash 4.3 does this, but it does.
-	  // Anything starting with {} will have the first two bytes preserved
-	  // but *only* at the top level, so {},a}b will not expand to anything,
-	  // but a{},b}c will be expanded to [a}c,abc].
-	  // One could argue that this is a bug in Bash, but since the goal of
-	  // this module is to match Bash's rules, we escape a leading {}
-	  if (str.substr(0, 2) === '{}') {
-	    str = '\\{\\}' + str.substr(2);
-	  }
-
-	  return expand(escapeBraces(str), max, maxLength, maxDepth, 0, maxRewrites, true).map(unescapeBraces);
-	}
-
-	function embrace(str) {
-	  return '{' + str + '}';
-	}
-	function isPadded(el) {
-	  return /^-?0\d/.test(el);
-	}
-
-	function lte(i, y) {
-	  return i <= y;
-	}
-	function gte(i, y) {
-	  return i >= y;
-	}
-
-	// Build `{ acc[a] + pre + values[v] }` for every combination, capping the
-	// number of results at `max` and the total number of characters at `maxLength`.
-	// This is the one place output grows, so bounding it here keeps the single
-	// accumulator - and therefore memory - flat regardless of how many brace groups
-	// are combined (CVE-2026-14257).
-	//
-	// `base[a]` is the length of the part of `acc[a]` that predates the current
-	// empty-drop baseline (see `expand`). The matching baselines for the results
-	// are appended to `outBase`, which the caller carries forward alongside them.
-	function combine(
-	  acc,
-	  base,
-	  pre,
-	  values,
-	  max,
-	  maxLength,
-	  dropEmpties,
-	  outBase
-	) {
-	  var out = [];
-	  var length = 0;
-	  for (var a = 0; a < acc.length; a++) {
-	    for (var v = 0; v < values.length; v++) {
-	      if (out.length >= max) return out
-	      var expansion = acc[a] + pre + values[v];
-	      // Bash drops empty results at the top level. Skip them before they count
-	      // against `max`, so `max` bounds the number of *kept* results. "Empty"
-	      // means "adds nothing past the baseline", not "empty overall".
-	      if (dropEmpties && expansion.length === base[a]) continue
-	      if (length + expansion.length > maxLength) return out
-	      out.push(expansion);
-	      outBase.push(base[a]);
-	      length += expansion.length;
-	    }
-	  }
-	  return out
-	}
-
-	// The expansion values of a single numeric (`1..5`) or alphabetic (`a..e..2`)
-	// sequence body.
-	function expandSequence(
-	  body,
-	  isAlphaSequence,
-	  max,
-	  maxLength
-	) {
-	  var n = body.split(/\.\./);
-	  var N = [];
-	  // A sequence body always splits into two or three parts, but the compiler
-	  // can't know that.
-	  /* c8 ignore start */
-	  if (n[0] === undefined || n[1] === undefined) {
-	    return N
-	  }
-	  /* c8 ignore stop */
-	  var x = numeric(n[0]);
-	  var y = numeric(n[1]);
-	  var width = Math.max(n[0].length, n[1].length);
-	  var incr =
-	    n.length === 3 && n[2] !== undefined ?
-	      Math.max(Math.abs(numeric(n[2])), 1)
-	    : 1;
-	  var test = lte;
-	  var reverse = y < x;
-	  if (reverse) {
-	    incr *= -1;
-	    test = gte;
-	  }
-	  var pad = n.some(isPadded);
-
-	  var length = 0;
-	  for (var i = x; test(i, y) && N.length < max; i += incr) {
-	    var c;
-	    if (isAlphaSequence) {
-	      c = String.fromCharCode(i);
-	      if (c === '\\') {
-	        c = '';
-	      }
-	    } else {
-	      c = String(i);
-	      if (pad) {
-	        var need = width - c.length;
-	        if (need > 0) {
-	          var z = new Array(need + 1).join('0');
-	          if (i < 0) {
-	            c = '-' + z + c.slice(1);
-	          } else {
-	            c = z + c;
-	          }
-	        }
-	      }
-	    }
-	    if (length + c.length > maxLength) break
-	    N.push(c);
-	    length += c.length;
-	  }
-	  return N
-	}
-
-	function expand(
-	  str,
-	  max,
-	  maxLength,
-	  maxDepth,
-	  depth,
-	  maxRewrites,
-	  isTop
-	) {
-	  // Too deeply nested to keep following: treat the rest as literal, the same
-	  // way a group that cannot expand is already handled. Truncating rather than
-	  // throwing keeps expansion total, matching `max` and `maxLength`.
-	  if (depth > maxDepth) {
-	    return [str];
-	  }
-
-	  // Consume the string's top-level brace groups left to right, threading a
-	  // running set of combined prefixes (`acc`). Expanding the tail iteratively -
-	  // rather than recursing on `m.post` once per group - keeps the native stack
-	  // depth constant, so deeply chained input (`'{a,b}'.repeat(3000)`) can no
-	  // longer overflow the stack, and leaves a single accumulator whose size
-	  // `maxLength` bounds directly (CVE-2026-14257).
-	  var acc = [''];
-
-	  // Bash drops empty results, but only when the *first* group of the run is a
-	  // comma set - a sequence like `{a..\}` may legitimately yield ''. The drop
-	  // is on the final strings, so it is applied to whichever `combine` produces
-	  // them (the one with no brace set left in the tail).
-	  //
-	  // The old implementation recursed on `m.post`, so the drop tested only the
-	  // expansion of the current call's substring. The `{a},b}` rewrite below turns
-	  // `isTop` back on part-way through a string, starting a fresh such run, so
-	  // the drop must ignore whatever `acc` already holds from earlier groups.
-	  // `accBase[a]` records how much of `acc[a]` predates the current run;
-	  // `combine` treats an expansion as empty when it adds nothing past that.
-	  var accBase = [0];
-	  // How many times the `{a},b}` rewrite below has restarted the scan. Each pass
-	  // re-reads the whole string, so leaving this unbounded is quadratic.
-	  var rewrites = 0;
-	  var dropEmpties = false;
-	  var firstGroup = true;
-	  var nextBase;
-
-	  for (;;) {
-	    var m = balanced('{', '}', str);
-
-	    // No brace set left: the rest of the string is literal.
-	    if (!m) {
-	      return combine(acc, accBase, str, [''], max, maxLength, dropEmpties, [])
-	    }
-
-	    // no need to expand pre, since it is guaranteed to be free of brace-sets
-	    var pre = m.pre;
-
-	    // For compatibility reasons, `${` is not eligible for brace expansion, and
-	    // on the 1.x line it suppresses expansion of the rest of the string too:
-	    // the whole remainder is literal. The 2.x and 5.x lines instead keep
-	    // expanding the tail, which is what bash does, but changing that here would
-	    // be a breaking change for 1.x consumers. Routed through `combine` so the
-	    // result is still bounded by `max` and `maxLength`.
-	    if (/\$$/.test(pre)) {
-	      return combine(acc, accBase, str, [''], max, maxLength, dropEmpties, [])
-	    }
-
-	    var isNumericSequence = /^-?\d+\.\.-?\d+(?:\.\.-?\d+)?$/.test(m.body);
-	    var isAlphaSequence = /^[a-zA-Z]\.\.[a-zA-Z](?:\.\.-?\d+)?$/.test(m.body);
-	    var isSequence = isNumericSequence || isAlphaSequence;
-	    var isOptions = m.body.indexOf(',') >= 0;
-	    if (!isSequence && !isOptions) {
-	      // {a},b}
-	      if (rewrites < maxRewrites && m.post.match(/,(?!,).*\}/)) {
-	        rewrites++;
-	        str = m.pre + '{' + m.body + escClose + m.post;
-	        // The rewritten string is expanded as if it were a fresh top-level one,
-	        // so start a new empty-drop run: anchor the baseline at what `acc`
-	        // holds now, and let the next expanding group decide whether to drop.
-	        isTop = true;
-	        firstGroup = true;
-	        dropEmpties = false;
-	        accBase = [];
-	        for (var b = 0; b < acc.length; b++) {
-	          accBase.push(acc[b].length);
-	        }
-	        continue
-	      }
-	      // Nothing here expands, so the whole remaining string is literal.
-	      return combine(
-	        acc,
-	        accBase,
-	        pre + '{' + m.body + '}' + m.post,
-	        [''],
-	        max,
-	        maxLength,
-	        dropEmpties,
-	        []
-	      )
-	    }
-
-	    if (firstGroup) {
-	      dropEmpties = isTop && !isSequence;
-	      firstGroup = false;
-	    }
-
-	    var values;
-	    if (isSequence) {
-	      values = expandSequence(m.body, isAlphaSequence, max, maxLength);
-	    } else {
-	      var n = parseCommaParts(m.body);
-	      if (n.length === 1 && n[0] !== undefined) {
-	        // x{{a,b}}y ==> x{a}y x{b}y
-	        n = expand(n[0], max, maxLength, maxDepth, depth + 1, maxRewrites, false).map(embrace);
-	        //XXX is this necessary? Can't seem to hit it in tests.
-	        /* c8 ignore start */
-	        if (n.length === 1) {
-	          nextBase = [];
-	          acc = combine(
-	            acc,
-	            accBase,
-	            pre + n[0],
-	            [''],
-	            max,
-	            maxLength,
-	            dropEmpties && !m.post.length,
-	            nextBase
-	          );
-	          accBase = nextBase;
-	          if (!m.post.length) break
-	          str = m.post;
-	          continue
-	        }
-	        /* c8 ignore stop */
-	      }
-
-	      // Values that `combine` is going to drop as empty produce no result, so
-	      // they must not count against `max` - otherwise `{a,,b}` with `max: 2`
-	      // would stop at `['a', '']` and yield one result instead of two. Skipping
-	      // them outright keeps `values` bounded while leaving `max` a bound on
-	      // *kept* results. A value is dropped when it adds nothing past the
-	      // baseline, which is what `combine` tests.
-	      var dropsEmpties = dropEmpties && !m.post.length && !pre;
-	      for (var d = 0; dropsEmpties && d < acc.length; d++) {
-	        if (acc[d].length !== accBase[d]) {
-	          dropsEmpties = false;
-	        }
-	      }
-
-	      values = [];
-	      var valuesLength = 0;
-	      outer: for (var j = 0; j < n.length; j++) {
-	        var expanded = expand(n[j], max, maxLength, maxDepth, depth + 1, maxRewrites, false);
-	        for (var k = 0; k < expanded.length; k++) {
-	          var v = expanded[k];
-	          if (dropsEmpties && !v) continue
-	          if (values.length >= max || valuesLength + v.length > maxLength) {
-	            break outer
-	          }
-	          values.push(v);
-	          valuesLength += v.length;
-	        }
-	      }
-	    }
-
-	    nextBase = [];
-	    acc = combine(
-	      acc,
-	      accBase,
-	      pre,
-	      values,
-	      max,
-	      maxLength,
-	      dropEmpties && !m.post.length,
-	      nextBase
-	    );
-	    accBase = nextBase;
-	    if (!m.post.length) break
-	    str = m.post;
-	  }
-
-	  return acc
-	}
-	return braceExpansion;
+// parse a single path portion
+var _a;
+const types = new Set(['!', '?', '+', '*', '@']);
+const isExtglobType = (c) => types.has(c);
+const isExtglobAST = (c) => isExtglobType(c.type);
+// Map of which extglob types can adopt the children of a nested extglob
+//
+// anything but ! can adopt a matching type:
+// +(a|+(b|c)|d) => +(a|b|c|d)
+// *(a|*(b|c)|d) => *(a|b|c|d)
+// @(a|@(b|c)|d) => @(a|b|c|d)
+// ?(a|?(b|c)|d) => ?(a|b|c|d)
+//
+// * can adopt anything, because 0 or repetition is allowed
+// *(a|?(b|c)|d) => *(a|b|c|d)
+// *(a|+(b|c)|d) => *(a|b|c|d)
+// *(a|@(b|c)|d) => *(a|b|c|d)
+//
+// + can adopt @, because 1 or repetition is allowed
+// +(a|@(b|c)|d) => +(a|b|c|d)
+//
+// + and @ CANNOT adopt *, because 0 would be allowed
+// +(a|*(b|c)|d) => would match "", on *(b|c)
+// @(a|*(b|c)|d) => would match "", on *(b|c)
+//
+// + and @ CANNOT adopt ?, because 0 would be allowed
+// +(a|?(b|c)|d) => would match "", on ?(b|c)
+// @(a|?(b|c)|d) => would match "", on ?(b|c)
+//
+// ? can adopt @, because 0 or 1 is allowed
+// ?(a|@(b|c)|d) => ?(a|b|c|d)
+//
+// ? and @ CANNOT adopt * or +, because >1 would be allowed
+// ?(a|*(b|c)|d) => would match bbb on *(b|c)
+// @(a|*(b|c)|d) => would match bbb on *(b|c)
+// ?(a|+(b|c)|d) => would match bbb on +(b|c)
+// @(a|+(b|c)|d) => would match bbb on +(b|c)
+//
+// ! CANNOT adopt ! (nothing else can either)
+// !(a|!(b|c)|d) => !(a|b|c|d) would fail to match on b (not not b|c)
+//
+// ! can adopt @
+// !(a|@(b|c)|d) => !(a|b|c|d)
+//
+// ! CANNOT adopt *
+// !(a|*(b|c)|d) => !(a|b|c|d) would match on bbb, not allowed
+//
+// ! CANNOT adopt +
+// !(a|+(b|c)|d) => !(a|b|c|d) would match on bbb, not allowed
+//
+// ! CANNOT adopt ?
+// x!(a|?(b|c)|d) => x!(a|b|c|d) would fail to match "x"
+const adoptionMap = new Map([
+    ['!', ['@']],
+    ['?', ['?', '@']],
+    ['@', ['@']],
+    ['*', ['*', '+', '?', '@']],
+    ['+', ['+', '@']],
+]);
+// nested extglobs that can be adopted in, but with the addition of
+// a blank '' element.
+const adoptionWithSpaceMap = new Map([
+    ['!', ['?']],
+    ['@', ['?']],
+    ['+', ['?', '*']],
+]);
+// union of the previous two maps
+const adoptionAnyMap = new Map([
+    ['!', ['?', '@']],
+    ['?', ['?', '@']],
+    ['@', ['?', '@']],
+    ['*', ['*', '+', '?', '@']],
+    ['+', ['+', '@', '?', '*']],
+]);
+// Extglobs that can take over their parent if they are the only child
+// the key is parent, value maps child to resulting extglob parent type
+// '@' is omitted because it's a special case. An `@` extglob with a single
+// member can always be usurped by that subpattern.
+const usurpMap = new Map([
+    ['!', new Map([['!', '@']])],
+    [
+        '?',
+        new Map([
+            ['*', '*'],
+            ['+', '*'],
+        ]),
+    ],
+    [
+        '@',
+        new Map([
+            ['!', '!'],
+            ['?', '?'],
+            ['@', '@'],
+            ['*', '*'],
+            ['+', '+'],
+        ]),
+    ],
+    [
+        '+',
+        new Map([
+            ['?', '*'],
+            ['*', '*'],
+        ]),
+    ],
+]);
+// Patterns that get prepended to bind to the start of either the
+// entire string, or just a single path portion, to prevent dots
+// and/or traversal patterns, when needed.
+// Exts don't need the ^ or / bit, because the root binds that already.
+const startNoTraversal = '(?!(?:^|/)\\.\\.?(?:$|/))';
+const startNoDot = '(?!\\.)';
+// characters that indicate a start of pattern needs the "no dots" bit,
+// because a dot *might* be matched. ( is not in the list, because in
+// the case of a child extglob, it will handle the prevention itself.
+const addPatternStart = new Set(['[', '.']);
+// cases where traversal is A-OK, no dot prevention needed
+const justDots = new Set(['..', '.']);
+const reSpecials = new Set('().*{}+?[]^$\\!');
+const regExpEscape$1 = (s) => s.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
+// any single thing other than /
+const qmark$1 = '[^/]';
+// * => any number of characters
+const star$1 = qmark$1 + '*?';
+// use + when we need to ensure that *something* matches, because the * is
+// the only thing in the path portion.
+const starNoEmpty = qmark$1 + '+?';
+// remove the \ chars that we added if we end up doing a nonmagic compare
+// const deslash = (s: string) => s.replace(/\\(.)/g, '$1')
+let ID = 0;
+class AST {
+    type;
+    #root;
+    #hasMagic;
+    #uflag = false;
+    #parts = [];
+    #parent;
+    #parentIndex;
+    #negs;
+    #filledNegs = false;
+    #options;
+    #toString;
+    // set to true if it's an extglob with no children
+    // (which really means one child of '')
+    #emptyExt = false;
+    id = ++ID;
+    get depth() {
+        return (this.#parent?.depth ?? -1) + 1;
+    }
+    [Symbol.for('nodejs.util.inspect.custom')]() {
+        return {
+            '@@type': 'AST',
+            id: this.id,
+            type: this.type,
+            root: this.#root.id,
+            parent: this.#parent?.id,
+            depth: this.depth,
+            partsLength: this.#parts.length,
+            parts: this.#parts,
+        };
+    }
+    constructor(type, parent, options = {}) {
+        this.type = type;
+        // extglobs are inherently magical
+        if (type)
+            this.#hasMagic = true;
+        this.#parent = parent;
+        this.#root = this.#parent ? this.#parent.#root : this;
+        this.#options = this.#root === this ? options : this.#root.#options;
+        this.#negs = this.#root === this ? [] : this.#root.#negs;
+        if (type === '!' && !this.#root.#filledNegs)
+            this.#negs.push(this);
+        this.#parentIndex = this.#parent ? this.#parent.#parts.length : 0;
+    }
+    get hasMagic() {
+        /* c8 ignore start */
+        if (this.#hasMagic !== undefined)
+            return this.#hasMagic;
+        /* c8 ignore stop */
+        for (const p of this.#parts) {
+            if (typeof p === 'string')
+                continue;
+            if (p.type || p.hasMagic)
+                return (this.#hasMagic = true);
+        }
+        // note: will be undefined until we generate the regexp src and find out
+        return this.#hasMagic;
+    }
+    // reconstructs the pattern
+    toString() {
+        return (this.#toString !== undefined ? this.#toString
+            : !this.type ?
+                (this.#toString = this.#parts.map(p => String(p)).join(''))
+                : (this.#toString =
+                    this.type +
+                        '(' +
+                        this.#parts.map(p => String(p)).join('|') +
+                        ')'));
+    }
+    #fillNegs() {
+        /* c8 ignore start */
+        if (this !== this.#root)
+            throw new Error('should only call on root');
+        if (this.#filledNegs)
+            return this;
+        /* c8 ignore stop */
+        // call toString() once to fill this out
+        this.toString();
+        this.#filledNegs = true;
+        let n;
+        while ((n = this.#negs.pop())) {
+            if (n.type !== '!')
+                continue;
+            // walk up the tree, appending everthing that comes AFTER parentIndex
+            let p = n;
+            let pp = p.#parent;
+            while (pp) {
+                for (let i = p.#parentIndex + 1; !pp.type && i < pp.#parts.length; i++) {
+                    for (const part of n.#parts) {
+                        /* c8 ignore start */
+                        if (typeof part === 'string') {
+                            throw new Error('string part in extglob AST??');
+                        }
+                        /* c8 ignore stop */
+                        part.copyIn(pp.#parts[i]);
+                    }
+                }
+                p = pp;
+                pp = p.#parent;
+            }
+        }
+        return this;
+    }
+    push(...parts) {
+        for (const p of parts) {
+            if (p === '')
+                continue;
+            /* c8 ignore start */
+            if (typeof p !== 'string' &&
+                !(p instanceof _a && p.#parent === this)) {
+                throw new Error('invalid part: ' + p);
+            }
+            /* c8 ignore stop */
+            this.#parts.push(p);
+        }
+    }
+    toJSON() {
+        const ret = this.type === null ?
+            this.#parts
+                .slice()
+                .map(p => (typeof p === 'string' ? p : p.toJSON()))
+            : [this.type, ...this.#parts.map(p => p.toJSON())];
+        if (this.isStart() && !this.type)
+            ret.unshift([]);
+        if (this.isEnd() &&
+            (this === this.#root ||
+                (this.#root.#filledNegs && this.#parent?.type === '!'))) {
+            ret.push({});
+        }
+        return ret;
+    }
+    isStart() {
+        if (this.#root === this)
+            return true;
+        // if (this.type) return !!this.#parent?.isStart()
+        if (!this.#parent?.isStart())
+            return false;
+        if (this.#parentIndex === 0)
+            return true;
+        // if everything AHEAD of this is a negation, then it's still the "start"
+        const p = this.#parent;
+        for (let i = 0; i < this.#parentIndex; i++) {
+            const pp = p.#parts[i];
+            if (!(pp instanceof _a && pp.type === '!')) {
+                return false;
+            }
+        }
+        return true;
+    }
+    isEnd() {
+        if (this.#root === this)
+            return true;
+        if (this.#parent?.type === '!')
+            return true;
+        if (!this.#parent?.isEnd())
+            return false;
+        if (!this.type)
+            return this.#parent?.isEnd();
+        // if not root, it'll always have a parent
+        /* c8 ignore start */
+        const pl = this.#parent ? this.#parent.#parts.length : 0;
+        /* c8 ignore stop */
+        return this.#parentIndex === pl - 1;
+    }
+    copyIn(part) {
+        if (typeof part === 'string')
+            this.push(part);
+        else
+            this.push(part.clone(this));
+    }
+    clone(parent) {
+        const c = new _a(this.type, parent);
+        for (const p of this.#parts) {
+            c.copyIn(p);
+        }
+        return c;
+    }
+    static #parseAST(str, ast, pos, opt, extDepth) {
+        const maxDepth = opt.maxExtglobRecursion ?? 2;
+        let escaping = false;
+        let inBrace = false;
+        let braceStart = -1;
+        let braceNeg = false;
+        if (ast.type === null) {
+            // outside of a extglob, append until we find a start
+            let i = pos;
+            let acc = '';
+            while (i < str.length) {
+                const c = str.charAt(i++);
+                // still accumulate escapes at this point, but we do ignore
+                // starts that are escaped
+                if (escaping || c === '\\') {
+                    escaping = !escaping;
+                    acc += c;
+                    continue;
+                }
+                if (inBrace) {
+                    if (i === braceStart + 1) {
+                        if (c === '^' || c === '!') {
+                            braceNeg = true;
+                        }
+                    }
+                    else if (c === ']' && !(i === braceStart + 2 && braceNeg)) {
+                        inBrace = false;
+                    }
+                    acc += c;
+                    continue;
+                }
+                else if (c === '[') {
+                    inBrace = true;
+                    braceStart = i;
+                    braceNeg = false;
+                    acc += c;
+                    continue;
+                }
+                // we don't have to check for adoption here, because that's
+                // done at the other recursion point.
+                const doRecurse = !opt.noext &&
+                    isExtglobType(c) &&
+                    str.charAt(i) === '(' &&
+                    extDepth <= maxDepth;
+                if (doRecurse) {
+                    ast.push(acc);
+                    acc = '';
+                    const ext = new _a(c, ast);
+                    i = _a.#parseAST(str, ext, i, opt, extDepth + 1);
+                    ast.push(ext);
+                    continue;
+                }
+                acc += c;
+            }
+            ast.push(acc);
+            return i;
+        }
+        // some kind of extglob, pos is at the (
+        // find the next | or )
+        let i = pos + 1;
+        let part = new _a(null, ast);
+        const parts = [];
+        let acc = '';
+        while (i < str.length) {
+            const c = str.charAt(i++);
+            // still accumulate escapes at this point, but we do ignore
+            // starts that are escaped
+            if (escaping || c === '\\') {
+                escaping = !escaping;
+                acc += c;
+                continue;
+            }
+            if (inBrace) {
+                if (i === braceStart + 1) {
+                    if (c === '^' || c === '!') {
+                        braceNeg = true;
+                    }
+                }
+                else if (c === ']' && !(i === braceStart + 2 && braceNeg)) {
+                    inBrace = false;
+                }
+                acc += c;
+                continue;
+            }
+            else if (c === '[') {
+                inBrace = true;
+                braceStart = i;
+                braceNeg = false;
+                acc += c;
+                continue;
+            }
+            const doRecurse = !opt.noext &&
+                isExtglobType(c) &&
+                str.charAt(i) === '(' &&
+                /* c8 ignore start - the maxDepth is sufficient here */
+                (extDepth <= maxDepth || (ast && ast.#canAdoptType(c)));
+            /* c8 ignore stop */
+            if (doRecurse) {
+                const depthAdd = ast && ast.#canAdoptType(c) ? 0 : 1;
+                part.push(acc);
+                acc = '';
+                const ext = new _a(c, part);
+                part.push(ext);
+                i = _a.#parseAST(str, ext, i, opt, extDepth + depthAdd);
+                continue;
+            }
+            if (c === '|') {
+                part.push(acc);
+                acc = '';
+                parts.push(part);
+                part = new _a(null, ast);
+                continue;
+            }
+            if (c === ')') {
+                if (acc === '' && ast.#parts.length === 0) {
+                    ast.#emptyExt = true;
+                }
+                part.push(acc);
+                acc = '';
+                ast.push(...parts, part);
+                return i;
+            }
+            acc += c;
+        }
+        // unfinished extglob
+        // if we got here, it was a malformed extglob! not an extglob, but
+        // maybe something else in there.
+        ast.type = null;
+        ast.#hasMagic = undefined;
+        ast.#parts = [str.substring(pos - 1)];
+        return i;
+    }
+    #canAdoptWithSpace(child) {
+        return this.#canAdopt(child, adoptionWithSpaceMap);
+    }
+    #canAdopt(child, map = adoptionMap) {
+        if (!child ||
+            typeof child !== 'object' ||
+            child.type !== null ||
+            child.#parts.length !== 1 ||
+            this.type === null) {
+            return false;
+        }
+        const gc = child.#parts[0];
+        if (!gc || typeof gc !== 'object' || gc.type === null) {
+            return false;
+        }
+        return this.#canAdoptType(gc.type, map);
+    }
+    #canAdoptType(c, map = adoptionAnyMap) {
+        return !!map.get(this.type)?.includes(c);
+    }
+    #adoptWithSpace(child, index) {
+        const gc = child.#parts[0];
+        const blank = new _a(null, gc, this.options);
+        blank.#parts.push('');
+        gc.push(blank);
+        this.#adopt(child, index);
+    }
+    #adopt(child, index) {
+        const gc = child.#parts[0];
+        this.#parts.splice(index, 1, ...gc.#parts);
+        for (const p of gc.#parts) {
+            if (typeof p === 'object')
+                p.#parent = this;
+        }
+        this.#toString = undefined;
+    }
+    #canUsurpType(c) {
+        const m = usurpMap.get(this.type);
+        return !!m?.has(c);
+    }
+    #canUsurp(child) {
+        if (!child ||
+            typeof child !== 'object' ||
+            child.type !== null ||
+            child.#parts.length !== 1 ||
+            this.type === null ||
+            this.#parts.length !== 1) {
+            return false;
+        }
+        const gc = child.#parts[0];
+        if (!gc || typeof gc !== 'object' || gc.type === null) {
+            return false;
+        }
+        return this.#canUsurpType(gc.type);
+    }
+    #usurp(child) {
+        const m = usurpMap.get(this.type);
+        const gc = child.#parts[0];
+        const nt = m?.get(gc.type);
+        /* c8 ignore start - impossible */
+        if (!nt)
+            return false;
+        /* c8 ignore stop */
+        this.#parts = gc.#parts;
+        for (const p of this.#parts) {
+            if (typeof p === 'object') {
+                p.#parent = this;
+            }
+        }
+        this.type = nt;
+        this.#toString = undefined;
+        this.#emptyExt = false;
+    }
+    static fromGlob(pattern, options = {}) {
+        const ast = new _a(null, undefined, options);
+        _a.#parseAST(pattern, ast, 0, options, 0);
+        return ast;
+    }
+    // returns the regular expression if there's magic, or the unescaped
+    // string if not.
+    toMMPattern() {
+        // should only be called on root
+        /* c8 ignore start */
+        if (this !== this.#root)
+            return this.#root.toMMPattern();
+        /* c8 ignore stop */
+        const glob = this.toString();
+        const [re, body, hasMagic, uflag] = this.toRegExpSource();
+        // if we're in nocase mode, and not nocaseMagicOnly, then we do
+        // still need a regular expression if we have to case-insensitively
+        // match capital/lowercase characters.
+        const anyMagic = hasMagic ||
+            this.#hasMagic ||
+            (this.#options.nocase &&
+                !this.#options.nocaseMagicOnly &&
+                glob.toUpperCase() !== glob.toLowerCase());
+        if (!anyMagic) {
+            return body;
+        }
+        const flags = (this.#options.nocase ? 'i' : '') + (uflag ? 'u' : '');
+        return Object.assign(new RegExp(`^${re}$`, flags), {
+            _src: re,
+            _glob: glob,
+        });
+    }
+    get options() {
+        return this.#options;
+    }
+    // returns the string match, the regexp source, whether there's magic
+    // in the regexp (so a regular expression is required) and whether or
+    // not the uflag is needed for the regular expression (for posix classes)
+    // TODO: instead of injecting the start/end at this point, just return
+    // the BODY of the regexp, along with the start/end portions suitable
+    // for binding the start/end in either a joined full-path makeRe context
+    // (where we bind to (^|/), or a standalone matchPart context (where
+    // we bind to ^, and not /).  Otherwise slashes get duped!
+    //
+    // In part-matching mode, the start is:
+    // - if not isStart: nothing
+    // - if traversal possible, but not allowed: ^(?!\.\.?$)
+    // - if dots allowed or not possible: ^
+    // - if dots possible and not allowed: ^(?!\.)
+    // end is:
+    // - if not isEnd(): nothing
+    // - else: $
+    //
+    // In full-path matching mode, we put the slash at the START of the
+    // pattern, so start is:
+    // - if first pattern: same as part-matching mode
+    // - if not isStart(): nothing
+    // - if traversal possible, but not allowed: /(?!\.\.?(?:$|/))
+    // - if dots allowed or not possible: /
+    // - if dots possible and not allowed: /(?!\.)
+    // end is:
+    // - if last pattern, same as part-matching mode
+    // - else nothing
+    //
+    // Always put the (?:$|/) on negated tails, though, because that has to be
+    // there to bind the end of the negated pattern portion, and it's easier to
+    // just stick it in now rather than try to inject it later in the middle of
+    // the pattern.
+    //
+    // We can just always return the same end, and leave it up to the caller
+    // to know whether it's going to be used joined or in parts.
+    // And, if the start is adjusted slightly, can do the same there:
+    // - if not isStart: nothing
+    // - if traversal possible, but not allowed: (?:/|^)(?!\.\.?$)
+    // - if dots allowed or not possible: (?:/|^)
+    // - if dots possible and not allowed: (?:/|^)(?!\.)
+    //
+    // But it's better to have a simpler binding without a conditional, for
+    // performance, so probably better to return both start options.
+    //
+    // Then the caller just ignores the end if it's not the first pattern,
+    // and the start always gets applied.
+    //
+    // But that's always going to be $ if it's the ending pattern, or nothing,
+    // so the caller can just attach $ at the end of the pattern when building.
+    //
+    // So the todo is:
+    // - better detect what kind of start is needed
+    // - return both flavors of starting pattern
+    // - attach $ at the end of the pattern when creating the actual RegExp
+    //
+    // Ah, but wait, no, that all only applies to the root when the first pattern
+    // is not an extglob. If the first pattern IS an extglob, then we need all
+    // that dot prevention biz to live in the extglob portions, because eg
+    // +(*|.x*) can match .xy but not .yx.
+    //
+    // So, return the two flavors if it's #root and the first child is not an
+    // AST, otherwise leave it to the child AST to handle it, and there,
+    // use the (?:^|/) style of start binding.
+    //
+    // Even simplified further:
+    // - Since the start for a join is eg /(?!\.) and the start for a part
+    // is ^(?!\.), we can just prepend (?!\.) to the pattern (either root
+    // or start or whatever) and prepend ^ or / at the Regexp construction.
+    toRegExpSource(allowDot) {
+        const dot = allowDot ?? !!this.#options.dot;
+        if (this.#root === this) {
+            this.#flatten();
+            this.#fillNegs();
+        }
+        if (!isExtglobAST(this)) {
+            const noEmpty = this.isStart() &&
+                this.isEnd() &&
+                !this.#parts.some(s => typeof s !== 'string');
+            const src = this.#parts
+                .map(p => {
+                const [re, _, hasMagic, uflag] = typeof p === 'string' ?
+                    _a.#parseGlob(p, this.#hasMagic, noEmpty)
+                    : p.toRegExpSource(allowDot);
+                this.#hasMagic = this.#hasMagic || hasMagic;
+                this.#uflag = this.#uflag || uflag;
+                return re;
+            })
+                .join('');
+            let start = '';
+            if (this.isStart()) {
+                if (typeof this.#parts[0] === 'string') {
+                    // this is the string that will match the start of the pattern,
+                    // so we need to protect against dots and such.
+                    // '.' and '..' cannot match unless the pattern is that exactly,
+                    // even if it starts with . or dot:true is set.
+                    const dotTravAllowed = this.#parts.length === 1 && justDots.has(this.#parts[0]);
+                    if (!dotTravAllowed) {
+                        const aps = addPatternStart;
+                        // check if we have a possibility of matching . or ..,
+                        // and prevent that.
+                        const needNoTrav = 
+                        // dots are allowed, and the pattern starts with [ or .
+                        (dot && aps.has(src.charAt(0))) ||
+                            // the pattern starts with \., and then [ or .
+                            (src.startsWith('\\.') && aps.has(src.charAt(2))) ||
+                            // the pattern starts with \.\., and then [ or .
+                            (src.startsWith('\\.\\.') && aps.has(src.charAt(4)));
+                        // no need to prevent dots if it can't match a dot, or if a
+                        // sub-pattern will be preventing it anyway.
+                        const needNoDot = !dot && !allowDot && aps.has(src.charAt(0));
+                        start =
+                            needNoTrav ? startNoTraversal
+                                : needNoDot ? startNoDot
+                                    : '';
+                    }
+                }
+            }
+            // append the "end of path portion" pattern to negation tails
+            let end = '';
+            if (this.isEnd() &&
+                this.#root.#filledNegs &&
+                this.#parent?.type === '!') {
+                end = '(?:$|\\/)';
+            }
+            const final = start + src + end;
+            return [
+                final,
+                unescape(src),
+                (this.#hasMagic = !!this.#hasMagic),
+                this.#uflag,
+            ];
+        }
+        // We need to calculate the body *twice* if it's a repeat pattern
+        // at the start, once in nodot mode, then again in dot mode, so a
+        // pattern like *(?) can match 'x.y'
+        const repeated = this.type === '*' || this.type === '+';
+        // some kind of extglob
+        const start = this.type === '!' ? '(?:(?!(?:' : '(?:';
+        let body = this.#partsToRegExp(dot);
+        if (this.isStart() && this.isEnd() && !body && this.type !== '!') {
+            // invalid extglob, has to at least be *something* present, if it's
+            // the entire path portion.
+            const s = this.toString();
+            const me = this;
+            me.#parts = [s];
+            me.type = null;
+            me.#hasMagic = undefined;
+            return [s, unescape(this.toString()), false, false];
+        }
+        let bodyDotAllowed = !repeated || allowDot || dot || !startNoDot ?
+            ''
+            : this.#partsToRegExp(true);
+        if (bodyDotAllowed === body) {
+            bodyDotAllowed = '';
+        }
+        if (bodyDotAllowed) {
+            body = `(?:${body})(?:${bodyDotAllowed})*?`;
+        }
+        // an empty !() is exactly equivalent to a starNoEmpty
+        let final = '';
+        if (this.type === '!' && this.#emptyExt) {
+            final = (this.isStart() && !dot ? startNoDot : '') + starNoEmpty;
+        }
+        else {
+            const close = this.type === '!' ?
+                // !() must match something,but !(x) can match ''
+                '))' +
+                    (this.isStart() && !dot && !allowDot ? startNoDot : '') +
+                    star$1 +
+                    ')'
+                : this.type === '@' ? ')'
+                    : this.type === '?' ? ')?'
+                        : this.type === '+' && bodyDotAllowed ? ')'
+                            : this.type === '*' && bodyDotAllowed ? `)?`
+                                : `)${this.type}`;
+            final = start + body + close;
+        }
+        return [
+            final,
+            unescape(body),
+            (this.#hasMagic = !!this.#hasMagic),
+            this.#uflag,
+        ];
+    }
+    #flatten() {
+        if (!isExtglobAST(this)) {
+            for (const p of this.#parts) {
+                if (typeof p === 'object') {
+                    p.#flatten();
+                }
+            }
+        }
+        else {
+            // do up to 10 passes to flatten as much as possible
+            let iterations = 0;
+            let done = false;
+            do {
+                done = true;
+                for (let i = 0; i < this.#parts.length; i++) {
+                    const c = this.#parts[i];
+                    if (typeof c === 'object') {
+                        c.#flatten();
+                        if (this.#canAdopt(c)) {
+                            done = false;
+                            this.#adopt(c, i);
+                        }
+                        else if (this.#canAdoptWithSpace(c)) {
+                            done = false;
+                            this.#adoptWithSpace(c, i);
+                        }
+                        else if (this.#canUsurp(c)) {
+                            done = false;
+                            this.#usurp(c);
+                        }
+                    }
+                }
+            } while (!done && ++iterations < 10);
+        }
+        this.#toString = undefined;
+    }
+    #partsToRegExp(dot) {
+        return this.#parts
+            .map(p => {
+            // extglob ASTs should only contain parent ASTs
+            /* c8 ignore start */
+            if (typeof p === 'string') {
+                throw new Error('string type in extglob ast??');
+            }
+            /* c8 ignore stop */
+            // can ignore hasMagic, because extglobs are already always magic
+            const [re, _, _hasMagic, uflag] = p.toRegExpSource(dot);
+            this.#uflag = this.#uflag || uflag;
+            return re;
+        })
+            .filter(p => !(this.isStart() && this.isEnd()) || !!p)
+            .join('|');
+    }
+    static #parseGlob(glob, hasMagic, noEmpty = false) {
+        let escaping = false;
+        let re = '';
+        let uflag = false;
+        // multiple stars that aren't globstars coalesce into one *
+        let inStar = false;
+        for (let i = 0; i < glob.length; i++) {
+            const c = glob.charAt(i);
+            if (escaping) {
+                escaping = false;
+                re += (reSpecials.has(c) ? '\\' : '') + c;
+                continue;
+            }
+            if (c === '*') {
+                if (inStar)
+                    continue;
+                inStar = true;
+                re += noEmpty && /^[*]+$/.test(glob) ? starNoEmpty : star$1;
+                hasMagic = true;
+                continue;
+            }
+            else {
+                inStar = false;
+            }
+            if (c === '\\') {
+                if (i === glob.length - 1) {
+                    re += '\\\\';
+                }
+                else {
+                    escaping = true;
+                }
+                continue;
+            }
+            if (c === '[') {
+                const [src, needUflag, consumed, magic] = parseClass(glob, i);
+                if (consumed) {
+                    re += src;
+                    uflag = uflag || needUflag;
+                    i += consumed - 1;
+                    hasMagic = hasMagic || magic;
+                    continue;
+                }
+            }
+            if (c === '?') {
+                re += qmark$1;
+                hasMagic = true;
+                continue;
+            }
+            re += regExpEscape$1(c);
+        }
+        return [re, unescape(glob), !!hasMagic, uflag];
+    }
 }
-
-var minimatch_1;
-var hasRequiredMinimatch;
-
-function requireMinimatch () {
-	if (hasRequiredMinimatch) return minimatch_1;
-	hasRequiredMinimatch = 1;
-	minimatch_1 = minimatch;
-	minimatch.Minimatch = Minimatch;
-
-	var path = (function () { try { return require('path') } catch (e) {}}()) || {
-	  sep: '/'
-	};
-	minimatch.sep = path.sep;
-
-	var GLOBSTAR = minimatch.GLOBSTAR = Minimatch.GLOBSTAR = {};
-	var expand = requireBraceExpansion();
-
-	var plTypes = {
-	  '!': { open: '(?:(?!(?:', close: '))[^/]*?)'},
-	  '?': { open: '(?:', close: ')?' },
-	  '+': { open: '(?:', close: ')+' },
-	  '*': { open: '(?:', close: ')*' },
-	  '@': { open: '(?:', close: ')' }
-	};
-
-	// any single thing other than /
-	// don't need to escape / when using new RegExp()
-	var qmark = '[^/]';
-
-	// * => any number of characters
-	var star = qmark + '*?';
-
-	// ** when dots are allowed.  Anything goes, except .. and .
-	// not (^ or / followed by one or two dots followed by $ or /),
-	// followed by anything, any number of times.
-	var twoStarDot = '(?:(?!(?:\\\/|^)(?:\\.{1,2})($|\\\/)).)*?';
-
-	// not a ^ or / followed by a dot,
-	// followed by anything, any number of times.
-	var twoStarNoDot = '(?:(?!(?:\\\/|^)\\.).)*?';
-
-	// characters that need to be escaped in RegExp.
-	var reSpecials = charSet('().*{}+?[]^$\\!');
-
-	// "abc" -> { a:true, b:true, c:true }
-	function charSet (s) {
-	  return s.split('').reduce(function (set, c) {
-	    set[c] = true;
-	    return set
-	  }, {})
-	}
-
-	// normalizes slashes.
-	var slashSplit = /\/+/;
-
-	minimatch.filter = filter;
-	function filter (pattern, options) {
-	  options = options || {};
-	  return function (p, i, list) {
-	    return minimatch(p, pattern, options)
-	  }
-	}
-
-	function ext (a, b) {
-	  b = b || {};
-	  var t = {};
-	  Object.keys(a).forEach(function (k) {
-	    t[k] = a[k];
-	  });
-	  Object.keys(b).forEach(function (k) {
-	    t[k] = b[k];
-	  });
-	  return t
-	}
-
-	minimatch.defaults = function (def) {
-	  if (!def || typeof def !== 'object' || !Object.keys(def).length) {
-	    return minimatch
-	  }
-
-	  var orig = minimatch;
-
-	  var m = function minimatch (p, pattern, options) {
-	    return orig(p, pattern, ext(def, options))
-	  };
-
-	  m.Minimatch = function Minimatch (pattern, options) {
-	    return new orig.Minimatch(pattern, ext(def, options))
-	  };
-	  m.Minimatch.defaults = function defaults (options) {
-	    return orig.defaults(ext(def, options)).Minimatch
-	  };
-
-	  m.filter = function filter (pattern, options) {
-	    return orig.filter(pattern, ext(def, options))
-	  };
-
-	  m.defaults = function defaults (options) {
-	    return orig.defaults(ext(def, options))
-	  };
-
-	  m.makeRe = function makeRe (pattern, options) {
-	    return orig.makeRe(pattern, ext(def, options))
-	  };
-
-	  m.braceExpand = function braceExpand (pattern, options) {
-	    return orig.braceExpand(pattern, ext(def, options))
-	  };
-
-	  m.match = function (list, pattern, options) {
-	    return orig.match(list, pattern, ext(def, options))
-	  };
-
-	  return m
-	};
-
-	Minimatch.defaults = function (def) {
-	  return minimatch.defaults(def).Minimatch
-	};
-
-	function minimatch (p, pattern, options) {
-	  assertValidPattern(pattern);
-
-	  if (!options) options = {};
-
-	  // shortcut: comments match nothing.
-	  if (!options.nocomment && pattern.charAt(0) === '#') {
-	    return false
-	  }
-
-	  return new Minimatch(pattern, options).match(p)
-	}
-
-	function Minimatch (pattern, options) {
-	  if (!(this instanceof Minimatch)) {
-	    return new Minimatch(pattern, options)
-	  }
-
-	  assertValidPattern(pattern);
-
-	  if (!options) options = {};
-
-	  pattern = pattern.trim();
-
-	  // windows support: need to use /, not \
-	  if (!options.allowWindowsEscape && path.sep !== '/') {
-	    pattern = pattern.split(path.sep).join('/');
-	  }
-
-	  this.options = options;
-	  this.maxGlobstarRecursion = options.maxGlobstarRecursion !== undefined
-	    ? options.maxGlobstarRecursion : 200;
-	  this.set = [];
-	  this.pattern = pattern;
-	  this.regexp = null;
-	  this.negate = false;
-	  this.comment = false;
-	  this.empty = false;
-	  this.partial = !!options.partial;
-
-	  // make the set of regexps etc.
-	  this.make();
-	}
-
-	Minimatch.prototype.debug = function () {};
-
-	Minimatch.prototype.make = make;
-	function make () {
-	  var pattern = this.pattern;
-	  var options = this.options;
-
-	  // empty patterns and comments match nothing.
-	  if (!options.nocomment && pattern.charAt(0) === '#') {
-	    this.comment = true;
-	    return
-	  }
-	  if (!pattern) {
-	    this.empty = true;
-	    return
-	  }
-
-	  // step 1: figure out negation, etc.
-	  this.parseNegate();
-
-	  // step 2: expand braces
-	  var set = this.globSet = this.braceExpand();
-
-	  if (options.debug) this.debug = function debug() { console.error.apply(console, arguments); };
-
-	  this.debug(this.pattern, set);
-
-	  // step 3: now we have a set, so turn each one into a series of path-portion
-	  // matching patterns.
-	  // These will be regexps, except in the case of "**", which is
-	  // set to the GLOBSTAR object for globstar behavior,
-	  // and will not contain any / characters
-	  set = this.globParts = set.map(function (s) {
-	    return s.split(slashSplit)
-	  });
-
-	  this.debug(this.pattern, set);
-
-	  // glob --> regexps
-	  set = set.map(function (s, si, set) {
-	    return s.map(this.parse, this)
-	  }, this);
-
-	  this.debug(this.pattern, set);
-
-	  // filter out everything that didn't compile properly.
-	  set = set.filter(function (s) {
-	    return s.indexOf(false) === -1
-	  });
-
-	  this.debug(this.pattern, set);
-
-	  this.set = set;
-	}
-
-	Minimatch.prototype.parseNegate = parseNegate;
-	function parseNegate () {
-	  var pattern = this.pattern;
-	  var negate = false;
-	  var options = this.options;
-	  var negateOffset = 0;
-
-	  if (options.nonegate) return
-
-	  for (var i = 0, l = pattern.length
-	    ; i < l && pattern.charAt(i) === '!'
-	    ; i++) {
-	    negate = !negate;
-	    negateOffset++;
-	  }
-
-	  if (negateOffset) this.pattern = pattern.substr(negateOffset);
-	  this.negate = negate;
-	}
-
-	// Brace expansion:
-	// a{b,c}d -> abd acd
-	// a{b,}c -> abc ac
-	// a{0..3}d -> a0d a1d a2d a3d
-	// a{b,c{d,e}f}g -> abg acdfg acefg
-	// a{b,c}d{e,f}g -> abdeg acdeg abdeg abdfg
-	//
-	// Invalid sets are not expanded.
-	// a{2..}b -> a{2..}b
-	// a{b}c -> a{b}c
-	minimatch.braceExpand = function (pattern, options) {
-	  return braceExpand(pattern, options)
-	};
-
-	Minimatch.prototype.braceExpand = braceExpand;
-
-	function braceExpand (pattern, options) {
-	  if (!options) {
-	    if (this instanceof Minimatch) {
-	      options = this.options;
-	    } else {
-	      options = {};
-	    }
-	  }
-
-	  pattern = typeof pattern === 'undefined'
-	    ? this.pattern : pattern;
-
-	  assertValidPattern(pattern);
-
-	  // Thanks to Yeting Li <https://github.com/yetingli> for
-	  // improving this regexp to avoid a ReDOS vulnerability.
-	  if (options.nobrace || !/\{(?:(?!\{).)*\}/.test(pattern)) {
-	    // shortcut. no need to expand.
-	    return [pattern]
-	  }
-
-	  return expand(pattern)
-	}
-
-	var MAX_PATTERN_LENGTH = 1024 * 64;
-	var assertValidPattern = function (pattern) {
-	  if (typeof pattern !== 'string') {
-	    throw new TypeError('invalid pattern')
-	  }
-
-	  if (pattern.length > MAX_PATTERN_LENGTH) {
-	    throw new TypeError('pattern is too long')
-	  }
-	};
-
-	// parse a component of the expanded set.
-	// At this point, no pattern may contain "/" in it
-	// so we're going to return a 2d array, where each entry is the full
-	// pattern, split on '/', and then turned into a regular expression.
-	// A regexp is made at the end which joins each array with an
-	// escaped /, and another full one which joins each regexp with |.
-	//
-	// Following the lead of Bash 4.1, note that "**" only has special meaning
-	// when it is the *only* thing in a path portion.  Otherwise, any series
-	// of * is equivalent to a single *.  Globstar behavior is enabled by
-	// default, and can be disabled by setting options.noglobstar.
-	Minimatch.prototype.parse = parse;
-	var SUBPARSE = {};
-	function parse (pattern, isSub) {
-	  assertValidPattern(pattern);
-
-	  var options = this.options;
-
-	  // shortcuts
-	  if (pattern === '**') {
-	    if (!options.noglobstar)
-	      return GLOBSTAR
-	    else
-	      pattern = '*';
-	  }
-	  if (pattern === '') return ''
-
-	  var re = '';
-	  var hasMagic = !!options.nocase;
-	  var escaping = false;
-	  // ? => one single character
-	  var patternListStack = [];
-	  var negativeLists = [];
-	  var stateChar;
-	  var inClass = false;
-	  var reClassStart = -1;
-	  var classStart = -1;
-	  // . and .. never match anything that doesn't start with .,
-	  // even when options.dot is set.
-	  var patternStart = pattern.charAt(0) === '.' ? '' // anything
-	  // not (start or / followed by . or .. followed by / or end)
-	  : options.dot ? '(?!(?:^|\\\/)\\.{1,2}(?:$|\\\/))'
-	  : '(?!\\.)';
-	  var self = this;
-
-	  function clearStateChar () {
-	    if (stateChar) {
-	      // we had some state-tracking character
-	      // that wasn't consumed by this pass.
-	      switch (stateChar) {
-	        case '*':
-	          re += star;
-	          hasMagic = true;
-	        break
-	        case '?':
-	          re += qmark;
-	          hasMagic = true;
-	        break
-	        default:
-	          re += '\\' + stateChar;
-	        break
-	      }
-	      self.debug('clearStateChar %j %j', stateChar, re);
-	      stateChar = false;
-	    }
-	  }
-
-	  for (var i = 0, len = pattern.length, c
-	    ; (i < len) && (c = pattern.charAt(i))
-	    ; i++) {
-	    this.debug('%s\t%s %s %j', pattern, i, re, c);
-
-	    // skip over any that are escaped.
-	    if (escaping && reSpecials[c]) {
-	      re += '\\' + c;
-	      escaping = false;
-	      continue
-	    }
-
-	    switch (c) {
-	      /* istanbul ignore next */
-	      case '/': {
-	        // completely not allowed, even escaped.
-	        // Should already be path-split by now.
-	        return false
-	      }
-
-	      case '\\':
-	        clearStateChar();
-	        escaping = true;
-	      continue
-
-	      // the various stateChar values
-	      // for the "extglob" stuff.
-	      case '?':
-	      case '*':
-	      case '+':
-	      case '@':
-	      case '!':
-	        this.debug('%s\t%s %s %j <-- stateChar', pattern, i, re, c);
-
-	        // all of those are literals inside a class, except that
-	        // the glob [!a] means [^a] in regexp
-	        if (inClass) {
-	          this.debug('  in class');
-	          if (c === '!' && i === classStart + 1) c = '^';
-	          re += c;
-	          continue
-	        }
-
-	        // coalesce consecutive non-globstar * characters
-	        if (c === '*' && stateChar === '*') continue
-
-	        // if we already have a stateChar, then it means
-	        // that there was something like ** or +? in there.
-	        // Handle the stateChar, then proceed with this one.
-	        self.debug('call clearStateChar %j', stateChar);
-	        clearStateChar();
-	        stateChar = c;
-	        // if extglob is disabled, then +(asdf|foo) isn't a thing.
-	        // just clear the statechar *now*, rather than even diving into
-	        // the patternList stuff.
-	        if (options.noext) clearStateChar();
-	      continue
-
-	      case '(':
-	        if (inClass) {
-	          re += '(';
-	          continue
-	        }
-
-	        if (!stateChar) {
-	          re += '\\(';
-	          continue
-	        }
-
-	        patternListStack.push({
-	          type: stateChar,
-	          start: i - 1,
-	          reStart: re.length,
-	          open: plTypes[stateChar].open,
-	          close: plTypes[stateChar].close
-	        });
-	        // negation is (?:(?!js)[^/]*)
-	        re += stateChar === '!' ? '(?:(?!(?:' : '(?:';
-	        this.debug('plType %j %j', stateChar, re);
-	        stateChar = false;
-	      continue
-
-	      case ')':
-	        if (inClass || !patternListStack.length) {
-	          re += '\\)';
-	          continue
-	        }
-
-	        clearStateChar();
-	        hasMagic = true;
-	        var pl = patternListStack.pop();
-	        // negation is (?:(?!js)[^/]*)
-	        // The others are (?:<pattern>)<type>
-	        re += pl.close;
-	        if (pl.type === '!') {
-	          negativeLists.push(pl);
-	        }
-	        pl.reEnd = re.length;
-	      continue
-
-	      case '|':
-	        if (inClass || !patternListStack.length || escaping) {
-	          re += '\\|';
-	          escaping = false;
-	          continue
-	        }
-
-	        clearStateChar();
-	        re += '|';
-	      continue
-
-	      // these are mostly the same in regexp and glob
-	      case '[':
-	        // swallow any state-tracking char before the [
-	        clearStateChar();
-
-	        if (inClass) {
-	          re += '\\' + c;
-	          continue
-	        }
-
-	        inClass = true;
-	        classStart = i;
-	        reClassStart = re.length;
-	        re += c;
-	      continue
-
-	      case ']':
-	        //  a right bracket shall lose its special
-	        //  meaning and represent itself in
-	        //  a bracket expression if it occurs
-	        //  first in the list.  -- POSIX.2 2.8.3.2
-	        if (i === classStart + 1 || !inClass) {
-	          re += '\\' + c;
-	          escaping = false;
-	          continue
-	        }
-
-	        // handle the case where we left a class open.
-	        // "[z-a]" is valid, equivalent to "\[z-a\]"
-	        // split where the last [ was, make sure we don't have
-	        // an invalid re. if so, re-walk the contents of the
-	        // would-be class to re-translate any characters that
-	        // were passed through as-is
-	        // TODO: It would probably be faster to determine this
-	        // without a try/catch and a new RegExp, but it's tricky
-	        // to do safely.  For now, this is safe and works.
-	        var cs = pattern.substring(classStart + 1, i);
-	        try {
-	          RegExp('[' + cs + ']');
-	        } catch (er) {
-	          // not a valid class!
-	          var sp = this.parse(cs, SUBPARSE);
-	          re = re.substr(0, reClassStart) + '\\[' + sp[0] + '\\]';
-	          hasMagic = hasMagic || sp[1];
-	          inClass = false;
-	          continue
-	        }
-
-	        // finish up the class.
-	        hasMagic = true;
-	        inClass = false;
-	        re += c;
-	      continue
-
-	      default:
-	        // swallow any state char that wasn't consumed
-	        clearStateChar();
-
-	        if (escaping) {
-	          // no need
-	          escaping = false;
-	        } else if (reSpecials[c]
-	          && !(c === '^' && inClass)) {
-	          re += '\\';
-	        }
-
-	        re += c;
-
-	    } // switch
-	  } // for
-
-	  // handle the case where we left a class open.
-	  // "[abc" is valid, equivalent to "\[abc"
-	  if (inClass) {
-	    // split where the last [ was, and escape it
-	    // this is a huge pita.  We now have to re-walk
-	    // the contents of the would-be class to re-translate
-	    // any characters that were passed through as-is
-	    cs = pattern.substr(classStart + 1);
-	    sp = this.parse(cs, SUBPARSE);
-	    re = re.substr(0, reClassStart) + '\\[' + sp[0];
-	    hasMagic = hasMagic || sp[1];
-	  }
-
-	  // handle the case where we had a +( thing at the *end*
-	  // of the pattern.
-	  // each pattern list stack adds 3 chars, and we need to go through
-	  // and escape any | chars that were passed through as-is for the regexp.
-	  // Go through and escape them, taking care not to double-escape any
-	  // | chars that were already escaped.
-	  for (pl = patternListStack.pop(); pl; pl = patternListStack.pop()) {
-	    var tail = re.slice(pl.reStart + pl.open.length);
-	    this.debug('setting tail', re, pl);
-	    // maybe some even number of \, then maybe 1 \, followed by a |
-	    tail = tail.replace(/((?:\\{2}){0,64})(\\?)\|/g, function (_, $1, $2) {
-	      if (!$2) {
-	        // the | isn't already escaped, so escape it.
-	        $2 = '\\';
-	      }
-
-	      // need to escape all those slashes *again*, without escaping the
-	      // one that we need for escaping the | character.  As it works out,
-	      // escaping an even number of slashes can be done by simply repeating
-	      // it exactly after itself.  That's why this trick works.
-	      //
-	      // I am sorry that you have to see this.
-	      return $1 + $1 + $2 + '|'
-	    });
-
-	    this.debug('tail=%j\n   %s', tail, tail, pl, re);
-	    var t = pl.type === '*' ? star
-	      : pl.type === '?' ? qmark
-	      : '\\' + pl.type;
-
-	    hasMagic = true;
-	    re = re.slice(0, pl.reStart) + t + '\\(' + tail;
-	  }
-
-	  // handle trailing things that only matter at the very end.
-	  clearStateChar();
-	  if (escaping) {
-	    // trailing \\
-	    re += '\\\\';
-	  }
-
-	  // only need to apply the nodot start if the re starts with
-	  // something that could conceivably capture a dot
-	  var addPatternStart = false;
-	  switch (re.charAt(0)) {
-	    case '[': case '.': case '(': addPatternStart = true;
-	  }
-
-	  // Hack to work around lack of negative lookbehind in JS
-	  // A pattern like: *.!(x).!(y|z) needs to ensure that a name
-	  // like 'a.xyz.yz' doesn't match.  So, the first negative
-	  // lookahead, has to look ALL the way ahead, to the end of
-	  // the pattern.
-	  for (var n = negativeLists.length - 1; n > -1; n--) {
-	    var nl = negativeLists[n];
-
-	    var nlBefore = re.slice(0, nl.reStart);
-	    var nlFirst = re.slice(nl.reStart, nl.reEnd - 8);
-	    var nlLast = re.slice(nl.reEnd - 8, nl.reEnd);
-	    var nlAfter = re.slice(nl.reEnd);
-
-	    nlLast += nlAfter;
-
-	    // Handle nested stuff like *(*.js|!(*.json)), where open parens
-	    // mean that we should *not* include the ) in the bit that is considered
-	    // "after" the negated section.
-	    var openParensBefore = nlBefore.split('(').length - 1;
-	    var cleanAfter = nlAfter;
-	    for (i = 0; i < openParensBefore; i++) {
-	      cleanAfter = cleanAfter.replace(/\)[+*?]?/, '');
-	    }
-	    nlAfter = cleanAfter;
-
-	    var dollar = '';
-	    if (nlAfter === '' && isSub !== SUBPARSE) {
-	      dollar = '$';
-	    }
-	    var newRe = nlBefore + nlFirst + nlAfter + dollar + nlLast;
-	    re = newRe;
-	  }
-
-	  // if the re is not "" at this point, then we need to make sure
-	  // it doesn't match against an empty path part.
-	  // Otherwise a/* will match a/, which it should not.
-	  if (re !== '' && hasMagic) {
-	    re = '(?=.)' + re;
-	  }
-
-	  if (addPatternStart) {
-	    re = patternStart + re;
-	  }
-
-	  // parsing just a piece of a larger pattern.
-	  if (isSub === SUBPARSE) {
-	    return [re, hasMagic]
-	  }
-
-	  // skip the regexp for non-magical patterns
-	  // unescape anything in it, though, so that it'll be
-	  // an exact match against a file etc.
-	  if (!hasMagic) {
-	    return globUnescape(pattern)
-	  }
-
-	  var flags = options.nocase ? 'i' : '';
-	  try {
-	    var regExp = new RegExp('^' + re + '$', flags);
-	  } catch (er) /* istanbul ignore next - should be impossible */ {
-	    // If it was an invalid regular expression, then it can't match
-	    // anything.  This trick looks for a character after the end of
-	    // the string, which is of course impossible, except in multi-line
-	    // mode, but it's not a /m regex.
-	    return new RegExp('$.')
-	  }
-
-	  regExp._glob = pattern;
-	  regExp._src = re;
-
-	  return regExp
-	}
-
-	minimatch.makeRe = function (pattern, options) {
-	  return new Minimatch(pattern, options || {}).makeRe()
-	};
-
-	Minimatch.prototype.makeRe = makeRe;
-	function makeRe () {
-	  if (this.regexp || this.regexp === false) return this.regexp
-
-	  // at this point, this.set is a 2d array of partial
-	  // pattern strings, or "**".
-	  //
-	  // It's better to use .match().  This function shouldn't
-	  // be used, really, but it's pretty convenient sometimes,
-	  // when you just want to work with a regex.
-	  var set = this.set;
-
-	  if (!set.length) {
-	    this.regexp = false;
-	    return this.regexp
-	  }
-	  var options = this.options;
-
-	  var twoStar = options.noglobstar ? star
-	    : options.dot ? twoStarDot
-	    : twoStarNoDot;
-	  var flags = options.nocase ? 'i' : '';
-
-	  var re = set.map(function (pattern) {
-	    return pattern.map(function (p) {
-	      return (p === GLOBSTAR) ? twoStar
-	      : (typeof p === 'string') ? regExpEscape(p)
-	      : p._src
-	    }).join('\\\/')
-	  }).join('|');
-
-	  // must match entire pattern
-	  // ending in a * or ** will make it less strict.
-	  re = '^(?:' + re + ')$';
-
-	  // can match anything, as long as it's not this.
-	  if (this.negate) re = '^(?!' + re + ').*$';
-
-	  try {
-	    this.regexp = new RegExp(re, flags);
-	  } catch (ex) /* istanbul ignore next - should be impossible */ {
-	    this.regexp = false;
-	  }
-	  return this.regexp
-	}
-
-	minimatch.match = function (list, pattern, options) {
-	  options = options || {};
-	  var mm = new Minimatch(pattern, options);
-	  list = list.filter(function (f) {
-	    return mm.match(f)
-	  });
-	  if (mm.options.nonull && !list.length) {
-	    list.push(pattern);
-	  }
-	  return list
-	};
-
-	Minimatch.prototype.match = function match (f, partial) {
-	  if (typeof partial === 'undefined') partial = this.partial;
-	  this.debug('match', f, this.pattern);
-	  // short-circuit in the case of busted things.
-	  // comments, etc.
-	  if (this.comment) return false
-	  if (this.empty) return f === ''
-
-	  if (f === '/' && partial) return true
-
-	  var options = this.options;
-
-	  // windows: need to use /, not \
-	  if (path.sep !== '/') {
-	    f = f.split(path.sep).join('/');
-	  }
-
-	  // treat the test path as a set of pathparts.
-	  f = f.split(slashSplit);
-	  this.debug(this.pattern, 'split', f);
-
-	  // just ONE of the pattern sets in this.set needs to match
-	  // in order for it to be valid.  If negating, then just one
-	  // match means that we have failed.
-	  // Either way, return on the first hit.
-
-	  var set = this.set;
-	  this.debug(this.pattern, 'set', set);
-
-	  // Find the basename of the path by looking for the last non-empty segment
-	  var filename;
-	  var i;
-	  for (i = f.length - 1; i >= 0; i--) {
-	    filename = f[i];
-	    if (filename) break
-	  }
-
-	  for (i = 0; i < set.length; i++) {
-	    var pattern = set[i];
-	    var file = f;
-	    if (options.matchBase && pattern.length === 1) {
-	      file = [filename];
-	    }
-	    var hit = this.matchOne(file, pattern, partial);
-	    if (hit) {
-	      if (options.flipNegate) return true
-	      return !this.negate
-	    }
-	  }
-
-	  // didn't get any hits.  this is success if it's a negative
-	  // pattern, failure otherwise.
-	  if (options.flipNegate) return false
-	  return this.negate
-	};
-
-	// set partial to true to test if, for example,
-	// "/a/b" matches the start of "/*/b/*/d"
-	// Partial means, if you run out of file before you run
-	// out of pattern, then that's fine, as long as all
-	// the parts match.
-	Minimatch.prototype.matchOne = function (file, pattern, partial) {
-	  if (pattern.indexOf(GLOBSTAR) !== -1) {
-	    return this._matchGlobstar(file, pattern, partial, 0, 0)
-	  }
-	  return this._matchOne(file, pattern, partial, 0, 0)
-	};
-
-	Minimatch.prototype._matchGlobstar = function (file, pattern, partial, fileIndex, patternIndex) {
-	  var i;
-
-	  // find first globstar from patternIndex
-	  var firstgs = -1;
-	  for (i = patternIndex; i < pattern.length; i++) {
-	    if (pattern[i] === GLOBSTAR) { firstgs = i; break }
-	  }
-
-	  // find last globstar
-	  var lastgs = -1;
-	  for (i = pattern.length - 1; i >= 0; i--) {
-	    if (pattern[i] === GLOBSTAR) { lastgs = i; break }
-	  }
-
-	  var head = pattern.slice(patternIndex, firstgs);
-	  var body = partial ? pattern.slice(firstgs + 1) : pattern.slice(firstgs + 1, lastgs);
-	  var tail = partial ? [] : pattern.slice(lastgs + 1);
-
-	  // check the head
-	  if (head.length) {
-	    var fileHead = file.slice(fileIndex, fileIndex + head.length);
-	    if (!this._matchOne(fileHead, head, partial, 0, 0)) {
-	      return false
-	    }
-	    fileIndex += head.length;
-	  }
-
-	  // check the tail
-	  var fileTailMatch = 0;
-	  if (tail.length) {
-	    if (tail.length + fileIndex > file.length) return false
-
-	    var tailStart = file.length - tail.length;
-	    if (this._matchOne(file, tail, partial, tailStart, 0)) {
-	      fileTailMatch = tail.length;
-	    } else {
-	      // affordance for stuff like a/**/* matching a/b/
-	      if (file[file.length - 1] !== '' ||
-	          fileIndex + tail.length === file.length) {
-	        return false
-	      }
-	      tailStart--;
-	      if (!this._matchOne(file, tail, partial, tailStart, 0)) {
-	        return false
-	      }
-	      fileTailMatch = tail.length + 1;
-	    }
-	  }
-
-	  // if body is empty (single ** between head and tail)
-	  if (!body.length) {
-	    var sawSome = !!fileTailMatch;
-	    for (i = fileIndex; i < file.length - fileTailMatch; i++) {
-	      var f = String(file[i]);
-	      sawSome = true;
-	      if (f === '.' || f === '..' ||
-	          (!this.options.dot && f.charAt(0) === '.')) {
-	        return false
-	      }
-	    }
-	    return partial || sawSome
-	  }
-
-	  // split body into segments at each GLOBSTAR
-	  var bodySegments = [[[], 0]];
-	  var currentBody = bodySegments[0];
-	  var nonGsParts = 0;
-	  var nonGsPartsSums = [0];
-	  for (var bi = 0; bi < body.length; bi++) {
-	    var b = body[bi];
-	    if (b === GLOBSTAR) {
-	      nonGsPartsSums.push(nonGsParts);
-	      currentBody = [[], 0];
-	      bodySegments.push(currentBody);
-	    } else {
-	      currentBody[0].push(b);
-	      nonGsParts++;
-	    }
-	  }
-
-	  var idx = bodySegments.length - 1;
-	  var fileLength = file.length - fileTailMatch;
-	  for (var si = 0; si < bodySegments.length; si++) {
-	    bodySegments[si][1] = fileLength -
-	      (nonGsPartsSums[idx--] + bodySegments[si][0].length);
-	  }
-
-	  return !!this._matchGlobStarBodySections(
-	    file, bodySegments, fileIndex, 0, partial, 0, !!fileTailMatch
-	  )
-	};
-
-	// return false for "nope, not matching"
-	// return null for "not matching, cannot keep trying"
-	Minimatch.prototype._matchGlobStarBodySections = function (
-	  file, bodySegments, fileIndex, bodyIndex, partial, globStarDepth, sawTail
-	) {
-	  var bs = bodySegments[bodyIndex];
-	  if (!bs) {
-	    // just make sure there are no bad dots
-	    for (var i = fileIndex; i < file.length; i++) {
-	      sawTail = true;
-	      var f = file[i];
-	      if (f === '.' || f === '..' ||
-	          (!this.options.dot && f.charAt(0) === '.')) {
-	        return false
-	      }
-	    }
-	    return sawTail
-	  }
-
-	  var body = bs[0];
-	  var after = bs[1];
-	  while (fileIndex <= after) {
-	    var m = this._matchOne(
-	      file.slice(0, fileIndex + body.length),
-	      body,
-	      partial,
-	      fileIndex,
-	      0
-	    );
-	    // if limit exceeded, no match. intentional false negative,
-	    // acceptable break in correctness for security.
-	    if (m && globStarDepth < this.maxGlobstarRecursion) {
-	      var sub = this._matchGlobStarBodySections(
-	        file, bodySegments,
-	        fileIndex + body.length, bodyIndex + 1,
-	        partial, globStarDepth + 1, sawTail
-	      );
-	      if (sub !== false) {
-	        return sub
-	      }
-	    }
-	    var f = file[fileIndex];
-	    if (f === '.' || f === '..' ||
-	        (!this.options.dot && f.charAt(0) === '.')) {
-	      return false
-	    }
-	    fileIndex++;
-	  }
-	  return partial || null
-	};
-
-	Minimatch.prototype._matchOne = function (file, pattern, partial, fileIndex, patternIndex) {
-	  var fi, pi, fl, pl;
-	  for (
-	    fi = fileIndex, pi = patternIndex, fl = file.length, pl = pattern.length
-	    ; (fi < fl) && (pi < pl)
-	    ; fi++, pi++
-	  ) {
-	    this.debug('matchOne loop');
-	    var p = pattern[pi];
-	    var f = file[fi];
-
-	    this.debug(pattern, p, f);
-
-	    // should be impossible.
-	    // some invalid regexp stuff in the set.
-	    /* istanbul ignore if */
-	    if (p === false || p === GLOBSTAR) return false
-
-	    // something other than **
-	    // non-magic patterns just have to match exactly
-	    // patterns with magic have been turned into regexps.
-	    var hit;
-	    if (typeof p === 'string') {
-	      hit = f === p;
-	      this.debug('string match', p, f, hit);
-	    } else {
-	      hit = f.match(p);
-	      this.debug('pattern match', p, f, hit);
-	    }
-
-	    if (!hit) return false
-	  }
-
-	  // now either we fell off the end of the pattern, or we're done.
-	  if (fi === fl && pi === pl) {
-	    // ran out of pattern and filename at the same time.
-	    // an exact hit!
-	    return true
-	  } else if (fi === fl) {
-	    // ran out of file, but still had pattern left.
-	    // this is ok if we're doing the match as part of
-	    // a glob fs traversal.
-	    return partial
-	  } else /* istanbul ignore else */ if (pi === pl) {
-	    // ran out of pattern, still have file left.
-	    // this is only acceptable if we're on the very last
-	    // empty segment of a file with a trailing slash.
-	    // a/* should match a/b/
-	    return (fi === fl - 1) && (file[fi] === '')
-	  }
-
-	  // should be unreachable.
-	  /* istanbul ignore next */
-	  throw new Error('wtf?')
-	};
-
-	// replace stuff like \* with *
-	function globUnescape (s) {
-	  return s.replace(/\\(.)/g, '$1')
-	}
-
-	function regExpEscape (s) {
-	  return s.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')
-	}
-	return minimatch_1;
+_a = AST;
+
+/**
+ * Escape all magic characters in a glob pattern.
+ *
+ * If the {@link MinimatchOptions.windowsPathsNoEscape}
+ * option is used, then characters are escaped by wrapping in `[]`, because
+ * a magic character wrapped in a character class can only be satisfied by
+ * that exact character.  In this mode, `\` is _not_ escaped, because it is
+ * not interpreted as a magic character, but instead as a path separator.
+ *
+ * If the {@link MinimatchOptions.magicalBraces} option is used,
+ * then braces (`{` and `}`) will be escaped.
+ */
+const escape$1 = (s, { windowsPathsNoEscape = false, magicalBraces = false, } = {}) => {
+    // don't need to escape +@! because we escape the parens
+    // that make those magic, and escaping ! as [!] isn't valid,
+    // because [!]] is a valid glob class meaning not ']'.
+    if (magicalBraces) {
+        return windowsPathsNoEscape ?
+            s.replace(/[?*()[\]{}]/g, '[$&]')
+            : s.replace(/[?*()[\]\\{}]/g, '\\$&');
+    }
+    return windowsPathsNoEscape ?
+        s.replace(/[?*()[\]]/g, '[$&]')
+        : s.replace(/[?*()[\]\\]/g, '\\$&');
+};
+
+const minimatch = (p, pattern, options = {}) => {
+    assertValidPattern(pattern);
+    // shortcut: comments match nothing.
+    if (!options.nocomment && pattern.charAt(0) === '#') {
+        return false;
+    }
+    return new Minimatch(pattern, options).match(p);
+};
+// Optimized checking for the most common glob patterns.
+const starDotExtRE = /^\*+([^+@!?*[(]*)$/;
+const starDotExtTest = (ext) => (f) => !f.startsWith('.') && f.endsWith(ext);
+const starDotExtTestDot = (ext) => (f) => f.endsWith(ext);
+const starDotExtTestNocase = (ext) => {
+    ext = ext.toLowerCase();
+    return (f) => !f.startsWith('.') && f.toLowerCase().endsWith(ext);
+};
+const starDotExtTestNocaseDot = (ext) => {
+    ext = ext.toLowerCase();
+    return (f) => f.toLowerCase().endsWith(ext);
+};
+const starDotStarRE = /^\*+\.\*+$/;
+const starDotStarTest = (f) => !f.startsWith('.') && f.includes('.');
+const starDotStarTestDot = (f) => f !== '.' && f !== '..' && f.includes('.');
+const dotStarRE = /^\.\*+$/;
+const dotStarTest = (f) => f !== '.' && f !== '..' && f.startsWith('.');
+const starRE = /^\*+$/;
+const starTest = (f) => f.length !== 0 && !f.startsWith('.');
+const starTestDot = (f) => f.length !== 0 && f !== '.' && f !== '..';
+const qmarksRE = /^\?+([^+@!?*[(]*)?$/;
+const qmarksTestNocase = ([$0, ext = '']) => {
+    const noext = qmarksTestNoExt([$0]);
+    if (!ext)
+        return noext;
+    ext = ext.toLowerCase();
+    return (f) => noext(f) && f.toLowerCase().endsWith(ext);
+};
+const qmarksTestNocaseDot = ([$0, ext = '']) => {
+    const noext = qmarksTestNoExtDot([$0]);
+    if (!ext)
+        return noext;
+    ext = ext.toLowerCase();
+    return (f) => noext(f) && f.toLowerCase().endsWith(ext);
+};
+const qmarksTestDot = ([$0, ext = '']) => {
+    const noext = qmarksTestNoExtDot([$0]);
+    return !ext ? noext : (f) => noext(f) && f.endsWith(ext);
+};
+const qmarksTest = ([$0, ext = '']) => {
+    const noext = qmarksTestNoExt([$0]);
+    return !ext ? noext : (f) => noext(f) && f.endsWith(ext);
+};
+const qmarksTestNoExt = ([$0]) => {
+    const len = $0.length;
+    return (f) => f.length === len && !f.startsWith('.');
+};
+const qmarksTestNoExtDot = ([$0]) => {
+    const len = $0.length;
+    return (f) => f.length === len && f !== '.' && f !== '..';
+};
+/* c8 ignore start */
+const defaultPlatform = (typeof process === 'object' && process ?
+    (typeof process.env === 'object' &&
+        process.env &&
+        process.env.__MINIMATCH_TESTING_PLATFORM__) ||
+        process.platform
+    : 'posix');
+const path = {
+    win32: { sep: '\\' },
+    posix: { sep: '/' },
+};
+/* c8 ignore stop */
+const sep$1 = defaultPlatform === 'win32' ? path.win32.sep : path.posix.sep;
+minimatch.sep = sep$1;
+const GLOBSTAR = Symbol('globstar **');
+minimatch.GLOBSTAR = GLOBSTAR;
+// any single thing other than /
+// don't need to escape / when using new RegExp()
+const qmark = '[^/]';
+// * => any number of characters
+const star = qmark + '*?';
+// ** when dots are allowed.  Anything goes, except .. and .
+// not (^ or / followed by one or two dots followed by $ or /),
+// followed by anything, any number of times.
+const twoStarDot = '(?:(?!(?:\\/|^)(?:\\.{1,2})($|\\/)).)*?';
+// not a ^ or / followed by a dot,
+// followed by anything, any number of times.
+const twoStarNoDot = '(?:(?!(?:\\/|^)\\.).)*?';
+const filter = (pattern, options = {}) => (p) => minimatch(p, pattern, options);
+minimatch.filter = filter;
+const ext = (a, b = {}) => Object.assign({}, a, b);
+const defaults = (def) => {
+    if (!def || typeof def !== 'object' || !Object.keys(def).length) {
+        return minimatch;
+    }
+    const orig = minimatch;
+    const m = (p, pattern, options = {}) => orig(p, pattern, ext(def, options));
+    return Object.assign(m, {
+        Minimatch: class Minimatch extends orig.Minimatch {
+            constructor(pattern, options = {}) {
+                super(pattern, ext(def, options));
+            }
+            static defaults(options) {
+                return orig.defaults(ext(def, options)).Minimatch;
+            }
+        },
+        AST: class AST extends orig.AST {
+            /* c8 ignore start */
+            constructor(type, parent, options = {}) {
+                super(type, parent, ext(def, options));
+            }
+            /* c8 ignore stop */
+            static fromGlob(pattern, options = {}) {
+                return orig.AST.fromGlob(pattern, ext(def, options));
+            }
+        },
+        unescape: (s, options = {}) => orig.unescape(s, ext(def, options)),
+        escape: (s, options = {}) => orig.escape(s, ext(def, options)),
+        filter: (pattern, options = {}) => orig.filter(pattern, ext(def, options)),
+        defaults: (options) => orig.defaults(ext(def, options)),
+        makeRe: (pattern, options = {}) => orig.makeRe(pattern, ext(def, options)),
+        braceExpand: (pattern, options = {}) => orig.braceExpand(pattern, ext(def, options)),
+        match: (list, pattern, options = {}) => orig.match(list, pattern, ext(def, options)),
+        sep: orig.sep,
+        GLOBSTAR: GLOBSTAR,
+    });
+};
+minimatch.defaults = defaults;
+// Brace expansion:
+// a{b,c}d -> abd acd
+// a{b,}c -> abc ac
+// a{0..3}d -> a0d a1d a2d a3d
+// a{b,c{d,e}f}g -> abg acdfg acefg
+// a{b,c}d{e,f}g -> abdeg acdeg abdeg abdfg
+//
+// Invalid sets are not expanded.
+// a{2..}b -> a{2..}b
+// a{b}c -> a{b}c
+const braceExpand = (pattern, options = {}) => {
+    assertValidPattern(pattern);
+    // Thanks to Yeting Li <https://github.com/yetingli> for
+    // improving this regexp to avoid a ReDOS vulnerability.
+    if (options.nobrace || !/\{(?:(?!\{).)*\}/.test(pattern)) {
+        // shortcut. no need to expand.
+        return [pattern];
+    }
+    return expand(pattern, { max: options.braceExpandMax });
+};
+minimatch.braceExpand = braceExpand;
+// parse a component of the expanded set.
+// At this point, no pattern may contain "/" in it
+// so we're going to return a 2d array, where each entry is the full
+// pattern, split on '/', and then turned into a regular expression.
+// A regexp is made at the end which joins each array with an
+// escaped /, and another full one which joins each regexp with |.
+//
+// Following the lead of Bash 4.1, note that "**" only has special meaning
+// when it is the *only* thing in a path portion.  Otherwise, any series
+// of * is equivalent to a single *.  Globstar behavior is enabled by
+// default, and can be disabled by setting options.noglobstar.
+const makeRe = (pattern, options = {}) => new Minimatch(pattern, options).makeRe();
+minimatch.makeRe = makeRe;
+const match = (list, pattern, options = {}) => {
+    const mm = new Minimatch(pattern, options);
+    list = list.filter(f => mm.match(f));
+    if (mm.options.nonull && !list.length) {
+        list.push(pattern);
+    }
+    return list;
+};
+minimatch.match = match;
+// replace stuff like \* with *
+const globMagic = /[?*]|[+@!]\(.*?\)|\[|\]/;
+const regExpEscape = (s) => s.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
+class Minimatch {
+    options;
+    set;
+    pattern;
+    windowsPathsNoEscape;
+    nonegate;
+    negate;
+    comment;
+    empty;
+    preserveMultipleSlashes;
+    partial;
+    globSet;
+    globParts;
+    nocase;
+    isWindows;
+    platform;
+    windowsNoMagicRoot;
+    maxGlobstarRecursion;
+    regexp;
+    constructor(pattern, options = {}) {
+        assertValidPattern(pattern);
+        options = options || {};
+        this.options = options;
+        this.maxGlobstarRecursion = options.maxGlobstarRecursion ?? 200;
+        this.pattern = pattern;
+        this.platform = options.platform || defaultPlatform;
+        this.isWindows = this.platform === 'win32';
+        // avoid the annoying deprecation flag lol
+        const awe = ('allowWindow' + 'sEscape');
+        this.windowsPathsNoEscape =
+            !!options.windowsPathsNoEscape || options[awe] === false;
+        if (this.windowsPathsNoEscape) {
+            this.pattern = this.pattern.replace(/\\/g, '/');
+        }
+        this.preserveMultipleSlashes = !!options.preserveMultipleSlashes;
+        this.regexp = null;
+        this.negate = false;
+        this.nonegate = !!options.nonegate;
+        this.comment = false;
+        this.empty = false;
+        this.partial = !!options.partial;
+        this.nocase = !!this.options.nocase;
+        this.windowsNoMagicRoot =
+            options.windowsNoMagicRoot !== undefined ?
+                options.windowsNoMagicRoot
+                : !!(this.isWindows && this.nocase);
+        this.globSet = [];
+        this.globParts = [];
+        this.set = [];
+        // make the set of regexps etc.
+        this.make();
+    }
+    hasMagic() {
+        if (this.options.magicalBraces && this.set.length > 1) {
+            return true;
+        }
+        for (const pattern of this.set) {
+            for (const part of pattern) {
+                if (typeof part !== 'string')
+                    return true;
+            }
+        }
+        return false;
+    }
+    debug(..._) { }
+    make() {
+        const pattern = this.pattern;
+        const options = this.options;
+        // empty patterns and comments match nothing.
+        if (!options.nocomment && pattern.charAt(0) === '#') {
+            this.comment = true;
+            return;
+        }
+        if (!pattern) {
+            this.empty = true;
+            return;
+        }
+        // step 1: figure out negation, etc.
+        this.parseNegate();
+        // step 2: expand braces
+        this.globSet = [...new Set(this.braceExpand())];
+        if (options.debug) {
+            //oxlint-disable-next-line no-console
+            this.debug = (...args) => console.error(...args);
+        }
+        this.debug(this.pattern, this.globSet);
+        // step 3: now we have a set, so turn each one into a series of
+        // path-portion matching patterns.
+        // These will be regexps, except in the case of "**", which is
+        // set to the GLOBSTAR object for globstar behavior,
+        // and will not contain any / characters
+        //
+        // First, we preprocess to make the glob pattern sets a bit simpler
+        // and deduped.  There are some perf-killing patterns that can cause
+        // problems with a glob walk, but we can simplify them down a bit.
+        const rawGlobParts = this.globSet.map(s => this.slashSplit(s));
+        this.globParts = this.preprocess(rawGlobParts);
+        this.debug(this.pattern, this.globParts);
+        // glob --> regexps
+        let set = this.globParts.map((s, _, __) => {
+            if (this.isWindows && this.windowsNoMagicRoot) {
+                // check if it's a drive or unc path.
+                const isUNC = s[0] === '' &&
+                    s[1] === '' &&
+                    (s[2] === '?' || !globMagic.test(s[2])) &&
+                    !globMagic.test(s[3]);
+                const isDrive = /^[a-z]:/i.test(s[0]);
+                if (isUNC) {
+                    return [
+                        ...s.slice(0, 4),
+                        ...s.slice(4).map(ss => this.parse(ss)),
+                    ];
+                }
+                else if (isDrive) {
+                    return [s[0], ...s.slice(1).map(ss => this.parse(ss))];
+                }
+            }
+            return s.map(ss => this.parse(ss));
+        });
+        this.debug(this.pattern, set);
+        // filter out everything that didn't compile properly.
+        this.set = set.filter(s => s.indexOf(false) === -1);
+        // do not treat the ? in UNC paths as magic
+        if (this.isWindows) {
+            for (let i = 0; i < this.set.length; i++) {
+                const p = this.set[i];
+                if (p[0] === '' &&
+                    p[1] === '' &&
+                    this.globParts[i][2] === '?' &&
+                    typeof p[3] === 'string' &&
+                    /^[a-z]:$/i.test(p[3])) {
+                    p[2] = '?';
+                }
+            }
+        }
+        this.debug(this.pattern, this.set);
+    }
+    // various transforms to equivalent pattern sets that are
+    // faster to process in a filesystem walk.  The goal is to
+    // eliminate what we can, and push all ** patterns as far
+    // to the right as possible, even if it increases the number
+    // of patterns that we have to process.
+    preprocess(globParts) {
+        // if we're not in globstar mode, then turn ** into *
+        if (this.options.noglobstar) {
+            for (const partset of globParts) {
+                for (let j = 0; j < partset.length; j++) {
+                    if (partset[j] === '**') {
+                        partset[j] = '*';
+                    }
+                }
+            }
+        }
+        const { optimizationLevel = 1 } = this.options;
+        if (optimizationLevel >= 2) {
+            // aggressive optimization for the purpose of fs walking
+            globParts = this.firstPhasePreProcess(globParts);
+            globParts = this.secondPhasePreProcess(globParts);
+        }
+        else if (optimizationLevel >= 1) {
+            // just basic optimizations to remove some .. parts
+            globParts = this.levelOneOptimize(globParts);
+        }
+        else {
+            // just collapse multiple ** portions into one
+            globParts = this.adjascentGlobstarOptimize(globParts);
+        }
+        return globParts;
+    }
+    // just get rid of adjascent ** portions
+    adjascentGlobstarOptimize(globParts) {
+        return globParts.map(parts => {
+            let gs = -1;
+            while (-1 !== (gs = parts.indexOf('**', gs + 1))) {
+                let i = gs;
+                while (parts[i + 1] === '**') {
+                    i++;
+                }
+                if (i !== gs) {
+                    parts.splice(gs, i - gs);
+                }
+            }
+            return parts;
+        });
+    }
+    // get rid of adjascent ** and resolve .. portions
+    levelOneOptimize(globParts) {
+        return globParts.map(parts => {
+            parts = parts.reduce((set, part) => {
+                const prev = set[set.length - 1];
+                if (part === '**' && prev === '**') {
+                    return set;
+                }
+                if (part === '..') {
+                    if (prev && prev !== '..' && prev !== '.' && prev !== '**') {
+                        set.pop();
+                        return set;
+                    }
+                }
+                set.push(part);
+                return set;
+            }, []);
+            return parts.length === 0 ? [''] : parts;
+        });
+    }
+    levelTwoFileOptimize(parts) {
+        if (!Array.isArray(parts)) {
+            parts = this.slashSplit(parts);
+        }
+        let didSomething = false;
+        do {
+            didSomething = false;
+            // <pre>/<e>/<rest> -> <pre>/<rest>
+            if (!this.preserveMultipleSlashes) {
+                for (let i = 1; i < parts.length - 1; i++) {
+                    const p = parts[i];
+                    // don't squeeze out UNC patterns
+                    if (i === 1 && p === '' && parts[0] === '')
+                        continue;
+                    if (p === '.' || p === '') {
+                        didSomething = true;
+                        parts.splice(i, 1);
+                        i--;
+                    }
+                }
+                if (parts[0] === '.' &&
+                    parts.length === 2 &&
+                    (parts[1] === '.' || parts[1] === '')) {
+                    didSomething = true;
+                    parts.pop();
+                }
+            }
+            // <pre>/<p>/../<rest> -> <pre>/<rest>
+            let dd = 0;
+            while (-1 !== (dd = parts.indexOf('..', dd + 1))) {
+                const p = parts[dd - 1];
+                if (p &&
+                    p !== '.' &&
+                    p !== '..' &&
+                    p !== '**' &&
+                    !(this.isWindows && /^[a-z]:$/i.test(p))) {
+                    didSomething = true;
+                    parts.splice(dd - 1, 2);
+                    dd -= 2;
+                }
+            }
+        } while (didSomething);
+        return parts.length === 0 ? [''] : parts;
+    }
+    // First phase: single-pattern processing
+    // <pre> is 1 or more portions
+    // <rest> is 1 or more portions
+    // <p> is any portion other than ., .., '', or **
+    // <e> is . or ''
+    //
+    // **/.. is *brutal* for filesystem walking performance, because
+    // it effectively resets the recursive walk each time it occurs,
+    // and ** cannot be reduced out by a .. pattern part like a regexp
+    // or most strings (other than .., ., and '') can be.
+    //
+    // <pre>/**/../<p>/<p>/<rest> -> {<pre>/../<p>/<p>/<rest>,<pre>/**/<p>/<p>/<rest>}
+    // <pre>/<e>/<rest> -> <pre>/<rest>
+    // <pre>/<p>/../<rest> -> <pre>/<rest>
+    // **/**/<rest> -> **/<rest>
+    //
+    // **/*/<rest> -> */**/<rest> <== not valid because ** doesn't follow
+    // this WOULD be allowed if ** did follow symlinks, or * didn't
+    firstPhasePreProcess(globParts) {
+        let didSomething = false;
+        do {
+            didSomething = false;
+            // <pre>/**/../<p>/<p>/<rest> -> {<pre>/../<p>/<p>/<rest>,<pre>/**/<p>/<p>/<rest>}
+            for (let parts of globParts) {
+                let gs = -1;
+                while (-1 !== (gs = parts.indexOf('**', gs + 1))) {
+                    let gss = gs;
+                    while (parts[gss + 1] === '**') {
+                        // <pre>/**/**/<rest> -> <pre>/**/<rest>
+                        gss++;
+                    }
+                    // eg, if gs is 2 and gss is 4, that means we have 3 **
+                    // parts, and can remove 2 of them.
+                    if (gss > gs) {
+                        parts.splice(gs + 1, gss - gs);
+                    }
+                    let next = parts[gs + 1];
+                    const p = parts[gs + 2];
+                    const p2 = parts[gs + 3];
+                    if (next !== '..')
+                        continue;
+                    if (!p ||
+                        p === '.' ||
+                        p === '..' ||
+                        !p2 ||
+                        p2 === '.' ||
+                        p2 === '..') {
+                        continue;
+                    }
+                    didSomething = true;
+                    // edit parts in place, and push the new one
+                    parts.splice(gs, 1);
+                    const other = parts.slice(0);
+                    other[gs] = '**';
+                    globParts.push(other);
+                    gs--;
+                }
+                // <pre>/<e>/<rest> -> <pre>/<rest>
+                if (!this.preserveMultipleSlashes) {
+                    for (let i = 1; i < parts.length - 1; i++) {
+                        const p = parts[i];
+                        // don't squeeze out UNC patterns
+                        if (i === 1 && p === '' && parts[0] === '')
+                            continue;
+                        if (p === '.' || p === '') {
+                            didSomething = true;
+                            parts.splice(i, 1);
+                            i--;
+                        }
+                    }
+                    if (parts[0] === '.' &&
+                        parts.length === 2 &&
+                        (parts[1] === '.' || parts[1] === '')) {
+                        didSomething = true;
+                        parts.pop();
+                    }
+                }
+                // <pre>/<p>/../<rest> -> <pre>/<rest>
+                let dd = 0;
+                while (-1 !== (dd = parts.indexOf('..', dd + 1))) {
+                    const p = parts[dd - 1];
+                    if (p && p !== '.' && p !== '..' && p !== '**') {
+                        didSomething = true;
+                        const needDot = dd === 1 && parts[dd + 1] === '**';
+                        const splin = needDot ? ['.'] : [];
+                        parts.splice(dd - 1, 2, ...splin);
+                        if (parts.length === 0)
+                            parts.push('');
+                        dd -= 2;
+                    }
+                }
+            }
+        } while (didSomething);
+        return globParts;
+    }
+    // second phase: multi-pattern dedupes
+    // {<pre>/*/<rest>,<pre>/<p>/<rest>} -> <pre>/*/<rest>
+    // {<pre>/<rest>,<pre>/<rest>} -> <pre>/<rest>
+    // {<pre>/**/<rest>,<pre>/<rest>} -> <pre>/**/<rest>
+    //
+    // {<pre>/**/<rest>,<pre>/**/<p>/<rest>} -> <pre>/**/<rest>
+    // ^-- not valid because ** doens't follow symlinks
+    secondPhasePreProcess(globParts) {
+        for (let i = 0; i < globParts.length - 1; i++) {
+            for (let j = i + 1; j < globParts.length; j++) {
+                const matched = this.partsMatch(globParts[i], globParts[j], !this.preserveMultipleSlashes);
+                if (matched) {
+                    globParts[i] = [];
+                    globParts[j] = matched;
+                    break;
+                }
+            }
+        }
+        return globParts.filter(gs => gs.length);
+    }
+    partsMatch(a, b, emptyGSMatch = false) {
+        let ai = 0;
+        let bi = 0;
+        let result = [];
+        let which = '';
+        while (ai < a.length && bi < b.length) {
+            if (a[ai] === b[bi]) {
+                result.push(which === 'b' ? b[bi] : a[ai]);
+                ai++;
+                bi++;
+            }
+            else if (emptyGSMatch && a[ai] === '**' && b[bi] === a[ai + 1]) {
+                result.push(a[ai]);
+                ai++;
+            }
+            else if (emptyGSMatch && b[bi] === '**' && a[ai] === b[bi + 1]) {
+                result.push(b[bi]);
+                bi++;
+            }
+            else if (a[ai] === '*' &&
+                b[bi] &&
+                (this.options.dot || !b[bi].startsWith('.')) &&
+                b[bi] !== '**') {
+                if (which === 'b')
+                    return false;
+                which = 'a';
+                result.push(a[ai]);
+                ai++;
+                bi++;
+            }
+            else if (b[bi] === '*' &&
+                a[ai] &&
+                (this.options.dot || !a[ai].startsWith('.')) &&
+                a[ai] !== '**') {
+                if (which === 'a')
+                    return false;
+                which = 'b';
+                result.push(b[bi]);
+                ai++;
+                bi++;
+            }
+            else {
+                return false;
+            }
+        }
+        // if we fall out of the loop, it means they two are identical
+        // as long as their lengths match
+        return a.length === b.length && result;
+    }
+    parseNegate() {
+        if (this.nonegate)
+            return;
+        const pattern = this.pattern;
+        let negate = false;
+        let negateOffset = 0;
+        for (let i = 0; i < pattern.length && pattern.charAt(i) === '!'; i++) {
+            negate = !negate;
+            negateOffset++;
+        }
+        if (negateOffset)
+            this.pattern = pattern.slice(negateOffset);
+        this.negate = negate;
+    }
+    // set partial to true to test if, for example,
+    // "/a/b" matches the start of "/*/b/*/d"
+    // Partial means, if you run out of file before you run
+    // out of pattern, then that's fine, as long as all
+    // the parts match.
+    matchOne(file, pattern, partial = false) {
+        let fileStartIndex = 0;
+        let patternStartIndex = 0;
+        // UNC paths like //?/X:/... can match X:/... and vice versa
+        // Drive letters in absolute drive or unc paths are always compared
+        // case-insensitively.
+        if (this.isWindows) {
+            const fileDrive = typeof file[0] === 'string' && /^[a-z]:$/i.test(file[0]);
+            const fileUNC = !fileDrive &&
+                file[0] === '' &&
+                file[1] === '' &&
+                file[2] === '?' &&
+                /^[a-z]:$/i.test(file[3]);
+            const patternDrive = typeof pattern[0] === 'string' && /^[a-z]:$/i.test(pattern[0]);
+            const patternUNC = !patternDrive &&
+                pattern[0] === '' &&
+                pattern[1] === '' &&
+                pattern[2] === '?' &&
+                typeof pattern[3] === 'string' &&
+                /^[a-z]:$/i.test(pattern[3]);
+            const fdi = fileUNC ? 3
+                : fileDrive ? 0
+                    : undefined;
+            const pdi = patternUNC ? 3
+                : patternDrive ? 0
+                    : undefined;
+            if (typeof fdi === 'number' && typeof pdi === 'number') {
+                const [fd, pd] = [
+                    file[fdi],
+                    pattern[pdi],
+                ];
+                // start matching at the drive letter index of each
+                if (fd.toLowerCase() === pd.toLowerCase()) {
+                    pattern[pdi] = fd;
+                    patternStartIndex = pdi;
+                    fileStartIndex = fdi;
+                }
+            }
+        }
+        // resolve and reduce . and .. portions in the file as well.
+        // don't need to do the second phase, because it's only one string[]
+        const { optimizationLevel = 1 } = this.options;
+        if (optimizationLevel >= 2) {
+            file = this.levelTwoFileOptimize(file);
+        }
+        if (pattern.includes(GLOBSTAR)) {
+            return this.#matchGlobstar(file, pattern, partial, fileStartIndex, patternStartIndex);
+        }
+        return this.#matchOne(file, pattern, partial, fileStartIndex, patternStartIndex);
+    }
+    #matchGlobstar(file, pattern, partial, fileIndex, patternIndex) {
+        // split the pattern into head, tail, and middle of ** delimited parts
+        const firstgs = pattern.indexOf(GLOBSTAR, patternIndex);
+        const lastgs = pattern.lastIndexOf(GLOBSTAR);
+        // split the pattern up into globstar-delimited sections
+        // the tail has to be at the end, and the others just have
+        // to be found in order from the head.
+        const [head, body, tail] = partial ?
+            [
+                pattern.slice(patternIndex, firstgs),
+                pattern.slice(firstgs + 1),
+                [],
+            ]
+            : [
+                pattern.slice(patternIndex, firstgs),
+                pattern.slice(firstgs + 1, lastgs),
+                pattern.slice(lastgs + 1),
+            ];
+        // check the head, from the current file/pattern index.
+        if (head.length) {
+            const fileHead = file.slice(fileIndex, fileIndex + head.length);
+            if (!this.#matchOne(fileHead, head, partial, 0, 0)) {
+                return false;
+            }
+            fileIndex += head.length;
+            patternIndex += head.length;
+        }
+        // now we know the head matches!
+        // if the last portion is not empty, it MUST match the end
+        // check the tail
+        let fileTailMatch = 0;
+        if (tail.length) {
+            // if head + tail > file, then we cannot possibly match
+            if (tail.length + fileIndex > file.length)
+                return false;
+            // try to match the tail
+            let tailStart = file.length - tail.length;
+            if (this.#matchOne(file, tail, partial, tailStart, 0)) {
+                fileTailMatch = tail.length;
+            }
+            else {
+                // affordance for stuff like a/**/* matching a/b/
+                // if the last file portion is '', and there's more to the pattern
+                // then try without the '' bit.
+                if (file[file.length - 1] !== '' ||
+                    fileIndex + tail.length === file.length) {
+                    return false;
+                }
+                tailStart--;
+                if (!this.#matchOne(file, tail, partial, tailStart, 0)) {
+                    return false;
+                }
+                fileTailMatch = tail.length + 1;
+            }
+        }
+        // now we know the tail matches!
+        // the middle is zero or more portions wrapped in **, possibly
+        // containing more ** sections.
+        // so a/**/b/**/c/**/d has become **/b/**/c/**
+        // if it's empty, it means a/**/b, just verify we have no bad dots
+        // if there's no tail, so it ends on /**, then we must have *something*
+        // after the head, or it's not a matc
+        if (!body.length) {
+            let sawSome = !!fileTailMatch;
+            for (let i = fileIndex; i < file.length - fileTailMatch; i++) {
+                const f = String(file[i]);
+                sawSome = true;
+                if (f === '.' ||
+                    f === '..' ||
+                    (!this.options.dot && f.startsWith('.'))) {
+                    return false;
+                }
+            }
+            // in partial mode, we just need to get past all file parts
+            return partial || sawSome;
+        }
+        // now we know that there's one or more body sections, which can
+        // be matched anywhere from the 0 index (because the head was pruned)
+        // through to the length-fileTailMatch index.
+        // split the body up into sections, and note the minimum index it can
+        // be found at (start with the length of all previous segments)
+        // [section, before, after]
+        const bodySegments = [[[], 0]];
+        let currentBody = bodySegments[0];
+        let nonGsParts = 0;
+        const nonGsPartsSums = [0];
+        for (const b of body) {
+            if (b === GLOBSTAR) {
+                nonGsPartsSums.push(nonGsParts);
+                currentBody = [[], 0];
+                bodySegments.push(currentBody);
+            }
+            else {
+                currentBody[0].push(b);
+                nonGsParts++;
+            }
+        }
+        let i = bodySegments.length - 1;
+        const fileLength = file.length - fileTailMatch;
+        for (const b of bodySegments) {
+            b[1] = fileLength - (nonGsPartsSums[i--] + b[0].length);
+        }
+        return !!this.#matchGlobStarBodySections(file, bodySegments, fileIndex, 0, partial, 0, !!fileTailMatch);
+    }
+    // return false for "nope, not matching"
+    // return null for "not matching, cannot keep trying"
+    #matchGlobStarBodySections(file, 
+    // pattern section, last possible position for it
+    bodySegments, fileIndex, bodyIndex, partial, globStarDepth, sawTail) {
+        // take the first body segment, and walk from fileIndex to its "after"
+        // value at the end
+        // If it doesn't match at that position, we increment, until we hit
+        // that final possible position, and give up.
+        // If it does match, then advance and try to rest.
+        // If any of them fail we keep walking forward.
+        // this is still a bit recursively painful, but it's more constrained
+        // than previous implementations, because we never test something that
+        // can't possibly be a valid matching condition.
+        const bs = bodySegments[bodyIndex];
+        if (!bs) {
+            // just make sure that there's no bad dots
+            for (let i = fileIndex; i < file.length; i++) {
+                sawTail = true;
+                const f = file[i];
+                if (f === '.' ||
+                    f === '..' ||
+                    (!this.options.dot && f.startsWith('.'))) {
+                    return false;
+                }
+            }
+            return sawTail;
+        }
+        // have a non-globstar body section to test
+        const [body, after] = bs;
+        while (fileIndex <= after) {
+            const m = this.#matchOne(file.slice(0, fileIndex + body.length), body, partial, fileIndex, 0);
+            // if limit exceeded, no match. intentional false negative,
+            // acceptable break in correctness for security.
+            if (m && globStarDepth < this.maxGlobstarRecursion) {
+                // match! see if the rest match. if so, we're done!
+                const sub = this.#matchGlobStarBodySections(file, bodySegments, fileIndex + body.length, bodyIndex + 1, partial, globStarDepth + 1, sawTail);
+                if (sub !== false) {
+                    return sub;
+                }
+            }
+            const f = file[fileIndex];
+            if (f === '.' ||
+                f === '..' ||
+                (!this.options.dot && f.startsWith('.'))) {
+                return false;
+            }
+            fileIndex++;
+        }
+        // walked off. no point continuing
+        return partial || null;
+    }
+    #matchOne(file, pattern, partial, fileIndex, patternIndex) {
+        let fi;
+        let pi;
+        let pl;
+        let fl;
+        for (fi = fileIndex,
+            pi = patternIndex,
+            fl = file.length,
+            pl = pattern.length; fi < fl && pi < pl; fi++, pi++) {
+            this.debug('matchOne loop');
+            let p = pattern[pi];
+            let f = file[fi];
+            this.debug(pattern, p, f);
+            // should be impossible.
+            // some invalid regexp stuff in the set.
+            /* c8 ignore start */
+            if (p === false || p === GLOBSTAR) {
+                return false;
+            }
+            /* c8 ignore stop */
+            // something other than **
+            // non-magic patterns just have to match exactly
+            // patterns with magic have been turned into regexps.
+            let hit;
+            if (typeof p === 'string') {
+                hit = f === p;
+                this.debug('string match', p, f, hit);
+            }
+            else {
+                hit = p.test(f);
+                this.debug('pattern match', p, f, hit);
+            }
+            if (!hit)
+                return false;
+        }
+        // Note: ending in / means that we'll get a final ""
+        // at the end of the pattern.  This can only match a
+        // corresponding "" at the end of the file.
+        // If the file ends in /, then it can only match a
+        // a pattern that ends in /, unless the pattern just
+        // doesn't have any more for it. But, a/b/ should *not*
+        // match "a/b/*", even though "" matches against the
+        // [^/]*? pattern, except in partial mode, where it might
+        // simply not be reached yet.
+        // However, a/b/ should still satisfy a/*
+        // now either we fell off the end of the pattern, or we're done.
+        if (fi === fl && pi === pl) {
+            // ran out of pattern and filename at the same time.
+            // an exact hit!
+            return true;
+        }
+        else if (fi === fl) {
+            // ran out of file, but still had pattern left.
+            // this is ok if we're doing the match as part of
+            // a glob fs traversal.
+            return partial;
+        }
+        else if (pi === pl) {
+            // ran out of pattern, still have file left.
+            // this is only acceptable if we're on the very last
+            // empty segment of a file with a trailing slash.
+            // a/* should match a/b/
+            return fi === fl - 1 && file[fi] === '';
+            /* c8 ignore start */
+        }
+        else {
+            // should be unreachable.
+            throw new Error('wtf?');
+        }
+        /* c8 ignore stop */
+    }
+    braceExpand() {
+        return braceExpand(this.pattern, this.options);
+    }
+    parse(pattern) {
+        assertValidPattern(pattern);
+        const options = this.options;
+        // shortcuts
+        if (pattern === '**')
+            return GLOBSTAR;
+        if (pattern === '')
+            return '';
+        // far and away, the most common glob pattern parts are
+        // *, *.*, and *.<ext>  Add a fast check method for those.
+        let m;
+        let fastTest = null;
+        if ((m = pattern.match(starRE))) {
+            fastTest = options.dot ? starTestDot : starTest;
+        }
+        else if ((m = pattern.match(starDotExtRE))) {
+            fastTest = (options.nocase ?
+                options.dot ?
+                    starDotExtTestNocaseDot
+                    : starDotExtTestNocase
+                : options.dot ? starDotExtTestDot
+                    : starDotExtTest)(m[1]);
+        }
+        else if ((m = pattern.match(qmarksRE))) {
+            fastTest = (options.nocase ?
+                options.dot ?
+                    qmarksTestNocaseDot
+                    : qmarksTestNocase
+                : options.dot ? qmarksTestDot
+                    : qmarksTest)(m);
+        }
+        else if ((m = pattern.match(starDotStarRE))) {
+            fastTest = options.dot ? starDotStarTestDot : starDotStarTest;
+        }
+        else if ((m = pattern.match(dotStarRE))) {
+            fastTest = dotStarTest;
+        }
+        const re = AST.fromGlob(pattern, this.options).toMMPattern();
+        if (fastTest && typeof re === 'object') {
+            // Avoids overriding in frozen environments
+            Reflect.defineProperty(re, 'test', { value: fastTest });
+        }
+        return re;
+    }
+    makeRe() {
+        if (this.regexp || this.regexp === false)
+            return this.regexp;
+        // at this point, this.set is a 2d array of partial
+        // pattern strings, or "**".
+        //
+        // It's better to use .match().  This function shouldn't
+        // be used, really, but it's pretty convenient sometimes,
+        // when you just want to work with a regex.
+        const set = this.set;
+        if (!set.length) {
+            this.regexp = false;
+            return this.regexp;
+        }
+        const options = this.options;
+        const twoStar = options.noglobstar ? star
+            : options.dot ? twoStarDot
+                : twoStarNoDot;
+        const flags = new Set(options.nocase ? ['i'] : []);
+        // regexpify non-globstar patterns
+        // if ** is only item, then we just do one twoStar
+        // if ** is first, and there are more, prepend (\/|twoStar\/)? to next
+        // if ** is last, append (\/twoStar|) to previous
+        // if ** is in the middle, append (\/|\/twoStar\/) to previous
+        // then filter out GLOBSTAR symbols
+        let re = set
+            .map(pattern => {
+            const pp = pattern.map(p => {
+                if (p instanceof RegExp) {
+                    for (const f of p.flags.split(''))
+                        flags.add(f);
+                }
+                return (typeof p === 'string' ? regExpEscape(p)
+                    : p === GLOBSTAR ? GLOBSTAR
+                        : p._src);
+            });
+            pp.forEach((p, i) => {
+                const next = pp[i + 1];
+                const prev = pp[i - 1];
+                if (p !== GLOBSTAR || prev === GLOBSTAR) {
+                    return;
+                }
+                if (prev === undefined) {
+                    if (next !== undefined && next !== GLOBSTAR) {
+                        pp[i + 1] = '(?:\\/|' + twoStar + '\\/)?' + next;
+                    }
+                    else {
+                        pp[i] = twoStar;
+                    }
+                }
+                else if (next === undefined) {
+                    pp[i - 1] = prev + '(?:\\/|\\/' + twoStar + ')?';
+                }
+                else if (next !== GLOBSTAR) {
+                    pp[i - 1] = prev + '(?:\\/|\\/' + twoStar + '\\/)' + next;
+                    pp[i + 1] = GLOBSTAR;
+                }
+            });
+            const filtered = pp.filter(p => p !== GLOBSTAR);
+            // For partial matches, we need to make the pattern match
+            // any prefix of the full path. We do this by generating
+            // alternative patterns that match progressively longer prefixes.
+            if (this.partial && filtered.length >= 1) {
+                const prefixes = [];
+                for (let i = 1; i <= filtered.length; i++) {
+                    prefixes.push(filtered.slice(0, i).join('/'));
+                }
+                return '(?:' + prefixes.join('|') + ')';
+            }
+            return filtered.join('/');
+        })
+            .join('|');
+        // need to wrap in parens if we had more than one thing with |,
+        // otherwise only the first will be anchored to ^ and the last to $
+        const [open, close] = set.length > 1 ? ['(?:', ')'] : ['', ''];
+        // must match entire pattern
+        // ending in a * or ** will make it less strict.
+        re = '^' + open + re + close + '$';
+        // In partial mode, '/' should always match as it's a valid prefix for any pattern
+        if (this.partial) {
+            re = '^(?:\\/|' + open + re.slice(1, -1) + close + ')$';
+        }
+        // can match anything, as long as it's not this.
+        if (this.negate)
+            re = '^(?!' + re + ').+$';
+        try {
+            this.regexp = new RegExp(re, [...flags].join(''));
+            /* c8 ignore start */
+        }
+        catch {
+            // should be impossible
+            this.regexp = false;
+        }
+        /* c8 ignore stop */
+        return this.regexp;
+    }
+    slashSplit(p) {
+        // if p starts with // on windows, we preserve that
+        // so that UNC paths aren't broken.  Otherwise, any number of
+        // / characters are coalesced into one, unless
+        // preserveMultipleSlashes is set to true.
+        if (this.preserveMultipleSlashes) {
+            return p.split('/');
+        }
+        else if (this.isWindows && /^\/\/[^/]+/.test(p)) {
+            // add an extra '' for the one we lose
+            return ['', ...p.split(/\/+/)];
+        }
+        else {
+            return p.split(/\/+/);
+        }
+    }
+    match(f, partial = this.partial) {
+        this.debug('match', f, this.pattern);
+        // short-circuit in the case of busted things.
+        // comments, etc.
+        if (this.comment) {
+            return false;
+        }
+        if (this.empty) {
+            return f === '';
+        }
+        if (f === '/' && partial) {
+            return true;
+        }
+        const options = this.options;
+        // windows: need to use /, not \
+        if (this.isWindows) {
+            f = f.split('\\').join('/');
+        }
+        // treat the test path as a set of pathparts.
+        const ff = this.slashSplit(f);
+        this.debug(this.pattern, 'split', ff);
+        // just ONE of the pattern sets in this.set needs to match
+        // in order for it to be valid.  If negating, then just one
+        // match means that we have failed.
+        // Either way, return on the first hit.
+        const set = this.set;
+        this.debug(this.pattern, 'set', set);
+        // Find the basename of the path by looking for the last non-empty segment
+        let filename = ff[ff.length - 1];
+        if (!filename) {
+            for (let i = ff.length - 2; !filename && i >= 0; i--) {
+                filename = ff[i];
+            }
+        }
+        for (const pattern of set) {
+            let file = ff;
+            if (options.matchBase && pattern.length === 1) {
+                file = [filename];
+            }
+            const hit = this.matchOne(file, pattern, partial);
+            if (hit) {
+                if (options.flipNegate) {
+                    return true;
+                }
+                return !this.negate;
+            }
+        }
+        // didn't get any hits.  this is success if it's a negative
+        // pattern, failure otherwise.
+        if (options.flipNegate) {
+            return false;
+        }
+        return this.negate;
+    }
+    static defaults(def) {
+        return minimatch.defaults(def).Minimatch;
+    }
 }
-
-var minimatchExports = requireMinimatch();
-var minimatch = /*@__PURE__*/getDefaultExportFromCjs(minimatchExports);
+/* c8 ignore stop */
+minimatch.AST = AST;
+minimatch.Minimatch = Minimatch;
+minimatch.escape = escape$1;
+minimatch.unescape = unescape;
 
 const IS_WINDOWS$3 = process.platform === 'win32';
 /**
@@ -32174,7 +32954,7 @@ class Path {
             itemPath = safeTrimTrailingSeparator(itemPath);
             // Not rooted
             if (!hasRoot(itemPath)) {
-                this.segments = itemPath.split(path.sep);
+                this.segments = itemPath.split(path$1.sep);
             }
             // Rooted
             else {
@@ -32183,7 +32963,7 @@ class Path {
                 let dir = dirname(remaining);
                 while (dir !== remaining) {
                     // Add the segment
-                    const basename = path.basename(remaining);
+                    const basename = path$1.basename(remaining);
                     this.segments.unshift(basename);
                     // Truncate the last segment
                     remaining = dir;
@@ -32213,7 +32993,7 @@ class Path {
                 // All other segments
                 else {
                     // Must not contain slash
-                    assert$1(!segment.includes(path.sep), `Parameter 'itemPath' contains unexpected path separators`);
+                    assert$1(!segment.includes(path$1.sep), `Parameter 'itemPath' contains unexpected path separators`);
                     this.segments.push(segment);
                 }
             }
@@ -32226,13 +33006,13 @@ class Path {
         // First segment
         let result = this.segments[0];
         // All others
-        let skipSlash = result.endsWith(path.sep) || (IS_WINDOWS$3 && /^[A-Z]:$/i.test(result));
+        let skipSlash = result.endsWith(path$1.sep) || (IS_WINDOWS$3 && /^[A-Z]:$/i.test(result));
         for (let i = 1; i < this.segments.length; i++) {
             if (skipSlash) {
                 skipSlash = false;
             }
             else {
-                result += path.sep;
+                result += path$1.sep;
             }
             result += this.segments[i];
         }
@@ -32240,7 +33020,6 @@ class Path {
     }
 }
 
-const { Minimatch } = minimatch;
 const IS_WINDOWS$2 = process.platform === 'win32';
 class Pattern {
     constructor(patternOrNegate, isImplicitPattern = false, segments, homedir) {
@@ -32276,7 +33055,7 @@ class Pattern {
         this.segments = new Path(pattern).segments;
         // Trailing slash indicates the pattern should only match directories, not regular files
         this.trailingSeparator = normalizeSeparators(pattern)
-            .endsWith(path.sep);
+            .endsWith(path$1.sep);
         pattern = safeTrimTrailingSeparator(pattern);
         // Search path (literal path prior to the first glob segment)
         let foundGlob = false;
@@ -32310,10 +33089,10 @@ class Pattern {
             // Append a trailing slash. Otherwise Minimatch will not match the directory immediately
             // preceding the globstar. For example, given the pattern `/foo/**`, Minimatch returns
             // false for `/foo` but returns true for `/foo/`. Append a trailing slash to handle that quirk.
-            if (!itemPath.endsWith(path.sep) && this.isImplicitPattern === false) {
+            if (!itemPath.endsWith(path$1.sep) && this.isImplicitPattern === false) {
                 // Note, this is safe because the constructor ensures the pattern has an absolute root.
                 // For example, formats like C: and C:foo on Windows are resolved to an absolute root.
-                itemPath = `${itemPath}${path.sep}`;
+                itemPath = `${itemPath}${path$1.sep}`;
             }
         }
         else {
@@ -32362,11 +33141,11 @@ class Pattern {
         // Normalize slashes
         pattern = normalizeSeparators(pattern);
         // Replace leading `.` segment
-        if (pattern === '.' || pattern.startsWith(`.${path.sep}`)) {
+        if (pattern === '.' || pattern.startsWith(`.${path$1.sep}`)) {
             pattern = Pattern.globEscape(process.cwd()) + pattern.substr(1);
         }
         // Replace leading `~` segment
-        else if (pattern === '~' || pattern.startsWith(`~${path.sep}`)) {
+        else if (pattern === '~' || pattern.startsWith(`~${path$1.sep}`)) {
             homedir = homedir || os.homedir();
             assert$1(homedir, 'Unable to determine HOME directory');
             assert$1(hasAbsoluteRoot(homedir), `Expected HOME directory to be a rooted path. Actual '${homedir}'`);
@@ -32469,7 +33248,7 @@ class SearchState {
     }
 }
 
-var __awaiter$a = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
+var __awaiter$9 = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
         function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
@@ -32510,7 +33289,7 @@ class DefaultGlobber {
         return this.searchPaths.slice();
     }
     glob() {
-        return __awaiter$a(this, void 0, void 0, function* () {
+        return __awaiter$9(this, void 0, void 0, function* () {
             var _a, e_1, _b, _c;
             const result = [];
             try {
@@ -32569,9 +33348,9 @@ class DefaultGlobber {
                 // Pop
                 const item = stack.pop();
                 // Match?
-                const match$1 = match(patterns, item.path);
-                const partialMatch$1 = !!match$1 || partialMatch(patterns, item.path);
-                if (!match$1 && !partialMatch$1) {
+                const match = match$1(patterns, item.path);
+                const partialMatch$1 = !!match || partialMatch(patterns, item.path);
+                if (!match && !partialMatch$1) {
                     continue;
                 }
                 // Stat
@@ -32583,13 +33362,13 @@ class DefaultGlobber {
                     continue;
                 }
                 // Hidden file or directory?
-                if (options.excludeHiddenFiles && path.basename(item.path).match(/^\./)) {
+                if (options.excludeHiddenFiles && path$1.basename(item.path).match(/^\./)) {
                     continue;
                 }
                 // Directory
                 if (stats.isDirectory()) {
                     // Matched
-                    if (match$1 & MatchKind.Directory && options.matchDirectories) {
+                    if (match & MatchKind.Directory && options.matchDirectories) {
                         yield yield __await(item.path);
                     }
                     // Descend?
@@ -32598,11 +33377,11 @@ class DefaultGlobber {
                     }
                     // Push the child items in reverse
                     const childLevel = item.level + 1;
-                    const childItems = (yield __await(fs.promises.readdir(item.path))).map(x => new SearchState(path.join(item.path, x), childLevel));
+                    const childItems = (yield __await(fs.promises.readdir(item.path))).map(x => new SearchState(path$1.join(item.path, x), childLevel));
                     stack.push(...childItems.reverse());
                 }
                 // File
-                else if (match$1 & MatchKind.File) {
+                else if (match & MatchKind.File) {
                     yield yield __await(item.path);
                 }
             }
@@ -32612,7 +33391,7 @@ class DefaultGlobber {
      * Constructs a DefaultGlobber
      */
     static create(patterns, options) {
-        return __awaiter$a(this, void 0, void 0, function* () {
+        return __awaiter$9(this, void 0, void 0, function* () {
             const result = new DefaultGlobber(options);
             if (IS_WINDOWS$1) {
                 patterns = patterns.replace(/\r\n/g, '\n');
@@ -32634,7 +33413,7 @@ class DefaultGlobber {
         });
     }
     static stat(item, options, traversalChain) {
-        return __awaiter$a(this, void 0, void 0, function* () {
+        return __awaiter$9(this, void 0, void 0, function* () {
             // Note:
             // `stat` returns info about the target of a symlink (or symlink chain)
             // `lstat` returns info about a symlink itself
@@ -32697,7 +33476,7 @@ class DefaultGlobber {
     function settle(resolve, reject, d, v) { Promise.resolve(v).then(function(v) { resolve({ value: v, done: d }); }, reject); }
 };
 
-var __awaiter$9 = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
+var __awaiter$8 = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
         function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
@@ -32713,7 +33492,7 @@ var __awaiter$9 = (undefined && undefined.__awaiter) || function (thisArg, _argu
  * @param options   Glob options
  */
 function create(patterns, options) {
-    return __awaiter$9(this, void 0, void 0, function* () {
+    return __awaiter$8(this, void 0, void 0, function* () {
         return yield DefaultGlobber.create(patterns, options);
     });
 }
@@ -35570,7 +36349,7 @@ const ManifestFilename = 'manifest.txt';
 // Shared so cache.ts and cacheHttpClient.ts match the same contract value.
 const CacheReadDeniedMessagePrefix = 'cache read denied:';
 
-var __awaiter$8 = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
+var __awaiter$7 = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
         function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
@@ -35589,7 +36368,7 @@ var __asyncValues = (undefined && undefined.__asyncValues) || function (o) {
 const versionSalt = '1.0';
 // From https://github.com/actions/toolkit/blob/main/packages/tool-cache/src/tool-cache.ts#L23
 function createTempDirectory() {
-    return __awaiter$8(this, void 0, void 0, function* () {
+    return __awaiter$7(this, void 0, void 0, function* () {
         const IS_WINDOWS = process.platform === 'win32';
         let tempDirectory = process.env['RUNNER_TEMP'] || '';
         if (!tempDirectory) {
@@ -35606,9 +36385,9 @@ function createTempDirectory() {
                     baseLocation = '/home';
                 }
             }
-            tempDirectory = path.join(baseLocation, 'actions', 'temp');
+            tempDirectory = path$1.join(baseLocation, 'actions', 'temp');
         }
-        const dest = path.join(tempDirectory, crypto.randomUUID());
+        const dest = path$1.join(tempDirectory, crypto$1.randomUUID());
         yield mkdirP(dest);
         return dest;
     });
@@ -35617,7 +36396,7 @@ function getArchiveFileSizeInBytes(filePath) {
     return fs.statSync(filePath).size;
 }
 function resolvePaths(patterns) {
-    return __awaiter$8(this, void 0, void 0, function* () {
+    return __awaiter$7(this, void 0, void 0, function* () {
         var _a, e_1, _b, _c;
         var _d;
         const paths = [];
@@ -35630,9 +36409,9 @@ function resolvePaths(patterns) {
                 _c = _g.value;
                 _e = false;
                 const file = _c;
-                const relativeFile = path
+                const relativeFile = path$1
                     .relative(workspace, file)
-                    .replace(new RegExp(`\\${path.sep}`, 'g'), '/');
+                    .replace(new RegExp(`\\${path$1.sep}`, 'g'), '/');
                 debug(`Matched: ${relativeFile}`);
                 // Paths are made relative so the tar entries are all relative to the root of the workspace.
                 if (relativeFile === '') {
@@ -35655,12 +36434,12 @@ function resolvePaths(patterns) {
     });
 }
 function unlinkFile(filePath) {
-    return __awaiter$8(this, void 0, void 0, function* () {
+    return __awaiter$7(this, void 0, void 0, function* () {
         return util$8.promisify(fs.unlink)(filePath);
     });
 }
 function getVersion(app_1) {
-    return __awaiter$8(this, arguments, void 0, function* (app, additionalArgs = []) {
+    return __awaiter$7(this, arguments, void 0, function* (app, additionalArgs = []) {
         let versionOutput = '';
         additionalArgs.push('--version');
         debug(`Checking ${app} ${additionalArgs.join(' ')}`);
@@ -35684,7 +36463,7 @@ function getVersion(app_1) {
 }
 // Use zstandard if possible to maximize cache performance
 function getCompressionMethod() {
-    return __awaiter$8(this, void 0, void 0, function* () {
+    return __awaiter$7(this, void 0, void 0, function* () {
         const versionOutput = yield getVersion('zstd', ['--quiet']);
         const version = semverExports.clean(versionOutput);
         debug(`zstd version: ${version}`);
@@ -35702,7 +36481,7 @@ function getCacheFileName(compressionMethod) {
         : CacheFilename.Zstd;
 }
 function getGnuTarPathOnWindows() {
-    return __awaiter$8(this, void 0, void 0, function* () {
+    return __awaiter$7(this, void 0, void 0, function* () {
         if (fs.existsSync(GnuTarPathOnWindows)) {
             return GnuTarPathOnWindows;
         }
@@ -35730,7 +36509,7 @@ function getCacheVersion(paths, compressionMethod, enableCrossOsArchive = false)
     }
     // Add salt to cache version to support breaking changes in cache entry
     components.push(versionSalt);
-    return crypto.createHash('sha256').update(components.join('|')).digest('hex');
+    return crypto$1.createHash('sha256').update(components.join('|')).digest('hex');
 }
 function getRuntimeToken() {
     const token = process.env['ACTIONS_RUNTIME_TOKEN'];
@@ -36073,7 +36852,7 @@ function createLoggerContext(options) {
         logger: clientLogger,
     };
 }
-const context$2 = createLoggerContext({
+const context$1 = createLoggerContext({
     logLevelEnvVarName: "TYPESPEC_RUNTIME_LOG_LEVEL",
     namespace: "typeSpecRuntime",
 });
@@ -36083,7 +36862,7 @@ const context$2 = createLoggerContext({
  * @hidden
  */
 function createClientLogger$1(namespace) {
-    return context$2.createClientLogger(namespace);
+    return context$1.createClientLogger(namespace);
 }
 
 // Copyright (c) Microsoft Corporation.
@@ -36193,7 +36972,7 @@ function createHttpHeaders$1(rawHeaders) {
  * @returns RFC4122 v4 UUID.
  */
 function randomUUID$1() {
-    return globalThis.crypto.randomUUID();
+    return crypto.randomUUID();
 }
 
 // Copyright (c) Microsoft Corporation.
@@ -36777,7 +37556,7 @@ let RestError$1 = class RestError extends Error {
  * Typeguard for RestError
  * @param e - Something caught by a catch clause.
  */
-function isRestError$1(e) {
+function isRestError$2(e) {
     if (e instanceof RestError$1) {
         return true;
     }
@@ -36807,7 +37586,7 @@ function stringToUint8Array$1(value, format) {
 
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
-const logger$4 = createClientLogger$1("ts-http-runtime");
+const logger$5 = createClientLogger$1("ts-http-runtime");
 
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
@@ -36883,7 +37662,7 @@ class NodeHttpClient {
         if (request.timeout > 0) {
             timeoutId = setTimeout(() => {
                 const sanitizer = new Sanitizer();
-                logger$4.info(`request to '${sanitizer.sanitizeUrl(request.url)}' timed out. canceling...`);
+                logger$5.info(`request to '${sanitizer.sanitizeUrl(request.url)}' timed out. canceling...`);
                 abortController.abort();
             }, request.timeout);
         }
@@ -36902,7 +37681,7 @@ class NodeHttpClient {
                 const onUploadProgress = request.onUploadProgress;
                 const uploadReportStream = new ReportTransform(onUploadProgress);
                 uploadReportStream.on("error", (e) => {
-                    logger$4.error("Error in upload progress", e);
+                    logger$5.error("Error in upload progress", e);
                 });
                 if (isReadableStream(body)) {
                     body.pipe(uploadReportStream);
@@ -36913,6 +37692,9 @@ class NodeHttpClient {
                 body = uploadReportStream;
             }
             const res = await this.makeRequest(request, abortController, body);
+            if (timeoutId !== undefined) {
+                clearTimeout(timeoutId);
+            }
             const headers = getResponseHeaders(res);
             const status = res.statusCode ?? 0;
             const response = {
@@ -36933,7 +37715,7 @@ class NodeHttpClient {
             if (onDownloadProgress) {
                 const downloadReportStream = new ReportTransform(onDownloadProgress);
                 downloadReportStream.on("error", (e) => {
-                    logger$4.error("Error in download progress", e);
+                    logger$5.error("Error in download progress", e);
                 });
                 responseStream.pipe(downloadReportStream);
                 responseStream = downloadReportStream;
@@ -36950,9 +37732,6 @@ class NodeHttpClient {
             return response;
         }
         finally {
-            if (timeoutId !== undefined) {
-                clearTimeout(timeoutId);
-            }
             // clean up event listener
             if (request.abortSignal && abortListener) {
                 let uploadStreamDone = Promise.resolve();
@@ -36971,7 +37750,7 @@ class NodeHttpClient {
                     }
                 })
                     .catch((e) => {
-                    logger$4.warning("Error when cleaning up abortListener on httpRequest", e);
+                    logger$5.warning("Error when cleaning up abortListener on httpRequest", e);
                 });
             }
         }
@@ -37015,7 +37794,7 @@ class NodeHttpClient {
                         : Buffer.from(body));
                 }
                 else {
-                    logger$4.error("Unrecognized body type", body);
+                    logger$5.error("Unrecognized body type", body);
                     reject(new RestError$1("Unrecognized body type"));
                 }
             }
@@ -37053,7 +37832,7 @@ class NodeHttpClient {
             if (agent && agent.options.keepAlive === !disableKeepAlive) {
                 return agent;
             }
-            logger$4.info("No cached TLS Agent exist, creating a new Agent");
+            logger$5.info("No cached TLS Agent exist, creating a new Agent");
             agent = new https$1.Agent({
                 // keepAlive is true if disableKeepAlive is false.
                 keepAlive: !disableKeepAlive,
@@ -37169,7 +37948,7 @@ const logPolicyName = "logPolicy";
  * @param options - Options to configure logPolicy.
  */
 function logPolicy$1(options = {}) {
-    const logger = options.logger ?? logger$4.info;
+    const logger = options.logger ?? logger$5.info;
     const sanitizer = new Sanitizer({
         additionalAllowedHeaderNames: options.additionalAllowedHeaderNames,
         additionalAllowedQueryParameters: options.additionalAllowedQueryParameters,
@@ -37183,7 +37962,7 @@ function logPolicy$1(options = {}) {
             logger(`Request: ${sanitizer.sanitize(request)}`);
             const response = await next(request);
             logger(`Response status code: ${response.status}`);
-            logger(`Headers: ${sanitizer.sanitize({ headers: response.headers })}`);
+            logger(`Headers: ${sanitizer.sanitize(response.headers)}`);
             return response;
         },
     };
@@ -37444,6 +38223,7 @@ function retryPolicy(strategies, options = { maxRetries: DEFAULT_RETRY_POLICY_CO
             let retryCount = -1;
             retryRequest: while (true) {
                 retryCount += 1;
+                response = undefined;
                 responseError = undefined;
                 try {
                     logger.info(`Retry ${retryCount}: Attempting to send request`, request.requestId);
@@ -37455,7 +38235,7 @@ function retryPolicy(strategies, options = { maxRetries: DEFAULT_RETRY_POLICY_CO
                     // RestErrors are valid targets for the retry strategies.
                     // If none of the retry strategies can work with them, they will be thrown later in this policy.
                     // If the received error is not a RestError, it is immediately thrown.
-                    if (!isRestError$1(e)) {
+                    if (!isRestError$2(e)) {
                         throw e;
                     }
                     responseError = e;
@@ -39773,7 +40553,7 @@ function setProxyAgentOnRequest(request, cachedAgents, proxyUrl) {
     const url = new URL(request.url);
     const isInsecure = url.protocol !== "https:";
     if (request.tlsSettings) {
-        logger$4.warning("TLS settings are not supported in combination with custom Proxy, certificates provided to the client will be ignored.");
+        logger$5.warning("TLS settings are not supported in combination with custom Proxy, certificates provided to the client will be ignored.");
     }
     if (isInsecure) {
         if (!cachedAgents.httpProxyAgent) {
@@ -39883,7 +40663,7 @@ async function handleRedirect(next, response, maxRetries, allowCrossOriginRedire
         if (!allowCrossOriginRedirects) {
             const originalUrl = new URL(request.url);
             if (url.origin !== originalUrl.origin) {
-                logger$4.verbose(`Skipping cross-origin redirect from ${originalUrl.origin} to ${url.origin}.`);
+                logger$5.verbose(`Skipping cross-origin redirect from ${originalUrl.origin} to ${url.origin}.`);
                 return response;
             }
         }
@@ -40088,17 +40868,7 @@ function multipartPolicy$1() {
 
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
-/**
- * Creates a totally empty pipeline.
- * Useful for testing or creating a custom one.
- */
-function createEmptyPipeline() {
-    return createEmptyPipeline$1();
-}
-
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT License.
-const context$1 = createLoggerContext({
+const context = createLoggerContext({
     logLevelEnvVarName: "AZURE_LOG_LEVEL",
     namespace: "azure",
 });
@@ -40108,250 +40878,28 @@ const context$1 = createLoggerContext({
  * @hidden
  */
 function createClientLogger(namespace) {
-    return context$1.createClientLogger(namespace);
+    return context.createClientLogger(namespace);
 }
 
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
-const logger$3 = createClientLogger("core-rest-pipeline");
+const logger$4 = createClientLogger("core-rest-pipeline");
 
 // Copyright (c) Microsoft Corporation.
-// Licensed under the MIT License.
-/**
- * A policy that logs all requests and responses.
- * @param options - Options to configure logPolicy.
- */
-function logPolicy(options = {}) {
-    return logPolicy$1({
-        logger: logger$3.info,
-        ...options,
-    });
-}
-
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT License.
-/**
- * The programmatic identifier of the redirectPolicy.
- */
-const redirectPolicyName = redirectPolicyName$1;
-/**
- * A policy to follow Location headers from the server in order
- * to support server-side redirection.
- * In the browser, this policy is not used.
- * @param options - Options to control policy behavior.
- */
-function redirectPolicy(options = {}) {
-    return redirectPolicy$1(options);
-}
-
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT License.
-/**
- * @internal
- */
-function getHeaderName() {
-    return "User-Agent";
-}
-/**
- * @internal
- */
-async function setPlatformSpecificData(map) {
-    if (process$1 && process$1.versions) {
-        const osInfo = `${os$1.type()} ${os$1.release()}; ${os$1.arch()}`;
-        if (process$1.versions.bun) {
-            map.set("Bun", `${process$1.versions.bun} (${osInfo})`);
-        }
-        else if (process$1.versions.deno) {
-            map.set("Deno", `${process$1.versions.deno} (${osInfo})`);
-        }
-        else if (process$1.versions.node) {
-            map.set("Node", `${process$1.versions.node} (${osInfo})`);
-        }
-    }
-}
-
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT License.
-const SDK_VERSION$1 = "1.25.0";
-
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT License.
-function getUserAgentString$1(telemetryInfo) {
-    const parts = [];
-    for (const [key, value] of telemetryInfo) {
-        const token = value ? `${key}/${value}` : key;
-        parts.push(token);
-    }
-    return parts.join(" ");
-}
-/**
- * @internal
- */
-function getUserAgentHeaderName() {
-    return getHeaderName();
-}
-/**
- * @internal
- */
-async function getUserAgentValue(prefix) {
-    const runtimeInfo = new Map();
-    runtimeInfo.set("core-rest-pipeline", SDK_VERSION$1);
-    await setPlatformSpecificData(runtimeInfo);
-    const defaultAgent = getUserAgentString$1(runtimeInfo);
-    const userAgentValue = prefix ? `${prefix} ${defaultAgent}` : defaultAgent;
-    return userAgentValue;
-}
-
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT License.
-const UserAgentHeaderName = getUserAgentHeaderName();
-/**
- * The programmatic identifier of the userAgentPolicy.
- */
-const userAgentPolicyName = "userAgentPolicy";
-/**
- * A policy that sets the User-Agent header (or equivalent) to reflect
- * the library version.
- * @param options - Options to customize the user agent value.
- */
-function userAgentPolicy(options = {}) {
-    const userAgentValue = getUserAgentValue(options.userAgentPrefix);
-    return {
-        name: userAgentPolicyName,
-        async sendRequest(request, next) {
-            if (!request.headers.has(UserAgentHeaderName)) {
-                request.headers.set(UserAgentHeaderName, await userAgentValue);
-            }
-            return next(request);
-        },
-    };
-}
-
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT License.
-/**
- * Private symbol used as key on objects created using createFile containing the
- * original source of the file object.
- *
- * This is used in Node to access the original Node stream without using Blob#stream, which
- * returns a web stream. This is done to avoid a couple of bugs to do with Blob#stream and
- * Readable#to/fromWeb in Node versions we support:
- * - https://github.com/nodejs/node/issues/42694 (fixed in Node 18.14)
- * - https://github.com/nodejs/node/issues/48916 (fixed in Node 20.6)
- *
- * Once these versions are no longer supported, we may be able to stop doing this.
- *
- * @internal
- */
-const rawContent = Symbol("rawContent");
-/**
- * Type guard to check if a given object is a blob-like object with a raw content property.
- */
-function hasRawContent(x) {
-    return typeof x[rawContent] === "function";
-}
-/**
- * Extract the raw content from a given blob-like object. If the input was created using createFile
- * or createFileFromStream, the exact content passed into createFile/createFileFromStream will be used.
- * For true instances of Blob and File, returns the actual blob.
- *
- * @internal
- */
-function getRawContent$1(blob) {
-    if (hasRawContent(blob)) {
-        return blob[rawContent]();
-    }
-    else {
-        return blob;
-    }
-}
-
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT License.
-/**
- * Name of multipart policy
- */
-const multipartPolicyName = multipartPolicyName$1;
-/**
- * Pipeline policy for multipart requests
- */
-function multipartPolicy() {
-    const tspPolicy = multipartPolicy$1();
-    return {
-        name: multipartPolicyName,
-        sendRequest: async (request, next) => {
-            if (request.multipartBody) {
-                for (const part of request.multipartBody.parts) {
-                    if (hasRawContent(part.body)) {
-                        part.body = getRawContent$1(part.body);
-                    }
-                }
-            }
-            return tspPolicy.sendRequest(request, next);
-        },
-    };
-}
-
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT License.
-/**
- * The programmatic identifier of the decompressResponsePolicy.
- */
-const decompressResponsePolicyName = decompressResponsePolicyName$1;
-/**
- * A policy to enable response decompression according to Accept-Encoding header
- * https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Accept-Encoding
- */
-function decompressResponsePolicy() {
-    return decompressResponsePolicy$1();
-}
-
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT License.
-/**
- * A policy that retries according to three strategies:
- * - When the server sends a 429 response with a Retry-After header.
- * - When there are errors in the underlying transport layer (e.g. DNS lookup failures).
- * - Or otherwise if the outgoing request fails, it will retry with an exponentially increasing delay.
- */
-function defaultRetryPolicy(options = {}) {
-    return defaultRetryPolicy$1(options);
-}
-
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT License.
-/**
- * A policy that encodes FormData on the request into the body.
- */
-function formDataPolicy() {
-    return formDataPolicy$1();
-}
-
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT License.
+// Licensed under the MIT license.
 /**
  * This error is thrown when an asynchronous operation has been aborted.
  * Check for this error by testing the `name` that the name property of the
  * error matches `"AbortError"`.
  *
  * @example
- * ```ts snippet:AbortErrorSample
- * import { AbortError } from "@azure/abort-controller";
- *
- * async function doAsyncWork(options: { abortSignal: AbortSignal }): Promise<void> {
- *   if (options.abortSignal.aborted) {
- *     throw new AbortError();
- *   }
- *
- *   // do async work
- * }
- *
+ * ```ts
  * const controller = new AbortController();
  * controller.abort();
  * try {
- *   doAsyncWork({ abortSignal: controller.signal });
+ *   doAsyncWork(controller.signal)
  * } catch (e) {
- *   if (e instanceof Error && e.name === "AbortError") {
+ *   if (e.name === 'AbortError') {
  *     // handle abort error here.
  *   }
  * }
@@ -40495,6 +41043,13 @@ function stringToUint8Array(value, format) {
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 /**
+ * The programmatic identifier of the decompressResponsePolicy.
+ */
+const decompressResponsePolicyName = decompressResponsePolicyName$1;
+
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+/**
  * This method converts a proxy url into `ProxySettings` for use with ProxyPolicy.
  * If no argument is given, it attempts to parse a proxy URL from the environment
  * variables `HTTPS_PROXY` or `HTTP_PROXY`.
@@ -40503,58 +41058,6 @@ function stringToUint8Array(value, format) {
  */
 function getDefaultProxySettings(proxyUrl) {
     return getDefaultProxySettings$1(proxyUrl);
-}
-/**
- * A policy that allows one to apply proxy settings to all requests.
- * If not passed static settings, they will be retrieved from the HTTPS_PROXY
- * or HTTP_PROXY environment variables.
- * @param proxySettings - ProxySettings to use on each request.
- * @param options - additional settings, for example, custom NO_PROXY patterns
- */
-function proxyPolicy(proxySettings, options) {
-    return proxyPolicy$1(proxySettings);
-}
-
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT License.
-/**
- * The programmatic identifier of the setClientRequestIdPolicy.
- */
-const setClientRequestIdPolicyName = "setClientRequestIdPolicy";
-/**
- * Each PipelineRequest gets a unique id upon creation.
- * This policy passes that unique id along via an HTTP header to enable better
- * telemetry and tracing.
- * @param requestIdHeaderName - The name of the header to pass the request ID to.
- */
-function setClientRequestIdPolicy(requestIdHeaderName = "x-ms-client-request-id") {
-    return {
-        name: setClientRequestIdPolicyName,
-        async sendRequest(request, next) {
-            if (!request.headers.has(requestIdHeaderName)) {
-                request.headers.set(requestIdHeaderName, request.requestId);
-            }
-            return next(request);
-        },
-    };
-}
-
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT License.
-/**
- * Gets a pipeline policy that sets http.agent
- */
-function agentPolicy(agent) {
-    return agentPolicy$1(agent);
-}
-
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT License.
-/**
- * Gets a pipeline policy that adds the client certificate to the HttpClient agent for authentication.
- */
-function tlsPolicy(tlsSettings) {
-    return tlsPolicy$1(tlsSettings);
 }
 
 // Copyright (c) Microsoft Corporation.
@@ -40605,30 +41108,30 @@ class TracingContextImpl {
     }
 }
 
-var stateCjs$1 = {};
+var state$2 = {};
 
-var hasRequiredStateCjs$1;
+var hasRequiredState;
 
-function requireStateCjs$1 () {
-	if (hasRequiredStateCjs$1) return stateCjs$1;
-	hasRequiredStateCjs$1 = 1;
+function requireState () {
+	if (hasRequiredState) return state$2;
+	hasRequiredState = 1;
 	// Copyright (c) Microsoft Corporation.
 	// Licensed under the MIT License.
-	Object.defineProperty(stateCjs$1, "__esModule", { value: true });
-	stateCjs$1.state = void 0;
+	Object.defineProperty(state$2, "__esModule", { value: true });
+	state$2.state = void 0;
 	/**
 	 * @internal
 	 *
 	 * Holds the singleton instrumenter, to be shared across CJS and ESM imports.
 	 */
-	stateCjs$1.state = {
+	state$2.state = {
 	    instrumenterImplementation: undefined,
 	};
 	
-	return stateCjs$1;
+	return state$2;
 }
 
-var stateCjsExports$1 = requireStateCjs$1();
+var stateExports = requireState();
 
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
@@ -40637,7 +41140,7 @@ var stateCjsExports$1 = requireStateCjs$1();
 /**
  * Defines the shared state between CJS and ESM by re-exporting the CJS state.
  */
-const state$1 = stateCjsExports$1.state;
+const state$1 = stateExports.state;
 
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
@@ -40705,8 +41208,8 @@ function createTracingClient(options) {
     function startSpan(name, operationOptions, spanOptions) {
         const startSpanResult = getInstrumenter().startSpan(name, {
             ...spanOptions,
-            packageName,
-            packageVersion,
+            packageName: packageName,
+            packageVersion: packageVersion,
             tracingContext: operationOptions?.tracingOptions?.tracingContext,
         });
         let tracingContext = startSpanResult.tracingContext;
@@ -40726,7 +41229,7 @@ function createTracingClient(options) {
     async function withSpan(name, operationOptions, callback, spanOptions) {
         const { span, updatedOptions } = startSpan(name, operationOptions, spanOptions);
         try {
-            const result = await withContext(updatedOptions.tracingOptions.tracingContext, () => callback(updatedOptions, span));
+            const result = await withContext(updatedOptions.tracingOptions.tracingContext, () => Promise.resolve(callback(updatedOptions, span)));
             span.setStatus({ status: "success" });
             return result;
         }
@@ -40771,6 +41274,730 @@ function createTracingClient(options) {
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 /**
+ * Typeguard for RestError
+ * @param e - Something caught by a catch clause.
+ */
+function isRestError$1(e) {
+    return isRestError$2(e);
+}
+
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+// Default options for the cycler if none are provided
+const DEFAULT_CYCLER_OPTIONS$1 = {
+    forcedRefreshWindowInMs: 1000, // Force waiting for a refresh 1s before the token expires
+    retryIntervalInMs: 3000, // Allow refresh attempts every 3s
+    refreshWindowInMs: 1000 * 60 * 2, // Start refreshing 2m before expiry
+};
+/**
+ * Converts an an unreliable access token getter (which may resolve with null)
+ * into an AccessTokenGetter by retrying the unreliable getter in a regular
+ * interval.
+ *
+ * @param getAccessToken - A function that produces a promise of an access token that may fail by returning null.
+ * @param retryIntervalInMs - The time (in milliseconds) to wait between retry attempts.
+ * @param refreshTimeout - The timestamp after which the refresh attempt will fail, throwing an exception.
+ * @returns - A promise that, if it resolves, will resolve with an access token.
+ */
+async function beginRefresh$1(getAccessToken, retryIntervalInMs, refreshTimeout) {
+    // This wrapper handles exceptions gracefully as long as we haven't exceeded
+    // the timeout.
+    async function tryGetAccessToken() {
+        if (Date.now() < refreshTimeout) {
+            try {
+                return await getAccessToken();
+            }
+            catch {
+                return null;
+            }
+        }
+        else {
+            const finalToken = await getAccessToken();
+            // Timeout is up, so throw if it's still null
+            if (finalToken === null) {
+                throw new Error("Failed to refresh access token.");
+            }
+            return finalToken;
+        }
+    }
+    let token = await tryGetAccessToken();
+    while (token === null) {
+        await delay$1(retryIntervalInMs);
+        token = await tryGetAccessToken();
+    }
+    return token;
+}
+/**
+ * Creates a token cycler from a credential, scopes, and optional settings.
+ *
+ * A token cycler represents a way to reliably retrieve a valid access token
+ * from a TokenCredential. It will handle initializing the token, refreshing it
+ * when it nears expiration, and synchronizes refresh attempts to avoid
+ * concurrency hazards.
+ *
+ * @param credential - the underlying TokenCredential that provides the access
+ * token
+ * @param tokenCyclerOptions - optionally override default settings for the cycler
+ *
+ * @returns - a function that reliably produces a valid access token
+ */
+function createTokenCycler$1(credential, tokenCyclerOptions) {
+    let refreshWorker = null;
+    let token = null;
+    let tenantId;
+    const options = {
+        ...DEFAULT_CYCLER_OPTIONS$1,
+        ...tokenCyclerOptions,
+    };
+    /**
+     * This little holder defines several predicates that we use to construct
+     * the rules of refreshing the token.
+     */
+    const cycler = {
+        /**
+         * Produces true if a refresh job is currently in progress.
+         */
+        get isRefreshing() {
+            return refreshWorker !== null;
+        },
+        /**
+         * Produces true if the cycler SHOULD refresh (we are within the refresh
+         * window and not already refreshing)
+         */
+        get shouldRefresh() {
+            if (cycler.isRefreshing) {
+                return false;
+            }
+            if (token?.refreshAfterTimestamp && token.refreshAfterTimestamp < Date.now()) {
+                return true;
+            }
+            return (token?.expiresOnTimestamp ?? 0) - options.refreshWindowInMs < Date.now();
+        },
+        /**
+         * Produces true if the cycler MUST refresh (null or nearly-expired
+         * token).
+         */
+        get mustRefresh() {
+            return (token === null || token.expiresOnTimestamp - options.forcedRefreshWindowInMs < Date.now());
+        },
+    };
+    /**
+     * Starts a refresh job or returns the existing job if one is already
+     * running.
+     */
+    function refresh(scopes, getTokenOptions) {
+        if (!cycler.isRefreshing) {
+            // We bind `scopes` here to avoid passing it around a lot
+            const tryGetAccessToken = () => credential.getToken(scopes, getTokenOptions);
+            // Take advantage of promise chaining to insert an assignment to `token`
+            // before the refresh can be considered done.
+            refreshWorker = beginRefresh$1(tryGetAccessToken, options.retryIntervalInMs, 
+            // If we don't have a token, then we should timeout immediately
+            token?.expiresOnTimestamp ?? Date.now())
+                .then((_token) => {
+                refreshWorker = null;
+                token = _token;
+                tenantId = getTokenOptions.tenantId;
+                return token;
+            })
+                .catch((reason) => {
+                // We also should reset the refresher if we enter a failed state.  All
+                // existing awaiters will throw, but subsequent requests will start a
+                // new retry chain.
+                refreshWorker = null;
+                token = null;
+                tenantId = undefined;
+                throw reason;
+            });
+        }
+        return refreshWorker;
+    }
+    return async (scopes, tokenOptions) => {
+        //
+        // Simple rules:
+        // - If we MUST refresh, then return the refresh task, blocking
+        //   the pipeline until a token is available.
+        // - If we SHOULD refresh, then run refresh but don't return it
+        //   (we can still use the cached token).
+        // - Return the token, since it's fine if we didn't return in
+        //   step 1.
+        //
+        const hasClaimChallenge = Boolean(tokenOptions.claims);
+        const tenantIdChanged = tenantId !== tokenOptions.tenantId;
+        if (hasClaimChallenge) {
+            // If we've received a claim, we know the existing token isn't valid
+            // We want to clear it so that that refresh worker won't use the old expiration time as a timeout
+            token = null;
+        }
+        // If the tenantId passed in token options is different to the one we have
+        // Or if we are in claim challenge and the token was rejected and a new access token need to be issued, we need to
+        // refresh the token with the new tenantId or token.
+        const mustRefresh = tenantIdChanged || hasClaimChallenge || cycler.mustRefresh;
+        if (mustRefresh) {
+            return refresh(scopes, tokenOptions);
+        }
+        if (cycler.shouldRefresh) {
+            refresh(scopes, tokenOptions);
+        }
+        return token;
+    };
+}
+
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+/**
+ * The programmatic identifier of the bearerTokenAuthenticationPolicy.
+ */
+const bearerTokenAuthenticationPolicyName$1 = "bearerTokenAuthenticationPolicy";
+/**
+ * Try to send the given request.
+ *
+ * When a response is received, returns a tuple of the response received and, if the response was received
+ * inside a thrown RestError, the RestError that was thrown.
+ *
+ * Otherwise, if an error was thrown while sending the request that did not provide an underlying response, it
+ * will be rethrown.
+ */
+async function trySendRequest$1(request, next) {
+    try {
+        return [await next(request), undefined];
+    }
+    catch (e) {
+        if (isRestError$1(e) && e.response) {
+            return [e.response, e];
+        }
+        else {
+            throw e;
+        }
+    }
+}
+/**
+ * Default authorize request handler
+ */
+async function defaultAuthorizeRequest$1(options) {
+    const { scopes, getAccessToken, request } = options;
+    // Enable CAE true by default
+    const getTokenOptions = {
+        abortSignal: request.abortSignal,
+        tracingOptions: request.tracingOptions,
+        enableCae: true,
+    };
+    const accessToken = await getAccessToken(scopes, getTokenOptions);
+    if (accessToken) {
+        options.request.headers.set("Authorization", `Bearer ${accessToken.token}`);
+    }
+}
+/**
+ * We will retrieve the challenge only if the response status code was 401,
+ * and if the response contained the header "WWW-Authenticate" with a non-empty value.
+ */
+function isChallengeResponse$1(response) {
+    return response.status === 401 && response.headers.has("WWW-Authenticate");
+}
+/**
+ * Re-authorize the request for CAE challenge.
+ * The response containing the challenge is `options.response`.
+ * If this method returns true, the underlying request will be sent once again.
+ */
+async function authorizeRequestOnCaeChallenge$1(onChallengeOptions, caeClaims) {
+    const { scopes } = onChallengeOptions;
+    const accessToken = await onChallengeOptions.getAccessToken(scopes, {
+        enableCae: true,
+        claims: caeClaims,
+    });
+    if (!accessToken) {
+        return false;
+    }
+    onChallengeOptions.request.headers.set("Authorization", `${accessToken.tokenType ?? "Bearer"} ${accessToken.token}`);
+    return true;
+}
+/**
+ * A policy that can request a token from a TokenCredential implementation and
+ * then apply it to the Authorization header of a request as a Bearer token.
+ */
+function bearerTokenAuthenticationPolicy$1(options) {
+    const { credential, scopes, challengeCallbacks } = options;
+    const logger = options.logger || logger$4;
+    const callbacks = {
+        authorizeRequest: challengeCallbacks?.authorizeRequest?.bind(challengeCallbacks) ?? defaultAuthorizeRequest$1,
+        authorizeRequestOnChallenge: challengeCallbacks?.authorizeRequestOnChallenge?.bind(challengeCallbacks),
+    };
+    // This function encapsulates the entire process of reliably retrieving the token
+    // The options are left out of the public API until there's demand to configure this.
+    // Remember to extend `BearerTokenAuthenticationPolicyOptions` with `TokenCyclerOptions`
+    // in order to pass through the `options` object.
+    const getAccessToken = credential
+        ? createTokenCycler$1(credential /* , options */)
+        : () => Promise.resolve(null);
+    return {
+        name: bearerTokenAuthenticationPolicyName$1,
+        /**
+         * If there's no challenge parameter:
+         * - It will try to retrieve the token using the cache, or the credential's getToken.
+         * - Then it will try the next policy with or without the retrieved token.
+         *
+         * It uses the challenge parameters to:
+         * - Skip a first attempt to get the token from the credential if there's no cached token,
+         *   since it expects the token to be retrievable only after the challenge.
+         * - Prepare the outgoing request if the `prepareRequest` method has been provided.
+         * - Send an initial request to receive the challenge if it fails.
+         * - Process a challenge if the response contains it.
+         * - Retrieve a token with the challenge information, then re-send the request.
+         */
+        async sendRequest(request, next) {
+            if (!request.url.toLowerCase().startsWith("https://")) {
+                throw new Error("Bearer token authentication is not permitted for non-TLS protected (non-https) URLs.");
+            }
+            await callbacks.authorizeRequest({
+                scopes: Array.isArray(scopes) ? scopes : [scopes],
+                request,
+                getAccessToken,
+                logger,
+            });
+            let response;
+            let error;
+            let shouldSendRequest;
+            [response, error] = await trySendRequest$1(request, next);
+            if (isChallengeResponse$1(response)) {
+                let claims = getCaeChallengeClaims$1(response.headers.get("WWW-Authenticate"));
+                // Handle CAE by default when receive CAE claim
+                if (claims) {
+                    let parsedClaim;
+                    // Return the response immediately if claims is not a valid base64 encoded string
+                    try {
+                        parsedClaim = atob(claims);
+                    }
+                    catch (e) {
+                        logger.warning(`The WWW-Authenticate header contains "claims" that cannot be parsed. Unable to perform the Continuous Access Evaluation authentication flow. Unparsable claims: ${claims}`);
+                        return response;
+                    }
+                    shouldSendRequest = await authorizeRequestOnCaeChallenge$1({
+                        scopes: Array.isArray(scopes) ? scopes : [scopes],
+                        response,
+                        request,
+                        getAccessToken,
+                        logger,
+                    }, parsedClaim);
+                    // Send updated request and handle response for RestError
+                    if (shouldSendRequest) {
+                        [response, error] = await trySendRequest$1(request, next);
+                    }
+                }
+                else if (callbacks.authorizeRequestOnChallenge) {
+                    // Handle custom challenges when client provides custom callback
+                    shouldSendRequest = await callbacks.authorizeRequestOnChallenge({
+                        scopes: Array.isArray(scopes) ? scopes : [scopes],
+                        request,
+                        response,
+                        getAccessToken,
+                        logger,
+                    });
+                    // Send updated request and handle response for RestError
+                    if (shouldSendRequest) {
+                        [response, error] = await trySendRequest$1(request, next);
+                    }
+                    // If we get another CAE Claim, we will handle it by default and return whatever value we receive for this
+                    if (isChallengeResponse$1(response)) {
+                        claims = getCaeChallengeClaims$1(response.headers.get("WWW-Authenticate"));
+                        if (claims) {
+                            let parsedClaim;
+                            try {
+                                parsedClaim = atob(claims);
+                            }
+                            catch (e) {
+                                logger.warning(`The WWW-Authenticate header contains "claims" that cannot be parsed. Unable to perform the Continuous Access Evaluation authentication flow. Unparsable claims: ${claims}`);
+                                return response;
+                            }
+                            shouldSendRequest = await authorizeRequestOnCaeChallenge$1({
+                                scopes: Array.isArray(scopes) ? scopes : [scopes],
+                                response,
+                                request,
+                                getAccessToken,
+                                logger,
+                            }, parsedClaim);
+                            // Send updated request and handle response for RestError
+                            if (shouldSendRequest) {
+                                [response, error] = await trySendRequest$1(request, next);
+                            }
+                        }
+                    }
+                }
+            }
+            if (error) {
+                throw error;
+            }
+            else {
+                return response;
+            }
+        },
+    };
+}
+/**
+ * Converts: `Bearer a="b", c="d", Pop e="f", g="h"`.
+ * Into: `[ { scheme: 'Bearer', params: { a: 'b', c: 'd' } }, { scheme: 'Pop', params: { e: 'f', g: 'h' } } ]`.
+ *
+ * @internal
+ */
+function parseChallenges$1(challenges) {
+    // Challenge regex seperates the string to individual challenges with different schemes in the format `Scheme a="b", c=d`
+    // The challenge regex captures parameteres with either quotes values or unquoted values
+    const challengeRegex = /(\w+)\s+((?:\w+=(?:"[^"]*"|[^,]*),?\s*)+)/g;
+    // Parameter regex captures the claims group removed from the scheme in the format `a="b"` and `c="d"`
+    // CAE challenge always have quoted parameters. For more reference, https://learn.microsoft.com/entra/identity-platform/claims-challenge
+    const paramRegex = /(\w+)="([^"]*)"/g;
+    const parsedChallenges = [];
+    let match;
+    // Iterate over each challenge match
+    while ((match = challengeRegex.exec(challenges)) !== null) {
+        const scheme = match[1];
+        const paramsString = match[2];
+        const params = {};
+        let paramMatch;
+        // Iterate over each parameter match
+        while ((paramMatch = paramRegex.exec(paramsString)) !== null) {
+            params[paramMatch[1]] = paramMatch[2];
+        }
+        parsedChallenges.push({ scheme, params });
+    }
+    return parsedChallenges;
+}
+/**
+ * Parse a pipeline response and look for a CAE challenge with "Bearer" scheme
+ * Return the value in the header without parsing the challenge
+ * @internal
+ */
+function getCaeChallengeClaims$1(challenges) {
+    if (!challenges) {
+        return;
+    }
+    // Find all challenges present in the header
+    const parsedChallenges = parseChallenges$1(challenges);
+    return parsedChallenges.find((x) => x.scheme === "Bearer" && x.params.claims && x.params.error === "insufficient_claims")?.params.claims;
+}
+
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+/**
+ * @internal
+ * @param accessToken - Access token
+ * @returns Whether a token is bearer type or not
+ */
+/**
+ * Tests an object to determine whether it implements TokenCredential.
+ *
+ * @param credential - The assumed TokenCredential to be tested.
+ */
+function isTokenCredential(credential) {
+    // Check for an object with a 'getToken' function and possibly with
+    // a 'signRequest' function.  We do this check to make sure that
+    // a ServiceClientCredentials implementor (like TokenClientCredentials
+    // in ms-rest-nodeauth) doesn't get mistaken for a TokenCredential if
+    // it doesn't actually implement TokenCredential also.
+    const castCredential = credential;
+    return (castCredential &&
+        typeof castCredential.getToken === "function" &&
+        (castCredential.signRequest === undefined || castCredential.getToken.length > 0));
+}
+
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+const disableKeepAlivePolicyName = "DisableKeepAlivePolicy";
+function createDisableKeepAlivePolicy() {
+    return {
+        name: disableKeepAlivePolicyName,
+        async sendRequest(request, next) {
+            request.disableKeepAlive = true;
+            return next(request);
+        },
+    };
+}
+/**
+ * @internal
+ */
+function pipelineContainsDisableKeepAlivePolicy(pipeline) {
+    return pipeline.getOrderedPolicies().some((policy) => policy.name === disableKeepAlivePolicyName);
+}
+
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+/**
+ * Creates a totally empty pipeline.
+ * Useful for testing or creating a custom one.
+ */
+function createEmptyPipeline() {
+    return createEmptyPipeline$1();
+}
+
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+const logger$3 = createClientLogger("core-rest-pipeline");
+
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+/**
+ * A policy that logs all requests and responses.
+ * @param options - Options to configure logPolicy.
+ */
+function logPolicy(options = {}) {
+    return logPolicy$1({
+        logger: logger$3.info,
+        ...options,
+    });
+}
+
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+/**
+ * The programmatic identifier of the redirectPolicy.
+ */
+const redirectPolicyName = redirectPolicyName$1;
+/**
+ * A policy to follow Location headers from the server in order
+ * to support server-side redirection.
+ * In the browser, this policy is not used.
+ * @param options - Options to control policy behavior.
+ */
+function redirectPolicy(options = {}) {
+    return redirectPolicy$1(options);
+}
+
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+/**
+ * @internal
+ */
+function getHeaderName() {
+    return "User-Agent";
+}
+/**
+ * @internal
+ */
+async function setPlatformSpecificData(map) {
+    if (process$1 && process$1.versions) {
+        const osInfo = `${os$1.type()} ${os$1.release()}; ${os$1.arch()}`;
+        if (process$1.versions.bun) {
+            map.set("Bun", `${process$1.versions.bun} (${osInfo})`);
+        }
+        else if (process$1.versions.deno) {
+            map.set("Deno", `${process$1.versions.deno} (${osInfo})`);
+        }
+        else if (process$1.versions.node) {
+            map.set("Node", `${process$1.versions.node} (${osInfo})`);
+        }
+    }
+}
+
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+const SDK_VERSION$1 = "1.24.0";
+
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+function getUserAgentString$1(telemetryInfo) {
+    const parts = [];
+    for (const [key, value] of telemetryInfo) {
+        const token = value ? `${key}/${value}` : key;
+        parts.push(token);
+    }
+    return parts.join(" ");
+}
+/**
+ * @internal
+ */
+function getUserAgentHeaderName() {
+    return getHeaderName();
+}
+/**
+ * @internal
+ */
+async function getUserAgentValue(prefix) {
+    const runtimeInfo = new Map();
+    runtimeInfo.set("core-rest-pipeline", SDK_VERSION$1);
+    await setPlatformSpecificData(runtimeInfo);
+    const defaultAgent = getUserAgentString$1(runtimeInfo);
+    const userAgentValue = prefix ? `${prefix} ${defaultAgent}` : defaultAgent;
+    return userAgentValue;
+}
+
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+const UserAgentHeaderName = getUserAgentHeaderName();
+/**
+ * The programmatic identifier of the userAgentPolicy.
+ */
+const userAgentPolicyName = "userAgentPolicy";
+/**
+ * A policy that sets the User-Agent header (or equivalent) to reflect
+ * the library version.
+ * @param options - Options to customize the user agent value.
+ */
+function userAgentPolicy(options = {}) {
+    const userAgentValue = getUserAgentValue(options.userAgentPrefix);
+    return {
+        name: userAgentPolicyName,
+        async sendRequest(request, next) {
+            if (!request.headers.has(UserAgentHeaderName)) {
+                request.headers.set(UserAgentHeaderName, await userAgentValue);
+            }
+            return next(request);
+        },
+    };
+}
+
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+/**
+ * Private symbol used as key on objects created using createFile containing the
+ * original source of the file object.
+ *
+ * This is used in Node to access the original Node stream without using Blob#stream, which
+ * returns a web stream. This is done to avoid a couple of bugs to do with Blob#stream and
+ * Readable#to/fromWeb in Node versions we support:
+ * - https://github.com/nodejs/node/issues/42694 (fixed in Node 18.14)
+ * - https://github.com/nodejs/node/issues/48916 (fixed in Node 20.6)
+ *
+ * Once these versions are no longer supported, we may be able to stop doing this.
+ *
+ * @internal
+ */
+const rawContent = Symbol("rawContent");
+/**
+ * Type guard to check if a given object is a blob-like object with a raw content property.
+ */
+function hasRawContent(x) {
+    return typeof x[rawContent] === "function";
+}
+/**
+ * Extract the raw content from a given blob-like object. If the input was created using createFile
+ * or createFileFromStream, the exact content passed into createFile/createFileFromStream will be used.
+ * For true instances of Blob and File, returns the actual blob.
+ *
+ * @internal
+ */
+function getRawContent$1(blob) {
+    if (hasRawContent(blob)) {
+        return blob[rawContent]();
+    }
+    else {
+        return blob;
+    }
+}
+
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+/**
+ * Name of multipart policy
+ */
+const multipartPolicyName = multipartPolicyName$1;
+/**
+ * Pipeline policy for multipart requests
+ */
+function multipartPolicy() {
+    const tspPolicy = multipartPolicy$1();
+    return {
+        name: multipartPolicyName,
+        sendRequest: async (request, next) => {
+            if (request.multipartBody) {
+                for (const part of request.multipartBody.parts) {
+                    if (hasRawContent(part.body)) {
+                        part.body = getRawContent$1(part.body);
+                    }
+                }
+            }
+            return tspPolicy.sendRequest(request, next);
+        },
+    };
+}
+
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+/**
+ * A policy to enable response decompression according to Accept-Encoding header
+ * https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Accept-Encoding
+ */
+function decompressResponsePolicy() {
+    return decompressResponsePolicy$1();
+}
+
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+/**
+ * A policy that retries according to three strategies:
+ * - When the server sends a 429 response with a Retry-After header.
+ * - When there are errors in the underlying transport layer (e.g. DNS lookup failures).
+ * - Or otherwise if the outgoing request fails, it will retry with an exponentially increasing delay.
+ */
+function defaultRetryPolicy(options = {}) {
+    return defaultRetryPolicy$1(options);
+}
+
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+/**
+ * A policy that encodes FormData on the request into the body.
+ */
+function formDataPolicy() {
+    return formDataPolicy$1();
+}
+
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+/**
+ * A policy that allows one to apply proxy settings to all requests.
+ * If not passed static settings, they will be retrieved from the HTTPS_PROXY
+ * or HTTP_PROXY environment variables.
+ * @param proxySettings - ProxySettings to use on each request.
+ * @param options - additional settings, for example, custom NO_PROXY patterns
+ */
+function proxyPolicy(proxySettings, options) {
+    return proxyPolicy$1(proxySettings);
+}
+
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+/**
+ * The programmatic identifier of the setClientRequestIdPolicy.
+ */
+const setClientRequestIdPolicyName = "setClientRequestIdPolicy";
+/**
+ * Each PipelineRequest gets a unique id upon creation.
+ * This policy passes that unique id along via an HTTP header to enable better
+ * telemetry and tracing.
+ * @param requestIdHeaderName - The name of the header to pass the request ID to.
+ */
+function setClientRequestIdPolicy(requestIdHeaderName = "x-ms-client-request-id") {
+    return {
+        name: setClientRequestIdPolicyName,
+        async sendRequest(request, next) {
+            if (!request.headers.has(requestIdHeaderName)) {
+                request.headers.set(requestIdHeaderName, request.requestId);
+            }
+            return next(request);
+        },
+    };
+}
+
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+/**
+ * Gets a pipeline policy that sets http.agent
+ */
+function agentPolicy(agent) {
+    return agentPolicy$1(agent);
+}
+
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+/**
+ * Gets a pipeline policy that adds the client certificate to the HttpClient agent for authentication.
+ */
+function tlsPolicy(tlsSettings) {
+    return tlsPolicy$1(tlsSettings);
+}
+
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+/**
  * A custom error type for failed pipeline requests.
  */
 // eslint-disable-next-line @typescript-eslint/no-redeclare
@@ -40780,7 +42007,7 @@ const RestError = RestError$1;
  * @param e - Something caught by a catch clause.
  */
 function isRestError(e) {
-    return isRestError$1(e);
+    return isRestError$2(e);
 }
 
 // Copyright (c) Microsoft Corporation.
@@ -41451,44 +42678,6 @@ function getCaeChallengeClaims(challenges) {
     // Find all challenges present in the header
     const parsedChallenges = parseChallenges(challenges);
     return parsedChallenges.find((x) => x.scheme === "Bearer" && x.params.claims && x.params.error === "insufficient_claims")?.params.claims;
-}
-
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT License.
-/**
- * Tests an object to determine whether it implements TokenCredential.
- *
- * @param credential - The assumed TokenCredential to be tested.
- */
-function isTokenCredential(credential) {
-    // Check for an object with a 'getToken' function and possibly with
-    // a 'signRequest' function.  We do this check to make sure that
-    // a ServiceClientCredentials implementor (like TokenClientCredentials
-    // in ms-rest-nodeauth) doesn't get mistaken for a TokenCredential if
-    // it doesn't actually implement TokenCredential also.
-    const castCredential = credential;
-    return (castCredential &&
-        typeof castCredential.getToken === "function" &&
-        (castCredential.signRequest === undefined || castCredential.getToken.length > 0));
-}
-
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT License.
-const disableKeepAlivePolicyName = "DisableKeepAlivePolicy";
-function createDisableKeepAlivePolicy() {
-    return {
-        name: disableKeepAlivePolicyName,
-        sendRequest(request, next) {
-            request.disableKeepAlive = true;
-            return next(request);
-        },
-    };
-}
-/**
- * @internal
- */
-function pipelineContainsDisableKeepAlivePolicy(pipeline) {
-    return pipeline.getOrderedPolicies().some((policy) => policy.name === disableKeepAlivePolicyName);
 }
 
 // Copyright (c) Microsoft Corporation.
@@ -42780,7 +43969,7 @@ function shouldDeserializeResponse(parsedResponse) {
     return result;
 }
 async function deserializeResponseBody(jsonContentTypes, xmlContentTypes, response, options, parseXML) {
-    const parsedResponse = await parse$2(jsonContentTypes, xmlContentTypes, response, options, parseXML);
+    const parsedResponse = await parse(jsonContentTypes, xmlContentTypes, response, options, parseXML);
     if (!shouldDeserializeResponse(parsedResponse)) {
         return parsedResponse;
     }
@@ -42905,7 +44094,7 @@ function handleErrorResponse(parsedResponse, operationSpec, responseSpec, option
     }
     return { error, shouldReturnResponse: false };
 }
-async function parse$2(jsonContentTypes, xmlContentTypes, operationResponse, opts, parseXML) {
+async function parse(jsonContentTypes, xmlContentTypes, operationResponse, opts, parseXML) {
     if (!operationResponse.request.streamResponseStatusCodes?.has(operationResponse.status) &&
         operationResponse.bodyAsText) {
         const text = operationResponse.bodyAsText;
@@ -43087,7 +44276,7 @@ function serializeRequestBody(request, operationArguments, operationSpec, string
             }
         }
         catch (error) {
-            throw new Error(`Error "${error.message}" occurred in serializing the payload - ${JSON.stringify(serializedName, undefined, "  ")}.`, { cause: error });
+            throw new Error(`Error "${error.message}" occurred in serializing the payload - ${JSON.stringify(serializedName, undefined, "  ")}.`);
         }
     }
     else if (operationSpec.formDataParameters && operationSpec.formDataParameters.length > 0) {
@@ -43685,22 +44874,6 @@ const originalRequestSymbol = Symbol("Original PipelineRequest");
 // cloned but we need to retrieve the OperationSpec and OperationArguments from the
 // original request.
 const originalClientRequestSymbol = Symbol.for("@azure/core-client original request");
-const passThroughProps = new Set([
-    "url",
-    "method",
-    "withCredentials",
-    "timeout",
-    "requestId",
-    "abortSignal",
-    "body",
-    "formData",
-    "onDownloadProgress",
-    "onUploadProgress",
-    "proxySettings",
-    "streamResponseStatusCodes",
-    "agent",
-    "requestOverrides",
-]);
 function toPipelineRequest(webResource, options = {}) {
     const compatWebResource = webResource;
     const request = compatWebResource[originalRequestSymbol];
@@ -43784,7 +44957,23 @@ function toWebResourceLike(request, options) {
                 if (prop === "keepAlive") {
                     request.disableKeepAlive = !value;
                 }
-                if (typeof prop === "string" && passThroughProps.has(prop)) {
+                const passThroughProps = [
+                    "url",
+                    "method",
+                    "withCredentials",
+                    "timeout",
+                    "requestId",
+                    "abortSignal",
+                    "body",
+                    "formData",
+                    "onDownloadProgress",
+                    "onUploadProgress",
+                    "proxySettings",
+                    "streamResponseStatusCodes",
+                    "agent",
+                    "requestOverrides",
+                ];
+                if (typeof prop === "string" && passThroughProps.includes(prop)) {
                     request[prop] = value;
                 }
                 return Reflect.set(target, prop, value, receiver);
@@ -44465,102 +45654,9 @@ function readAttributeStr(xmlData, i) {
 }
 
 /**
- * Walk `attrStr` once, left to right, splitting it into attribute tokens.
- *
- * This replaces a regex that used to do the same job
- * (`(\s*)([^\s=]+)(\s*=)?(\s*(['"])(([\s\S])*?)\5)?`). That regex led with an
- * optional whitespace group followed by a required "non-whitespace" group.
- * On a long run of whitespace that never resolves into an attribute name
- * (e.g. a tag with thousands of trailing spaces before `>`), the engine
- * backtracks the whitespace group one character at a time before giving up
- * and moving to the next starting position — one full backtrack per
- * position, which is quadratic in the length of the run.
- *
- * A single forward-only scan can never backtrack, so it can't be made slow
- * this way no matter how much whitespace the input contains — it's always
- * proportional to the length of the string, once.
- *
- * Each returned token mirrors the shape the old regex match array had, so
- * the validation logic below (which reads token[1]..token[6]) didn't need
- * to change:
- *   token.startIndex - where this token begins in attrStr
- *   token[1]          - leading whitespace before the name
- *   token[2]          - the attribute name
- *   token[3]          - whitespace + '=' if present, else undefined
- *   token[4]          - marker (any defined value) if a quoted value was found
- *   token[5]          - the quote character used ('"' or "'")
- *   token[6]          - the value's text, without the surrounding quotes
- *
- * A malformed leading character (e.g. a stray '=' with no name before it)
- * is simply skipped over, one character at a time — the same outcome the
- * old regex produced by failing to match at that position and retrying at
- * the next one.
+ * Select all the attributes whether valid or invalid.
  */
-function scanAttributeTokens(attrStr) {
-  const tokens = [];
-  const len = attrStr.length;
-  let i = 0;
-
-  while (i < len) {
-    const tokenStart = i;
-
-    // Leading whitespace before the name.
-    while (i < len && isWhiteSpace(attrStr[i])) i++;
-    if (i >= len) break; // trailing whitespace only — nothing left to read
-
-    if (attrStr[i] === '=') {
-      // No name before this '=' — not a valid attribute start. Move past
-      // just this one character and try again from the next position.
-      i = tokenStart + 1;
-      continue;
-    }
-
-    const leadingWs = attrStr.slice(tokenStart, i);
-
-    // Attribute name — everything up to the next whitespace or '='.
-    const nameStart = i;
-    while (i < len && !isWhiteSpace(attrStr[i]) && attrStr[i] !== '=') i++;
-    const name = attrStr.slice(nameStart, i);
-
-    // Optional whitespace + '='.
-    let equalsGroup; // whitespace + '=' text, or undefined if absent
-    let j = i;
-    while (j < len && isWhiteSpace(attrStr[j])) j++;
-    if (j < len && attrStr[j] === '=') {
-      equalsGroup = attrStr.slice(i, j + 1);
-      i = j + 1;
-    }
-
-    // Optional whitespace + quoted value.
-    let quoteChar;
-    let value;
-    let k = i;
-    while (k < len && isWhiteSpace(attrStr[k])) k++;
-    if (k < len && (attrStr[k] === '"' || attrStr[k] === "'")) {
-      const valueStart = k + 1;
-      const closeIdx = attrStr.indexOf(attrStr[k], valueStart);
-      if (closeIdx !== -1) {
-        quoteChar = attrStr[k];
-        value = attrStr.slice(valueStart, closeIdx);
-        i = closeIdx + 1;
-      }
-      // No closing quote found anywhere in the rest of the string — leave
-      // quoteChar/value undefined, same as the old regex's group failing
-      // to match a backreference-less run.
-    }
-
-    const token = { startIndex: tokenStart };
-    token[1] = leadingWs;
-    token[2] = name;
-    token[3] = equalsGroup;
-    token[4] = quoteChar !== undefined ? true : undefined;
-    token[5] = quoteChar;
-    token[6] = value;
-    tokens.push(token);
-  }
-
-  return tokens;
-}
+const validAttrStrRegxp = new RegExp('(\\s*)([^\\s=]+)(\\s*=)?(\\s*([\'"])(([\\s\\S])*?)\\5)?', 'g');
 
 //attr, ="sd", a="amit's", a="sd"b="saf", ab  cd=""
 
@@ -44569,7 +45665,7 @@ function validateAttributeString(attrStr, options) {
 
   //if(attrStr.trim().length === 0) return true; //empty string
 
-  const matches = scanAttributeTokens(attrStr);
+  const matches = getAllMatches(attrStr, validAttrStrRegxp);
   const attrNames = {};
 
   for (let i = 0; i < matches.length; i++) {
@@ -45567,24 +46663,10 @@ class XmlNode {
       this.child.push({ [node.tagname]: node.child });
     }
     // if requested, add the startIndex
-    this.addStartIndex(startIndex);
-  }
-
-  addStartIndex(startIndex) {
     if (startIndex !== undefined) {
       // Note: for now we just overwrite the metadata. If we had more complex metadata,
       // we might need to do an object append here:  metadata = { ...metadata, startIndex }
       this.child[this.child.length - 1][METADATA_SYMBOL$1] = { startIndex };
-    }
-  }
-
-  addEndIndex(endIndex) {
-    const lastChild = this.child[this.child.length - 1];
-    // endIndex is write-once: when updateTag drops a node, the last child is a
-    // previously completed sibling whose endIndex must not be overwritten
-    if (lastChild !== undefined && lastChild[METADATA_SYMBOL$1] !== undefined
-      && lastChild[METADATA_SYMBOL$1].endIndex === undefined) {
-      lastChild[METADATA_SYMBOL$1].endIndex = endIndex;
     }
   }
   /** symbol used for metadata */
@@ -45705,108 +46787,16 @@ const buildRegexes = (startChar, char, flags = '') => {
 const regexes10 = buildRegexes(nameStartChar10, nameChar10);       // no /u — BMP only
 const regexes11 = buildRegexes(nameStartChar11, nameChar11, 'u');  // /u — enables \u{10000}-\u{EFFFF}
 
-// ---------------------------------------------------------------------------
-// ASCII-only fast path (opt-in, off by default)
-//
-// The XML 1.0 vs 1.1 NameStartChar/NameChar productions differ *only* in
-// their non-ASCII ranges (merged vs split Latin-1 ranges, \u0487, and
-// supplementary planes). Restricted to ASCII, both versions collapse to the
-// same character classes, so a single regex pair covers both xmlVersion
-// values — no /u flag needed.
-//
-// Rationale: unicode-aware regexes (the /u flag, required for XML 1.1's
-// supplementary-plane range) are measurably slower in V8 than plain
-// non-unicode regexes on the same input, even when the input is pure ASCII.
-// For the common case — HTML/SVG ids, XML tags — names are ASCII, so callers
-// who know this can opt in to skip the unicode-aware matching path entirely.
-// This is a real but *conditional* win: mainly for XML 1.1 input (avoids /u),
-// or at scale where the larger unicode character classes add engine
-// overhead. It also changes behaviour (rejects legitimate non-ASCII XML
-// 1.0/1.1 names), so it must never be silently enabled — hence off by
-// default.
-// ---------------------------------------------------------------------------
-
-const nameStartCharAscii = ':A-Za-z_';
-const nameCharAscii = nameStartCharAscii + '\\-\\.\\d';
-
-const regexesAscii = buildRegexes(nameStartCharAscii, nameCharAscii); // no /u — ASCII only
-
-const getRegexes = (xmlVersion = '1.0', asciiOnly = false) => {
-  if (asciiOnly) return regexesAscii;
-  return xmlVersion === '1.1' ? regexes11 : regexes10;
-};
+const getRegexes = (xmlVersion = '1.0') =>
+  xmlVersion === '1.1' ? regexes11 : regexes10;
 
 /**
  * Returns true if the string is a valid QName (Qualified Name).
  * Allows exactly one colon as a prefix separator: prefix:localName.
  * Used for: element and attribute names in namespace-aware XML/SVG.
- *
- * @param {{ xmlVersion?: '1.0'|'1.1', asciiOnly?: boolean }} [opts]
- *   asciiOnly: skip unicode-aware matching, ASCII names only (default false).
  */
-const qName = (str, { xmlVersion = '1.0', asciiOnly = false } = {}) =>
-  getRegexes(xmlVersion, asciiOnly).qName.test(str);
-
-// ---------------------------------------------------------------------------
-// Memoized validator factory
-//
-// Real documents reuse a small vocabulary of tag/attribute names across many
-// siblings (e.g. `id`, `class`, `href` repeated across hundreds of elements).
-// The plain boolean validators above re-run the regex on every call
-// regardless of repeats. `createValidator` returns a closure with a private
-// string -> boolean cache, so repeated names after the first become O(1)
-// lookups instead of regex tests.
-//
-// - opts (xmlVersion, asciiOnly) are fixed at creation time, so the regex is
-//   resolved once, not on every call.
-// - The cache is private to the returned closure — no shared/global state,
-//   no cross-caller pollution.
-// - `maxCacheSize` bounds memory: once the cache reaches this many entries,
-//   it stops accepting new ones (existing entries keep serving hits; new
-//   misses just fall through to the regex, uncached). This avoids unbounded
-//   growth against adversarial/high-cardinality input (e.g. validating
-//   attacker-supplied names with no repeats) without the cost/complexity of
-//   a full LRU, and without the perf cliff of reset-and-refill thrashing.
-// - Call `.reset()` on the returned function to clear the cache manually
-//   (e.g. between unrelated parse calls).
-// ---------------------------------------------------------------------------
-
-const PRODUCTIONS = ['name', 'ncName', 'qName', 'nmToken', 'nmTokens'];
-
-/**
- * Returns a memoized boolean validator function for a single production,
- * with opts fixed at creation time.
- *
- * @param {'name'|'ncName'|'qName'|'nmToken'|'nmTokens'} production
- * @param {{ xmlVersion?: '1.0'|'1.1', asciiOnly?: boolean, maxCacheSize?: number }} [opts]
- *   maxCacheSize: max number of distinct strings to cache (default 2048).
- *   Once reached, new strings are validated but not cached; existing cached
- *   entries keep being served.
- * @returns {((str: string) => boolean) & { reset: () => void }}
- */
-const createValidator = (production, { xmlVersion = '1.0', asciiOnly = false, maxCacheSize = 2048 } = {}) => {
-  if (!PRODUCTIONS.includes(production)) {
-    throw new TypeError(
-      `Unknown production "${production}". Must be one of: ${PRODUCTIONS.join(', ')}`
-    );
-  }
-
-  const regex = getRegexes(xmlVersion, asciiOnly)[production];
-  let cache = new Map();
-
-  const validator = (str) => {
-    const cached = cache.get(str);
-    if (cached !== undefined) return cached;
-
-    const result = regex.test(str);
-    if (cache.size < maxCacheSize) cache.set(str, result);
-    return result;
-  };
-
-  validator.reset = () => { cache = new Map(); };
-
-  return validator;
-};
+const qName = (str, { xmlVersion = '1.0' } = {}) =>
+  getRegexes(xmlVersion).qName.test(str);
 
 class DocTypeReader {
     constructor(options, xmlVersion) {
@@ -45831,23 +46821,8 @@ class DocTypeReader {
             i = i + 9;
             let angleBracketsCount = 1;
             let hasBody = false, comment = false;
-            let quoteChar = null; // tracks an open SYSTEM/PUBLIC literal before the '[' body
             let exp = "";
             for (; i < xmlData.length; i++) {
-                // Inside a quoted external-identifier literal — XML allows '<'
-                // and '>' as plain data here, so they must not be interpreted
-                // as DOCTYPE structure until the matching quote closes.
-                if (quoteChar !== null) {
-                    if (xmlData[i] === quoteChar) quoteChar = null;
-                    exp += xmlData[i];
-                    continue;
-                }
-                if (!hasBody && !comment && (xmlData[i] === '"' || xmlData[i] === "'")) {
-                    quoteChar = xmlData[i];
-                    exp += xmlData[i];
-                    continue;
-                }
-
                 if (xmlData[i] === '<' && !comment) { //Determine the tag type
                     if (hasBody && hasSeq(xmlData, "!ENTITY", i)) {
                         i += 7;
@@ -45902,7 +46877,7 @@ class DocTypeReader {
                     exp += xmlData[i];
                 }
             }
-            if (quoteChar !== null || angleBracketsCount !== 0) {
+            if (angleBracketsCount !== 0) {
                 throw new Error(`Unclosed DOCTYPE`);
             }
         } else {
@@ -46605,11 +47580,7 @@ function resolveEnotation(str, trimmedStr, options) {
  */
 function trimZeros(numStr) {
     if (numStr && numStr.indexOf(".") !== -1) {//float
-        //remove ending zeros without the O(n^2) backtracking that /0+$/ hits
-        //when the string doesn't end in 0 but has a long internal zero-run
-        let end = numStr.length;
-        while (end > 0 && numStr.charCodeAt(end - 1) === 48 /* '0' */) end--;
-        numStr = numStr.slice(0, end);
+        numStr = numStr.replace(/0+$/, ""); //remove ending zeros
         if (numStr === ".") numStr = "0";
         else if (numStr[0] === ".") numStr = "0" + numStr;
         else if (numStr[numStr.length - 1] === ".") numStr = numStr.substring(0, numStr.length - 1);
@@ -47356,29 +48327,26 @@ class Matcher {
 
     // Get or create sibling tracking for current level
     const currentLevel = this.path.length;
-    let level = this.siblingStacks[currentLevel];
-    if (!level) {
-      // `counts` tells same-name siblings apart (the "counter" — nth <item>
-      // among other <item>s). `total` is every child seen at this level so
-      // far, kept as a running number instead of re-added from `counts` on
-      // every push — a parent with many differently-named children would
-      // otherwise cost more per child the more distinct names it has.
-      level = { counts: new Map(), total: 0 };
-      this.siblingStacks[currentLevel] = level;
+    if (!this.siblingStacks[currentLevel]) {
+      this.siblingStacks[currentLevel] = new Map();
     }
+
+    const siblings = this.siblingStacks[currentLevel];
 
     // Create a unique key for sibling tracking that includes namespace
     const siblingKey = namespace ? `${namespace}:${tagName}` : tagName;
 
     // Calculate counter (how many times this tag appeared at this level)
-    const counter = level.counts.get(siblingKey) || 0;
+    const counter = siblings.get(siblingKey) || 0;
 
-    // Position = total children at this level seen before this one.
-    const position = level.total;
+    // Calculate position (total children at this level so far)
+    let position = 0;
+    for (const count of siblings.values()) {
+      position += count;
+    }
 
-    // Update sibling count for this tag, and the level's running total.
-    level.counts.set(siblingKey, counter + 1);
-    level.total++;
+    // Update sibling count for this tag
+    siblings.set(siblingKey, counter + 1);
 
     // Create new node
     const node = {
@@ -47754,7 +48722,7 @@ class Matcher {
   snapshot() {
     return {
       path: this.path.map(node => ({ ...node })),
-      siblingStacks: this.siblingStacks.map(level => level ? { counts: new Map(level.counts), total: level.total } : level),
+      siblingStacks: this.siblingStacks.map(map => new Map(map)),
       keptAttrs: this._keptAttrs.map(entry => ({ ...entry }))
     };
   }
@@ -47766,7 +48734,7 @@ class Matcher {
   restore(snapshot) {
     this._pathStringCache = null;
     this.path = snapshot.path.map(node => ({ ...node }));
-    this.siblingStacks = snapshot.siblingStacks.map(level => level ? { counts: new Map(level.counts), total: level.total } : level);
+    this.siblingStacks = snapshot.siblingStacks.map(map => new Map(map));
     this._keptAttrs = (snapshot.keptAttrs || []).map(entry => ({ ...entry }));
   }
 
@@ -47950,8 +48918,7 @@ const XML_PATTERNS = [
   {
     id: 'xml-namespace-confusion',
     description: 'xmlns: attribute injection — can redefine namespaces to confuse parsers',
-    // pattern: /\bxmlns\s*(?::\w{1,40})?\s*=/i,
-    pattern: /\bxmlns(?::\w{1,40})?\s*=/i,
+    pattern: /\bxmlns\s*(?::\w{1,40})?\s*=/i,
   },
   {
     id: 'xml-comment-injection',
@@ -48145,6 +49112,51 @@ const SQL_PATTERNS = [
 ];
 
 /**
+ * SQL-STRICT context patterns.
+ *
+ * Extends the base 'SQL' context with three additional rules that are
+ * effective at detecting real injections but carry a higher false-positive
+ * risk on general free-text input.
+ *
+ * Use 'SQL-STRICT' when:
+ *   - The string is specifically a SQL fragment or database identifier
+ *   - You control the input domain (e.g. a dedicated SQL search field)
+ *   - You can tolerate occasional false positives in exchange for broader coverage
+ *
+ * Use 'SQL' (not STRICT) when:
+ *   - The field is general user text (names, descriptions, comments)
+ *   - False positives would block legitimate content (e.g. "see note -- above")
+ *
+ * Rules moved here from 'SQL' due to false-positive risk:
+ *
+ *   sql-line-comment   — "--" fires on "see note -- above", "value--", CSS var(--primary)
+ *   sql-stacked-query  — "; SELECT" fires on legitimate prose with semicolons + SQL words
+ *   sql-hex-encoding   — "0xDEAD" fires on hex values in technical docs and log output
+ */
+
+
+const SQL_STRICT_EXTRA = [
+  {
+    id: 'sql-line-comment',
+    description: 'SQL line comment: -- followed by whitespace or end of string',
+    pattern: /--(?:\s|$)/,
+  },
+  {
+    id: 'sql-stacked-query',
+    description: 'Stacked queries: semicolon immediately followed by a SQL keyword',
+    pattern: /;\s{0,10}(?:SELECT|INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|EXEC)\b/i,
+  },
+  {
+    id: 'sql-hex-encoding',
+    description: 'Hex-encoded string injection: 0x41414141 style (MySQL)',
+    pattern: /\b0x[0-9a-f]{4,}/i,
+  },
+];
+
+// SQL-STRICT = all base SQL rules + the three noisy extras
+const SQL_STRICT_PATTERNS = [...SQL_PATTERNS, ...SQL_STRICT_EXTRA];
+
+/**
  * SHELL context patterns.
  *
  * Detects shell injection vectors and path traversal patterns.
@@ -48328,74 +49340,74 @@ const REDOS_PATTERNS = [
  * quote between the operator name and the colon: /\$where["'\s]*:/
  */
 
-const sep$1 = '["\'\\s]*:';
+const sep = '["\'\\s]*:';
 
 const NOSQL_PATTERNS = [
   // ─── MongoDB $ operator injection ────────────────────────────────────────
   {
     id: 'nosql-where-operator',
     description: '$where — executes arbitrary JavaScript server-side in MongoDB',
-    pattern: new RegExp(`\\$where${sep$1}`, 'i'),
+    pattern: new RegExp(`\\$where${sep}`, 'i'),
   },
   {
     id: 'nosql-ne-operator',
     description: '$ne — "not equal" operator used to bypass equality checks',
-    pattern: new RegExp(`\\$ne${sep$1}`, 'i'),
+    pattern: new RegExp(`\\$ne${sep}`, 'i'),
   },
   {
     id: 'nosql-gt-operator',
     description: '$gt — "greater than" used to bypass password/value checks',
-    pattern: new RegExp(`\\$gte?${sep$1}`, 'i'),
+    pattern: new RegExp(`\\$gte?${sep}`, 'i'),
   },
   {
     id: 'nosql-lt-operator',
     description: '$lt / $lte — "less than" bypass variants',
-    pattern: new RegExp(`\\$lte?${sep$1}`, 'i'),
+    pattern: new RegExp(`\\$lte?${sep}`, 'i'),
   },
   {
     id: 'nosql-regex-operator',
     description: '$regex — can be used to extract data character by character (blind injection)',
-    pattern: new RegExp(`\\$regex${sep$1}`, 'i'),
+    pattern: new RegExp(`\\$regex${sep}`, 'i'),
   },
   {
     id: 'nosql-or-operator',
     description: '$or — logical OR; used to create always-true conditions',
-    pattern: new RegExp(`\\$or${sep$1}\\s*\\[`, 'i'),
+    pattern: new RegExp(`\\$or${sep}\\s*\\[`, 'i'),
   },
   {
     id: 'nosql-and-operator',
     description: '$and — logical AND operator injection',
-    pattern: new RegExp(`\\$and${sep$1}\\s*\\[`, 'i'),
+    pattern: new RegExp(`\\$and${sep}\\s*\\[`, 'i'),
   },
   {
     id: 'nosql-nor-operator',
     description: '$nor — logical NOR operator injection',
-    pattern: new RegExp(`\\$nor${sep$1}\\s*\\[`, 'i'),
+    pattern: new RegExp(`\\$nor${sep}\\s*\\[`, 'i'),
   },
   {
     id: 'nosql-exists-operator',
     description: '$exists — can enumerate fields to determine schema',
-    pattern: new RegExp(`\\$exists${sep$1}`, 'i'),
+    pattern: new RegExp(`\\$exists${sep}`, 'i'),
   },
   {
     id: 'nosql-in-operator',
     description: '$in — matches any value in a list; can enumerate values',
-    pattern: new RegExp(`\\$in${sep$1}\\s*\\[`, 'i'),
+    pattern: new RegExp(`\\$in${sep}\\s*\\[`, 'i'),
   },
   {
     id: 'nosql-expr-operator',
     description: '$expr — allows aggregation expressions in queries (MongoDB 3.6+)',
-    pattern: new RegExp(`\\$expr${sep$1}`, 'i'),
+    pattern: new RegExp(`\\$expr${sep}`, 'i'),
   },
   {
     id: 'nosql-function-operator',
     description: '$function — executes arbitrary JavaScript in MongoDB 4.4+',
-    pattern: new RegExp(`\\$function${sep$1}`, 'i'),
+    pattern: new RegExp(`\\$function${sep}`, 'i'),
   },
   {
     id: 'nosql-accumulator-operator',
     description: '$accumulator — custom aggregation with arbitrary JS execution',
-    pattern: new RegExp(`\\$accumulator${sep$1}`, 'i'),
+    pattern: new RegExp(`\\$accumulator${sep}`, 'i'),
   },
   // ─── Prototype pollution ─────────────────────────────────────────────────
   {
@@ -48515,100 +49527,66 @@ const LOG_PATTERNS = [
 ];
 
 /**
- * SQL-STRICT context patterns.
+ * Context registry — maps context name strings to their pattern arrays.
  *
- * Extends the base 'SQL' context with three additional rules that are
- * effective at detecting real injections but carry a higher false-positive
- * risk on general free-text input.
+ * Adding a new context: create a file in ./contexts/, export a default array
+ * of pattern objects, and register it here.
  *
- * Use 'SQL-STRICT' when:
- *   - The string is specifically a SQL fragment or database identifier
- *   - You control the input domain (e.g. a dedicated SQL search field)
- *   - You can tolerate occasional false positives in exchange for broader coverage
- *
- * Use 'SQL' (not STRICT) when:
- *   - The field is general user text (names, descriptions, comments)
- *   - False positives would block legitimate content (e.g. "see note -- above")
- *
- * Rules moved here from 'SQL' due to false-positive risk:
- *
- *   sql-line-comment   — "--" fires on "see note -- above", "value--", CSS var(--primary)
- *   sql-stacked-query  — "; SELECT" fires on legitimate prose with semicolons + SQL words
- *   sql-hex-encoding   — "0xDEAD" fires on hex values in technical docs and log output
+ * Context name guide:
+ *   SQL        — high-precision rules; safe for general text fields
+ *   SQL-STRICT — SQL + three noisier rules (line comments, stacked queries, hex);
+ *                use only for SQL-specific inputs
+ *   REDOS      — detects ReDoS-prone patterns when string will be compiled as RegExp
  */
 
 
-const SQL_STRICT_EXTRA = [
-  {
-    id: 'sql-line-comment',
-    description: 'SQL line comment: -- followed by whitespace or end of string',
-    pattern: /--(?:\s|$)/,
-  },
-  {
-    id: 'sql-stacked-query',
-    description: 'Stacked queries: semicolon immediately followed by a SQL keyword',
-    pattern: /;\s{0,10}(?:SELECT|INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|EXEC)\b/i,
-  },
-  {
-    id: 'sql-hex-encoding',
-    description: 'Hex-encoded string injection: 0x41414141 style (MySQL)',
-    pattern: /\b0x[0-9a-f]{4,}/i,
-  },
-];
-
-// SQL-STRICT = all base SQL rules + the three noisy extras
-const SQL_STRICT_PATTERNS = [...SQL_PATTERNS, ...SQL_STRICT_EXTRA];
+/** @type {Record<string, Array<{id: string, description: string, pattern: RegExp}>>} */
+const CONTEXT_REGISTRY = {
+  HTML: HTML_PATTERNS,
+  XML: XML_PATTERNS,
+  SVG: SVG_PATTERNS,
+  SQL: SQL_PATTERNS,
+  'SQL-STRICT': SQL_STRICT_PATTERNS,
+  SHELL: SHELL_PATTERNS,
+  REDOS: REDOS_PATTERNS,
+  NOSQL: NOSQL_PATTERNS,
+  LOG: LOG_PATTERNS,
+};
 
 /**
- * is-unsafe v2
+ * Enum of valid context names — e.g. `VALID_CONTEXTS.HTML === 'HTML'`.
+ * @type {Record<string, string>}
+ */
+const VALID_CONTEXTS = Object.freeze(
+  Object.fromEntries(Object.keys(CONTEXT_REGISTRY).map((k) => [k, k]))
+);
+
+/**
+ * is-unsafe
  *
  * Zero-dependency, DOM-free, pure predicate for detecting unsafe strings
  * across HTML, XML, SVG, SQL, SQL-STRICT, SHELL, REDOS, NOSQL, and LOG contexts.
- *
- * v2 change: contexts are imported as named pattern arrays rather than resolved
- * via a string-keyed registry. This makes each context independently
- * tree-shakeable — bundlers can drop any context you never import.
  *
  * @module is-unsafe
  */
 
 
-// ─── Attach labels to named contexts ──────────────────────────────────────
-// Each built-in PatternList carries its canonical name so matchList can read
-// list.label directly — no registry lookup needed at match time.
-// Custom PatternLists default to 'CUSTOM' unless the caller sets list.label.
-
-HTML_PATTERNS.label       = 'HTML';
-XML_PATTERNS.label        = 'XML';
-SVG_PATTERNS.label        = 'SVG';
-SQL_PATTERNS.label        = 'SQL';
-SQL_STRICT_PATTERNS.label = 'SQL-STRICT';
-SHELL_PATTERNS.label      = 'SHELL';
-REDOS_PATTERNS.label      = 'REDOS';
-NOSQL_PATTERNS.label      = 'NOSQL';
-LOG_PATTERNS.label        = 'LOG';
-
-// ─── Types ────────────────────────────────────────────────────────────────
-
 /**
- * @typedef {{ id: string, description: string, pattern: RegExp }} Rule
- */
-
-/**
- * @typedef {Rule[]} PatternList
+ * @typedef {'HTML'|'XML'|'SVG'|'SQL'|'SQL-STRICT'|'SHELL'|'REDOS'|'NOSQL'|'LOG'} ContextName
  */
 
 /**
  * @typedef {Object} MatchResult
- * @property {string} context     - Label identifying which context matched ('HTML', 'CUSTOM', etc.)
- * @property {string} id          - Rule identifier
+ * @property {string} context   - The context in which the match was found
+ * @property {string} id        - Rule identifier
  * @property {string} description - Human-readable description of what was matched
- * @property {RegExp} pattern     - The pattern that matched
+ * @property {RegExp} pattern   - The pattern that matched
  */
 
-// ─── Internal helpers ──────────────────────────────────────────────────────
+// ─── Validation helpers ────────────────────────────────────────────────────
 
 /**
+ * Validate that `value` is a string. Throws TypeError if not.
  * @param {unknown} value
  */
 function assertString(value) {
@@ -48620,61 +49598,56 @@ function assertString(value) {
 }
 
 /**
- * @param {unknown} context
+ * Validate that `context` is a recognised context name, an array of them,
+ * or a RegExp instance. Throws TypeError if not.
+ * @param {ContextName|ContextName[]|RegExp} context
  */
 function assertContext(context) {
   if (context instanceof RegExp) return;
 
+  if (typeof context === 'string') {
+    if (!CONTEXT_REGISTRY[context]) {
+      throw new TypeError(
+        `is-unsafe: unknown context "${context}". Valid contexts: ${Object.keys(VALID_CONTEXTS).join(', ')}`
+      );
+    }
+    return;
+  }
+
   if (Array.isArray(context)) {
     if (context.length === 0) {
-      throw new TypeError('is-unsafe: context must not be an empty array');
+      throw new TypeError('is-unsafe: context array must not be empty');
     }
-    // Detect array-of-arrays vs flat pattern list
-    if (Array.isArray(context[0])) {
-      // Array of PatternLists
-      for (const list of context) {
-        if (!Array.isArray(list) || list.length === 0) {
-          throw new TypeError(
-            'is-unsafe: each context in the array must be a non-empty pattern array (PatternList)'
-          );
-        }
+    for (const c of context) {
+      if (typeof c !== 'string' || !CONTEXT_REGISTRY[c]) {
+        throw new TypeError(
+          `is-unsafe: unknown context "${c}" in array. Valid contexts: ${Object.keys(VALID_CONTEXTS).join(', ')}`
+        );
       }
     }
-    // else: flat PatternList — trust it, no deep validation needed
     return;
   }
 
   throw new TypeError(
-    `is-unsafe: second argument must be a PatternList (e.g. HTML), ` +
-    `an array of PatternLists (e.g. [HTML, XML]), or a RegExp. Got: ${typeof context}`
+    `is-unsafe: second argument must be a context string, array of context strings, or RegExp. Got: ${typeof context}`
   );
 }
 
-/**
- * Normalise any valid context arg into an array of PatternLists.
- *
- * @param {Rule[]|Rule[][]|RegExp} context
- * @returns {{ lists: Rule[][]|null, regex: RegExp|null }}
- */
-function normalise(context) {
-  if (context instanceof RegExp) return { lists: null, regex: context };
-  // Distinguish PatternList (array of rule objects) from array of PatternLists
-  if (Array.isArray(context[0])) return { lists: context, regex: null };
-  return { lists: [context], regex: null };
-}
+// ─── Core matching logic ───────────────────────────────────────────────────
 
 /**
- * Test value against a single PatternList. Returns the first MatchResult or null.
+ * Test a single value against one named context's patterns.
+ * Returns the first matching MatchResult, or null if nothing matched.
  *
  * @param {string} value
- * @param {Rule[]} list
+ * @param {string} contextName
  * @returns {MatchResult|null}
  */
-function matchList(value, list) {
-  const label = list.label ?? 'CUSTOM';
-  for (const rule of list) {
+function matchContext(value, contextName) {
+  const patterns = CONTEXT_REGISTRY[contextName];
+  for (const rule of patterns) {
     if (rule.pattern.test(value)) {
-      return { context: label, id: rule.id, description: rule.description, pattern: rule.pattern };
+      return { context: contextName, id: rule.id, description: rule.description, pattern: rule.pattern };
     }
   }
   return null;
@@ -48685,31 +49658,36 @@ function matchList(value, list) {
 /**
  * Returns `true` if `value` is unsafe in the given context(s), `false` otherwise.
  *
- * @param {string} value - The string to test
- * @param {PatternList | PatternList[] | RegExp} context
- *   - A PatternList imported from is-unsafe (e.g. `HTML`, `XML`)
- *   - An array of PatternLists — returns true if unsafe in **any** of them
+ * @param {string} value           - The string to test
+ * @param {ContextName|ContextName[]|RegExp} context
+ *   - A named context ('HTML', 'XML', 'SVG', 'SQL', 'SQL-STRICT', 'SHELL', 'REDOS', 'NOSQL', 'LOG')
+ *   - An array of named contexts — returns true if unsafe in **any** of them
  *   - A custom RegExp — returns true if the pattern matches
  * @returns {boolean}
  *
  * @example
- * import { isUnsafe, HTML, SQL } from 'is-unsafe';
- *
- * isUnsafe('<script>alert(1)</script>', HTML)       // true
- * isUnsafe('hello world', HTML)                     // false
- * isUnsafe('value', [HTML, SQL])                    // false
- * isUnsafe('value', /my-pattern/i)                  // false
+ * isUnsafe('<script>alert(1)</script>', 'HTML')  // true
+ * isUnsafe('hello world', 'HTML')                // false
+ * isUnsafe('value', ['HTML', 'SQL'])             // false
+ * isUnsafe('value', /my-pattern/i)               // false
  */
 function isUnsafe(value, context) {
   assertString(value);
   assertContext(context);
 
-  const { lists, regex } = normalise(context);
+  // Custom RegExp — caller-supplied pattern
+  if (context instanceof RegExp) {
+    return context.test(value);
+  }
 
-  if (regex) return regex.test(value);
+  // Single named context
+  if (typeof context === 'string') {
+    return matchContext(value, context) !== null;
+  }
 
-  for (const list of lists) {
-    if (matchList(value, list) !== null) return true;
+  // Array of named contexts — unsafe if ANY context matches
+  for (const c of context) {
+    if (matchContext(value, c) !== null) return true;
   }
   return false;
 }
@@ -48789,7 +49767,6 @@ class OrderedObjParser {
     this.ignoreAttributesFn = getIgnoreAttributesFn$1(this.options.ignoreAttributes);
     this.entityExpansionCount = 0;
     this.currentExpandedLength = 0;
-    this.doctypefound = false;
     let namedEntities = { ...XML };
     if (this.options.entityDecoder) {
       this.entityDecoder = this.options.entityDecoder;
@@ -48807,7 +49784,8 @@ class OrderedObjParser {
         // onExternalEntity: (name, value) => isUnsafe(value) ? 'block' : 'allow',
         onInputEntity: (name, value) =>
           //TODO: VALID_CONTEXTS.HTML should be set only if this.options.htmlEntities
-          isUnsafe(value, [HTML_PATTERNS, XML_PATTERNS]) ? ENTITY_ACTION.BLOCK : ENTITY_ACTION.ALLOW,
+          isUnsafe(value, [VALID_CONTEXTS.HTML, VALID_CONTEXTS.XML])
+            ? ENTITY_ACTION.BLOCK : ENTITY_ACTION.ALLOW,
 
         //postCheck: resolved => resolved
       });
@@ -48997,7 +49975,6 @@ const parseXml = function (xmlData) {
   // Reset entity expansion counters for this document
   this.entityExpansionCount = 0;
   this.currentExpandedLength = 0;
-  this.doctypefound = false;
   const options = this.options;
   const docTypeReader = new DocTypeReader(options.processEntities);
   const xmlLen = xmlData.length;
@@ -49038,12 +50015,7 @@ const parseXml = function (xmlData) {
         this.matcher.pop();
         this.isCurrentNodeStopNode = false; // Reset flag when closing tag
 
-        //a closing tag with no matching opening tag leaves the stack empty
-        currentNode = this.tagsNodeStack.pop() || xmlObj;//avoid recursion, set the parent tag scope
-
-        if (options.captureMetaData && currentNode) {
-          currentNode.addEndIndex(closeIndex + 1);
-        }
+        currentNode = this.tagsNodeStack.pop();//avoid recursion, set the parent tag scope
         textData = "";
         i = closeIndex;
       } else if (c1 === 63) { //'?'
@@ -49067,11 +50039,6 @@ const parseXml = function (xmlData) {
             childNode[":@"] = attsMap;
           }
           this.addChild(currentNode, childNode, this.readonlyMatcher, i);
-
-          if (options.captureMetaData) {
-            // closeIndex points at '?' of the closing '?>'
-            currentNode.addEndIndex(tagData.closeIndex + 2);
-          }
         }
 
 
@@ -49090,8 +50057,6 @@ const parseXml = function (xmlData) {
         i = endIndex;
       } else if (c1 === 33
         && xmlData.charCodeAt(i + 2) === 68) { //'!D'
-        if (this.doctypefound) throw new Error("Multiple DOCTYPE declarations found.");
-        this.doctypefound = true;
         const result = docTypeReader.readDocType(xmlData, i);
         this.entityDecoder.addInputEntities(result.entities);
         i = result.i;
@@ -49235,10 +50200,6 @@ const parseXml = function (xmlData) {
           this.isCurrentNodeStopNode = false; // Reset flag
 
           this.addChild(currentNode, childNode, this.readonlyMatcher, startIndex);
-
-          if (options.captureMetaData) {
-            currentNode.addEndIndex(i + 1);
-          }
         } else {
           //selfClosing tag
           if (isSelfClosing) {
@@ -49249,10 +50210,6 @@ const parseXml = function (xmlData) {
               childNode[":@"] = prefixedAttrs;
             }
             this.addChild(currentNode, childNode, this.readonlyMatcher, startIndex);
-
-            if (options.captureMetaData) {
-              currentNode.addEndIndex(closeIndex + 1);
-            }
             this.matcher.pop(); // Pop self-closing tag
             this.isCurrentNodeStopNode = false; // Reset flag
           }
@@ -49262,10 +50219,6 @@ const parseXml = function (xmlData) {
               childNode[":@"] = prefixedAttrs;
             }
             this.addChild(currentNode, childNode, this.readonlyMatcher, startIndex);
-
-            if (options.captureMetaData) {
-              currentNode.addEndIndex(result.closeIndex + 1);
-            }
             this.matcher.pop(); // Pop unpaired tag
             this.isCurrentNodeStopNode = false; // Reset flag
             i = result.closeIndex;
@@ -49796,26 +50749,19 @@ class XMLParser {
     }
 }
 
-// String(val)/val.toString() drop the sign of -0 (e.g. String(-0) === '0'), silently
-// corrupting a round-tripped negative-zero value. XML has no separate int/float syntax,
-// so this is the single place every raw value gets turned into text.
-function valToStr(val) {
-  return typeof val === 'number' && Object.is(val, -0) ? '-0' : String(val)
-}
-
 function safeComment(val) {
-  return valToStr(val)
+  return String(val)
     .replace(/--/g, '- -')   // -- is illegal anywhere in comment content
     .replace(/--/g, '- -')   // handle the scenario when 2 consiucative dashes appears 
     .replace(/-$/, '- ');    // trailing - would form -- with the closing -->
 }
 
 function safeCdata(val) {
-  return valToStr(val).replace(/\]\]>/g, ']]]]><![CDATA[>')
+  return String(val).replace(/\]\]>/g, ']]]]><![CDATA[>')
 }
 
 function escapeAttribute(val) {
-  return valToStr(val).replace(/"/g, '&quot;').replace(/'/g, '&apos;')
+  return String(val).replace(/"/g, '&quot;').replace(/'/g, '&apos;')
 }
 
 const EOL = "\n";
@@ -49852,11 +50798,11 @@ function detectXmlVersionFromArray(jArray, options) {
  * @param {boolean} isAttribute - true when resolving an attribute name
  * @param {object}  options
  * @param {Matcher} matcher     - current matcher state (readonly from callback perspective)
- * @param {function} qNameValidator - function to validate tag names
+ * @param {string}  xmlVersion  - '1.0' or '1.1', forwarded to xml-naming
  */
-function resolveTagName$1(name, isAttribute, options, matcher, qNameValidator) {
+function resolveTagName$1(name, isAttribute, options, matcher, xmlVersion) {
     if (!options.sanitizeName) return name;
-    if (qNameValidator(name)) return name;
+    if (qName(name, { xmlVersion })) return name;
     return options.sanitizeName(name, { isAttribute, matcher: matcher.readOnly() });
 }
 
@@ -49886,14 +50832,14 @@ function toXml(jArray, options) {
 
     // Detect XML version for use in name validation
     const xmlVersion = detectXmlVersionFromArray(jArray, options);
-    const qNameValidator = createValidator('qName', { xmlVersion });
+
     // Initialize matcher for path tracking
     const matcher = new Matcher();
 
-    return arrToStr(jArray, options, indentation, matcher, stopNodeExpressions, qNameValidator);
+    return arrToStr(jArray, options, indentation, matcher, stopNodeExpressions, xmlVersion);
 }
 
-function arrToStr(arr, options, indentation, matcher, stopNodeExpressions, qNameValidator) {
+function arrToStr(arr, options, indentation, matcher, stopNodeExpressions, xmlVersion) {
     let xmlStr = "";
     let isPreviousElementTag = false;
 
@@ -49904,7 +50850,7 @@ function arrToStr(arr, options, indentation, matcher, stopNodeExpressions, qName
     if (!Array.isArray(arr)) {
         // Non-array values (e.g. string tag values) should be treated as text content
         if (arr !== undefined && arr !== null) {
-            let text = valToStr(arr);
+            let text = arr.toString();
             text = replaceEntitiesValue(text, options);
             return text;
         }
@@ -49926,7 +50872,7 @@ function arrToStr(arr, options, indentation, matcher, stopNodeExpressions, qName
         // Resolve tag name (may transform it; may throw for invalid names)
         const tagName = isSpecialName
             ? rawTagName
-            : resolveTagName$1(rawTagName, false, options, matcher, qNameValidator);
+            : resolveTagName$1(rawTagName, false, options, matcher, xmlVersion);
 
         // Extract attributes from ":@" property
         const attrValues = extractAttributeValues(tagObj[":@"], options);
@@ -49943,7 +50889,6 @@ function arrToStr(arr, options, indentation, matcher, stopNodeExpressions, qName
                 tagText = options.tagValueProcessor(tagName, tagText);
                 tagText = replaceEntitiesValue(tagText, options);
             }
-            tagText = valToStr(tagText);
             if (isPreviousElementTag) {
                 xmlStr += indentation;
             }
@@ -49969,7 +50914,7 @@ function arrToStr(arr, options, indentation, matcher, stopNodeExpressions, qName
             matcher.pop();
             continue;
         } else if (tagName[0] === "?") {
-            const attStr = attr_to_str(tagObj[":@"], options, isStopNode, matcher, qNameValidator);
+            const attStr = attr_to_str(tagObj[":@"], options, isStopNode, matcher, xmlVersion);
             const tempInd = tagName === "?xml" ? "" : indentation;
             // Text node content on PI/XML declaration tags is intentionally ignored.
             // Only attributes are valid on these tags per the XML spec.
@@ -49985,7 +50930,7 @@ function arrToStr(arr, options, indentation, matcher, stopNodeExpressions, qName
         }
 
         // Pass isStopNode to attr_to_str so attributes are also not processed for stopNodes
-        const attStr = attr_to_str(tagObj[":@"], options, isStopNode, matcher, qNameValidator);
+        const attStr = attr_to_str(tagObj[":@"], options, isStopNode, matcher, xmlVersion);
         const tagStart = indentation + `<${tagName}${attStr}`;
 
         // If this is a stopNode, get raw content without processing
@@ -49993,7 +50938,7 @@ function arrToStr(arr, options, indentation, matcher, stopNodeExpressions, qName
         if (isStopNode) {
             tagValue = getRawContent(tagObj[rawTagName], options);
         } else {
-            tagValue = arrToStr(tagObj[rawTagName], options, newIdentation, matcher, stopNodeExpressions, qNameValidator);
+            tagValue = arrToStr(tagObj[rawTagName], options, newIdentation, matcher, stopNodeExpressions, xmlVersion);
         }
 
         if (options.unpairedTags.indexOf(tagName) !== -1) {
@@ -50052,7 +50997,7 @@ function getRawContent(arr, options) {
     if (!Array.isArray(arr)) {
         // Non-array values return as-is
         if (arr !== undefined && arr !== null) {
-            return valToStr(arr);
+            return arr.toString();
         }
         return "";
     }
@@ -50064,7 +51009,7 @@ function getRawContent(arr, options) {
 
         if (tagName === options.textNodeName) {
             // Raw text content - NO processing, NO entity replacement
-            content += valToStr(item[tagName]);
+            content += item[tagName];
         } else if (tagName === options.cdataPropName) {
             // CDATA content
             content += item[tagName][0][options.textNodeName];
@@ -50122,7 +51067,7 @@ function propName(obj) {
  * Build attribute string, resolving attribute names through sanitizeName when configured.
  * Accepts matcher so the callback has path context.
  */
-function attr_to_str(attrMap, options, isStopNode, matcher, qNameValidator) {
+function attr_to_str(attrMap, options, isStopNode, matcher, xmlVersion) {
     let attrStr = "";
     if (attrMap && !options.ignoreAttributes) {
         for (let attr in attrMap) {
@@ -50132,7 +51077,7 @@ function attr_to_str(attrMap, options, isStopNode, matcher, qNameValidator) {
             const cleanAttrName = attr.substr(options.attributeNamePrefix.length);
             const resolvedAttrName = isStopNode
                 ? cleanAttrName  // stopNodes are raw — skip sanitizeName for attr names too
-                : resolveTagName$1(cleanAttrName, true, options, matcher, qNameValidator);
+                : resolveTagName$1(cleanAttrName, true, options, matcher, xmlVersion);
 
             let attrVal;
             if (isStopNode) {
@@ -50318,11 +51263,11 @@ function detectXmlVersionFromObj(jObj, options) {
  * @param {boolean} isAttribute - true when resolving an attribute name
  * @param {object}  options
  * @param {Matcher} matcher     - current matcher state (readonly from callback perspective)
- * @param {function} qNameValidator - function to validate tag names
+ * @param {string}  xmlVersion  - '1.0' or '1.1', forwarded to xml-naming
  */
-function resolveTagName(name, isAttribute, options, matcher, qNameValidator) {
+function resolveTagName(name, isAttribute, options, matcher, xmlVersion) {
   if (!options.sanitizeName) return name;
-  if (qNameValidator(name)) return name;
+  if (qName(name, { xmlVersion })) return name;
   return options.sanitizeName(name, { isAttribute, matcher: matcher.readOnly() });
 }
 
@@ -50338,12 +51283,11 @@ Builder.prototype.build = function (jObj) {
     // Initialize matcher for path tracking
     const matcher = new Matcher();
     const xmlVersion = detectXmlVersionFromObj(jObj, this.options);
-    const qNameValidator = createValidator('qName', { xmlVersion });
-    return this.j2x(jObj, 0, matcher, qNameValidator).val;
+    return this.j2x(jObj, 0, matcher, xmlVersion).val;
   }
 };
 
-Builder.prototype.j2x = function (jObj, level, matcher, qNameValidator) {
+Builder.prototype.j2x = function (jObj, level, matcher, xmlVersion) {
   let attrStr = '';
   let val = '';
   if (this.options.maxNestedTags && matcher.getDepth() >= this.options.maxNestedTags) {
@@ -50371,7 +51315,7 @@ Builder.prototype.j2x = function (jObj, level, matcher, qNameValidator) {
 
     const resolvedKey = isSpecialKey
       ? key
-      : resolveTagName(key, false, this.options, matcher, qNameValidator);
+      : resolveTagName(key, false, this.options, matcher, xmlVersion);
 
     if (typeof jObj[key] === 'undefined') {
       // supress undefined node only if it is not an attribute
@@ -50396,12 +51340,12 @@ Builder.prototype.j2x = function (jObj, level, matcher, qNameValidator) {
       const attr = this.isAttribute(key);
       if (attr && !this.ignoreAttributesFn(attr, jPath)) {
         // Resolve the attribute name through sanitizeName
-        const resolvedAttr = resolveTagName(attr, true, this.options, matcher, qNameValidator);
-        attrStr += this.buildAttrPairStr(resolvedAttr, valToStr(jObj[key]), isCurrentStopNode);
+        const resolvedAttr = resolveTagName(attr, true, this.options, matcher, xmlVersion);
+        attrStr += this.buildAttrPairStr(resolvedAttr, '' + jObj[key], isCurrentStopNode);
       } else if (!attr) {
         //tag value
         if (key === this.options.textNodeName) {
-          let newval = this.options.tagValueProcessor(key, valToStr(jObj[key]));
+          let newval = this.options.tagValueProcessor(key, '' + jObj[key]);
           val += this.replaceEntitiesValue(newval);
         } else {
           // Check if this is a stopNode before building
@@ -50411,7 +51355,7 @@ Builder.prototype.j2x = function (jObj, level, matcher, qNameValidator) {
 
           if (isStopNode) {
             // Build as raw content without encoding
-            const textValue = valToStr(jObj[key]);
+            const textValue = '' + jObj[key];
             if (textValue === '') {
               val += this.indentate(level) + '<' + resolvedKey + this.closeTag(resolvedKey) + this.tagEndChar;
             } else {
@@ -50436,7 +51380,7 @@ Builder.prototype.j2x = function (jObj, level, matcher, qNameValidator) {
           if (this.options.oneListGroup) {
             // Push tag to matcher before recursive call
             matcher.push(resolvedKey);
-            const result = this.j2x(item, level + 1, matcher, qNameValidator);
+            const result = this.j2x(item, level + 1, matcher, xmlVersion);
             // Pop tag from matcher after recursive call
             matcher.pop();
 
@@ -50445,13 +51389,12 @@ Builder.prototype.j2x = function (jObj, level, matcher, qNameValidator) {
               listTagAttr += result.attrStr;
             }
           } else {
-            listTagVal += this.processTextOrObjNode(item, resolvedKey, level, matcher, qNameValidator);
+            listTagVal += this.processTextOrObjNode(item, resolvedKey, level, matcher, xmlVersion);
           }
         } else {
           if (this.options.oneListGroup) {
             let textValue = this.options.tagValueProcessor(resolvedKey, item);
             textValue = this.replaceEntitiesValue(textValue);
-            textValue = valToStr(textValue);
             listTagVal += textValue;
           } else {
             // Check if this is a stopNode before building
@@ -50461,7 +51404,7 @@ Builder.prototype.j2x = function (jObj, level, matcher, qNameValidator) {
 
             if (isStopNode) {
               // Build as raw content without encoding
-              const textValue = valToStr(item);
+              const textValue = '' + item;
               if (textValue === '') {
                 listTagVal += this.indentate(level) + '<' + resolvedKey + this.closeTag(resolvedKey) + this.tagEndChar;
               } else {
@@ -50484,11 +51427,11 @@ Builder.prototype.j2x = function (jObj, level, matcher, qNameValidator) {
         const L = Ks.length;
         for (let j = 0; j < L; j++) {
           // Resolve attribute names inside attributesGroupName
-          const resolvedAttr = resolveTagName(Ks[j], true, this.options, matcher, qNameValidator);
-          attrStr += this.buildAttrPairStr(resolvedAttr, valToStr(jObj[key][Ks[j]]), isCurrentStopNode);
+          const resolvedAttr = resolveTagName(Ks[j], true, this.options, matcher, xmlVersion);
+          attrStr += this.buildAttrPairStr(resolvedAttr, '' + jObj[key][Ks[j]], isCurrentStopNode);
         }
       } else {
-        val += this.processTextOrObjNode(jObj[key], resolvedKey, level, matcher, qNameValidator);
+        val += this.processTextOrObjNode(jObj[key], resolvedKey, level, matcher, xmlVersion);
       }
     }
   }
@@ -50497,7 +51440,7 @@ Builder.prototype.j2x = function (jObj, level, matcher, qNameValidator) {
 
 Builder.prototype.buildAttrPairStr = function (attrName, val, isStopNode) {
   if (!isStopNode) {
-    val = this.options.attributeValueProcessor(attrName, valToStr(val));
+    val = this.options.attributeValueProcessor(attrName, '' + val);
     val = this.replaceEntitiesValue(val);
   }
   if (this.options.suppressBooleanAttributes && val === "true") {
@@ -50505,7 +51448,7 @@ Builder.prototype.buildAttrPairStr = function (attrName, val, isStopNode) {
   } else return ' ' + attrName + '="' + escapeAttribute(val) + '"';
 };
 
-function processTextOrObjNode(object, key, level, matcher, qNameValidator) {
+function processTextOrObjNode(object, key, level, matcher, xmlVersion) {
   // Extract attributes to pass to matcher
   const attrValues = this.extractAttributes(object);
 
@@ -50523,7 +51466,7 @@ function processTextOrObjNode(object, key, level, matcher, qNameValidator) {
     return this.buildObjectNode(rawContent, key, attrStr, level);
   }
 
-  const result = this.j2x(object, level + 1, matcher, qNameValidator);
+  const result = this.j2x(object, level + 1, matcher, xmlVersion);
   // Pop tag from matcher after recursion
   matcher.pop();
 
@@ -50652,9 +51595,7 @@ Builder.prototype.buildAttributesForStopNode = function (obj) {
       if (val === true && this.options.suppressBooleanAttributes) {
         attrStr += ' ' + cleanKey;
       } else {
-        // stopNode content is raw, but the quote delimiter is always escaped
-        // so a quote in the value cannot break out of the attribute (see orderedJs2Xml attr_to_str)
-        attrStr += ' ' + cleanKey + '="' + escapeAttribute(val) + '"';
+        attrStr += ' ' + cleanKey + '="' + val + '"'; // No encoding for stopNode
       }
     }
   } else {
@@ -50667,9 +51608,7 @@ Builder.prototype.buildAttributesForStopNode = function (obj) {
         if (val === true && this.options.suppressBooleanAttributes) {
           attrStr += ' ' + attr;
         } else {
-          // stopNode content is raw, but the quote delimiter is always escaped
-          // so a quote in the value cannot break out of the attribute (see orderedJs2Xml attr_to_str)
-          attrStr += ' ' + attr + '="' + escapeAttribute(val) + '"';
+          attrStr += ' ' + attr + '="' + val + '"'; // No encoding for stopNode
         }
       }
     }
@@ -50700,7 +51639,7 @@ Builder.prototype.buildObjectNode = function (val, key, attrStr, level) {
     if ((attrStr || attrStr === '') && val.indexOf('<') === -1) {
       return (this.indentate(level) + '<' + key + attrStr + piClosingChar + '>' + val + tagEndExp);
     } else if (this.options.commentPropName !== false && key === this.options.commentPropName && piClosingChar.length === 0) {
-      return this.indentate(level) + `<!--${safeComment(val)}-->` + this.newLine;
+      return this.indentate(level) + `<!--${val}-->` + this.newLine;
     } else {
       return (
         this.indentate(level) + '<' + key + attrStr + piClosingChar + this.tagEndChar +
@@ -50746,10 +51685,6 @@ Builder.prototype.buildTextValNode = function (val, key, attrStr, level, matcher
     // Normal processing: apply tagValueProcessor and entity replacement
     let textValue = this.options.tagValueProcessor(key, val);
     textValue = this.replaceEntitiesValue(textValue);
-    // tagValueProcessor may return the raw value unchanged (default is identity), and
-    // replaceEntitiesValue no-ops on non-strings, so a plain number can still reach here;
-    // stringify it now, sign-preserving, before it's implicitly ToString'd below.
-    textValue = valToStr(textValue);
 
     if (textValue === '') {
       return this.indentate(level) + '<' + key + attrStr + this.closeTag(key) + this.tagEndChar;
@@ -50865,8 +51800,7 @@ async function parseXML(str, opts = {}) {
         delete parsedXml["?xml"];
     }
     if (!opts.includeRoot) {
-        const key = Object.keys(parsedXml)[0];
-        if (key !== undefined) {
+        for (const key of Object.keys(parsedXml)) {
             const value = parsedXml[key];
             return typeof value === "object" ? { ...value } : value;
         }
@@ -51349,8 +52283,23 @@ class BufferScheduler {
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-var NativeCRC64 = (() => {
-  typeof document !== 'undefined' && document.currentScript ? document.currentScript.src : undefined;
+const __isNode__ =
+  typeof process === "object" &&
+  typeof process.versions === "object" &&
+  typeof process.versions.node === "string";
+let require$1;
+let __filename$1;
+let __dirname$1;
+if (__isNode__) {
+  require$1 = createRequire(import.meta.url);
+  __filename$1 = fileURLToPath(import.meta.url);
+  __dirname$1 = dirname$1(__filename$1);
+}
+// ESM-COMPAT-END
+
+(() => {
+  var _scriptDir = typeof document !== 'undefined' && document.currentScript ? document.currentScript.src : undefined;
+  if (typeof __filename$1 !== 'undefined') _scriptDir = _scriptDir || __filename$1;
   return (
 function(NativeCRC64) {
   NativeCRC64 = NativeCRC64 || {};
@@ -51428,10 +52377,24 @@ function locateFile(path) {
 
 if (ENVIRONMENT_IS_NODE) {
   if (typeof process == 'undefined' || !process.release || process.release.name !== 'node') throw new Error('not compiled for this environment (did you build to HTML and try to run it not on the web, or set ENVIRONMENT to something - like node - and run it someplace else - like on the web?)');
-  // The wasm is base64-embedded (see `binaryInString`) and loaded via `getBinary()`,
-  // so the Node fs/path read hooks emitted by Emscripten are never exercised and
-  // have been removed. This keeps the file free of Node built-in imports so it can be
-  // consumed as-is by web bundlers and by ESM-to-CommonJS bundlers (see issue #39057).
+// NODE-READ-START (this block is replaced with a no-op in dist/browser and dist/react-native by copyJSFiles.cjs)
+  // `require()` is no-op in an ESM module, use `createRequire()` to construct
+  // the require()` function.  This is only necessary for multi-environment
+  // builds, `-sENVIRONMENT=node` emits a static import declaration instead.
+  // TODO: Swap all `require()`'s with `import()`'s?
+  // These modules will usually be used on Node.js. Load them eagerly to avoid
+  // the complexity of lazy-loading.
+  require$1('fs');
+  var nodePath = require$1('path');
+
+  if (ENVIRONMENT_IS_WORKER) {
+    scriptDirectory = nodePath.dirname(scriptDirectory) + '/';
+  } else {
+    scriptDirectory = __dirname$1 + '/';
+  }
+
+// end include: node_shell_read.js
+// NODE-READ-END
   if (process['argv'].length > 1) {
     process['argv'][1].replace(/\\/g, '/');
   }
@@ -51459,7 +52422,7 @@ if (ENVIRONMENT_IS_NODE) {
 } else
 if (ENVIRONMENT_IS_SHELL) {
 
-  if ((typeof process == 'object' && typeof require === 'function') || typeof window == 'object' || typeof importScripts == 'function') throw new Error('not compiled for this environment (did you build to HTML and try to run it not on the web, or set ENVIRONMENT to something - like node - and run it someplace else - like on the web?)');
+  if ((typeof process == 'object' && typeof require$1 === 'function') || typeof window == 'object' || typeof importScripts == 'function') throw new Error('not compiled for this environment (did you build to HTML and try to run it not on the web, or set ENVIRONMENT to something - like node - and run it someplace else - like on the web?)');
 
   if (typeof scriptArgs != 'undefined') {
     scriptArgs;
@@ -51478,9 +52441,29 @@ if (ENVIRONMENT_IS_SHELL) {
 // Node.js workers are detected as a combination of ENVIRONMENT_IS_WORKER and
 // ENVIRONMENT_IS_NODE.
 if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
+  if (ENVIRONMENT_IS_WORKER) { // Check worker, not web, since window could be polyfilled
+    scriptDirectory = self.location.href;
+  } else if (typeof document != 'undefined' && document.currentScript) { // web
+    scriptDirectory = document.currentScript.src;
+  }
+  // When MODULARIZE, this JS may be executed later, after document.currentScript
+  // is gone, so we saved it, and we use it here instead of any other info.
+  if (_scriptDir) {
+    scriptDirectory = _scriptDir;
+  }
+  // blob urls look like blob:http://site.com/etc/etc and we cannot infer anything from them.
+  // otherwise, slice off the final part of the url to find the script directory.
+  // if scriptDirectory does not contain a slash, lastIndexOf will return -1,
+  // and scriptDirectory will correctly be replaced with an empty string.
+  // If scriptDirectory contains a query (starting with ?) or a fragment (starting with #),
+  // they are removed because they could contain a slash.
+  if (scriptDirectory.indexOf('blob:') !== 0) {
+    scriptDirectory = scriptDirectory.substr(0, scriptDirectory.replace(/[?#].*/, "").lastIndexOf('/')+1);
+  } else {
+    scriptDirectory = '';
+  }
+
   if (!(typeof window == 'object' || typeof importScripts == 'function')) throw new Error('not compiled for this environment (did you build to HTML and try to run it not on the web, or set ENVIRONMENT to something - like node - and run it someplace else - like on the web?)');
-  // The XHR-based read hooks emitted by Emscripten are unused because the wasm is
-  // base64-embedded; they have been removed so the file contains no DOM/XHR I/O.
 } else
 {
   throw new Error('environment detection error');
@@ -53647,77 +54630,6 @@ Crc64Hash.prototype['OnFinal'] = Crc64Hash.prototype.OnFinal = /** @suppress {un
 
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
-// @ts-expect-error the crc64 js file is auto generated
-/**
- * Class used to calculator CRC64 checksum
- */
-class StorageCRC64Calculator {
-    nativeCrc64Hash;
-    static nativeInstance;
-    constructor() {
-        this.nativeCrc64Hash = new StorageCRC64Calculator.nativeInstance.Crc64Hash();
-    }
-    static initPromise;
-    /**
-     * Initialize environment for CRC64 checksum calculator
-     */
-    static async init() {
-        if (!this.initPromise) {
-            this.initPromise = NativeCRC64().then((instance) => {
-                this.nativeInstance = instance;
-                return;
-            });
-        }
-        return this.initPromise;
-    }
-    /**
-     * Append data for CRC64 checksum calculator
-     * @param body - content to be append
-     * @param length - length of the content
-     */
-    append(body, length) {
-        const ptr = StorageCRC64Calculator.nativeInstance._malloc(length);
-        StorageCRC64Calculator.nativeInstance.HEAPU8.set(body, ptr);
-        this.nativeCrc64Hash.OnAppend(ptr, length);
-        StorageCRC64Calculator.nativeInstance._free(ptr);
-    }
-    /**
-     * Complete CRC64 checksum calculating and get the final result.
-     * @param body -
-     * @param length -
-     * @returns
-     */
-    final(body, length) {
-        const ptr = StorageCRC64Calculator.nativeInstance._malloc(length);
-        StorageCRC64Calculator.nativeInstance.HEAPU8.set(body, ptr);
-        const result = StorageCRC64Calculator.nativeInstance._malloc(8);
-        this.nativeCrc64Hash.OnFinal(ptr, length, result);
-        StorageCRC64Calculator.nativeInstance._free(ptr);
-        const resultArray = new Uint8Array(8);
-        resultArray.set(StorageCRC64Calculator.nativeInstance.HEAPU8.subarray(result, result + 8));
-        StorageCRC64Calculator.nativeInstance._free(result);
-        return resultArray;
-    }
-}
-
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT License.
-/**
- * Signals the end of a stream by pushing null.
- * In Node.js, this is required to signal the end of a Readable stream.
- * @internal
- */
-function signalStreamEnd(pushData) {
-    pushData(null);
-}
-
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT License.
-const MESSAGE_VERSION$1 = 1;
-const MESSAGE_HEADER_LENGTH$1 = 13;
-const SEGMENT_HEADER_LENGTH$1 = 10;
-const FOOTER_LENGTH$1 = 8;
-const MAX_SEGMENT_CONTENT_LENGTH = 4 * 1024 * 1024;
 var SMRegion$1;
 (function (SMRegion) {
     SMRegion[SMRegion["StreamHeader"] = 0] = "StreamHeader";
@@ -53727,311 +54639,9 @@ var SMRegion$1;
     SMRegion[SMRegion["SegmentContent"] = 4] = "SegmentContent";
     SMRegion[SMRegion["Completed"] = 5] = "Completed";
 })(SMRegion$1 || (SMRegion$1 = {}));
-class StructuredMessageEncoding {
-    pushData;
-    contentLength;
-    messageLength;
-    constructor(pushData, contentLength) {
-        this.pushData = pushData;
-        this.contentLength = contentLength;
-        this.contentOffset = 0;
-        this.currentDataOffset = 0;
-        this.segmentsCount = Math.ceil(this.contentLength / MAX_SEGMENT_CONTENT_LENGTH);
-        this.messageLength =
-            this.contentLength +
-                MESSAGE_HEADER_LENGTH$1 +
-                (SEGMENT_HEADER_LENGTH$1 + FOOTER_LENGTH$1) * this.segmentsCount +
-                FOOTER_LENGTH$1;
-        this.messageHeaderBuffer = new Uint8Array(MESSAGE_HEADER_LENGTH$1);
-        this.segmentNumber = 0;
-        this.segmentContentLength = 0;
-        this.segmentContentOffset = 0;
-        this.state = SMRegion$1.StreamHeader;
-        this.segmentCrc64 = new StorageCRC64Calculator();
-        this.messageCrc64 = new StorageCRC64Calculator();
-    }
-    currentDataOffset;
-    contentOffset;
-    segmentsCount;
-    messageHeaderBuffer;
-    segmentNumber;
-    segmentContentLength;
-    segmentContentOffset;
-    segmentCrc64;
-    messageCrc64;
-    state;
-    sourceDataHandler = (data) => {
-        this.currentDataOffset = 0;
-        if (this.state === SMRegion$1.StreamHeader) {
-            this.handlingMessageHeader();
-        }
-        while (this.segmentNumber < this.segmentsCount) {
-            this.segmentContentLength = Math.min(MAX_SEGMENT_CONTENT_LENGTH, this.contentLength - this.contentOffset);
-            if (this.state === SMRegion$1.SegmentHeader) {
-                this.handlingSegmentHeader();
-            }
-            if (this.state === SMRegion$1.SegmentContent) {
-                this.handlingSegmentContent(data);
-            }
-            if (this.state === SMRegion$1.SegmentFooter) {
-                this.handlingSegmentFooter();
-                this.contentOffset += this.segmentContentLength;
-            }
-            if (this.currentDataOffset === data.length) {
-                break;
-            }
-        }
-        if (this.state === SMRegion$1.StreamFooter) {
-            this.handlingMessageFooter();
-        }
-    };
-    handlingMessageHeader() {
-        this.messageHeaderBuffer[0] = MESSAGE_VERSION$1;
-        this.fillInt64(this.messageHeaderBuffer, 1, this.messageLength); // content length
-        this.fillInt16(this.messageHeaderBuffer, 9, 1);
-        this.fillInt16(this.messageHeaderBuffer, 11, this.segmentsCount);
-        this.pushData(this.messageHeaderBuffer);
-        this.state = SMRegion$1.SegmentHeader;
-    }
-    handlingSegmentHeader() {
-        const segmentHeaderBuffer = new Uint8Array(SEGMENT_HEADER_LENGTH$1);
-        this.fillInt16(segmentHeaderBuffer, 0, this.segmentNumber + 1);
-        this.fillInt64(segmentHeaderBuffer, 2, this.segmentContentLength);
-        this.segmentContentOffset = 0;
-        this.pushData(segmentHeaderBuffer);
-        this.state = SMRegion$1.SegmentContent;
-    }
-    handlingSegmentContent(data) {
-        const length = Math.min(this.segmentContentLength - this.segmentContentOffset, data.length - this.currentDataOffset);
-        if (length !== 0) {
-            const current_content = Uint8Array.prototype.slice.call(data, this.currentDataOffset, this.currentDataOffset + length);
-            this.messageCrc64.append(current_content, length);
-            this.segmentCrc64.append(current_content, length);
-            this.pushData(current_content);
-        }
-        this.segmentContentOffset += length;
-        this.currentDataOffset += length;
-        if (this.segmentContentOffset === this.segmentContentLength) {
-            this.state = SMRegion$1.SegmentFooter;
-        }
-    }
-    handlingSegmentFooter() {
-        const crc64Result = this.segmentCrc64.final(new Uint8Array([]), 0);
-        this.pushData(crc64Result);
-        this.segmentCrc64 = new StorageCRC64Calculator();
-        ++this.segmentNumber;
-        if (this.segmentNumber === this.segmentsCount) {
-            this.state = SMRegion$1.StreamFooter;
-        }
-        else {
-            this.state = SMRegion$1.SegmentHeader;
-        }
-    }
-    handlingMessageFooter() {
-        const crc64Result = this.messageCrc64.final(new Uint8Array([]), 0);
-        this.pushData(crc64Result);
-        signalStreamEnd(this.pushData);
-        this.state = SMRegion$1.Completed;
-    }
-    fillInt64(buffer, offset, input) {
-        if (buffer.length < offset + 8) {
-            throw new Error("Uint8Array length is not expected.");
-        }
-        const view = new DataView(buffer.buffer, buffer.byteOffset + offset, 8);
-        view.setBigUint64(0, BigInt(input), true);
-    }
-    fillInt16(buffer, offset, input) {
-        if (buffer.length < offset + 2) {
-            throw new Error("Uint8Array length is not expected.");
-        }
-        const view = new DataView(buffer.buffer, buffer.byteOffset + offset, 2);
-        view.setUint16(0, input, true);
-    }
-}
 
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
-function isNodeReadableStream(source) {
-    return (source !== null &&
-        source instanceof require$$0$3 &&
-        typeof source._read === "function" &&
-        typeof source._readableState === "object" &&
-        typeof source.pipe === "function");
-}
-/**
- *
- * To encode structured body for CRC64 content validtion in storage uploading.
- * @param source -
- * @param contentLength -
- * @returns
- */
-async function structuredMessageEncoding(source, contentLength) {
-    if (source === null) {
-        return {
-            body: source,
-            encodedContentLength: contentLength,
-        };
-    }
-    if (isNodeReadableStream(source)) {
-        const encodingMessage = new StructuredMessageEncodingStream(source, contentLength, {});
-        return {
-            body: encodingMessage,
-            encodedContentLength: encodingMessage.messageLength(),
-        };
-    }
-    if (typeof source === "function") {
-        const encodingMessage = new StructuredMessageEncodingStream(source(), contentLength, {});
-        return {
-            body: encodingMessage,
-            encodedContentLength: encodingMessage.messageLength(),
-        };
-    }
-    if (source instanceof Blob) {
-        const encoding = await BrowserStream(source, contentLength);
-        return {
-            body: encoding.content,
-            encodedContentLength: encoding.encodedContentLength,
-        };
-    }
-    if (typeof source === "string") {
-        const s = new Readable$1();
-        s._read = () => { };
-        s.push(source);
-        s.push(null);
-        const stringContentLength = Buffer.byteLength(source);
-        const encodingMessage = await new StructuredMessageEncodingStream(s, stringContentLength, {});
-        return {
-            body: encodingMessage,
-            encodedContentLength: encodingMessage.messageLength(),
-        };
-    }
-    if (source instanceof ArrayBuffer) {
-        const stream = Readable$1.from(Buffer.from(source));
-        const encodingMessage = await new StructuredMessageEncodingStream(stream, contentLength, {});
-        return {
-            body: encodingMessage,
-            encodedContentLength: encodingMessage.messageLength(),
-        };
-    }
-    if (source instanceof Buffer) {
-        const stream = Readable$1.from(source);
-        const encodingMessage = await new StructuredMessageEncodingStream(stream, contentLength, {});
-        return {
-            body: encodingMessage,
-            encodedContentLength: encodingMessage.messageLength(),
-        };
-    }
-    if (ArrayBuffer.isView(source)) {
-        const stream = Readable$1.from(Buffer.from(source.buffer, source.byteOffset, source.byteLength));
-        const encodingMessage = await new StructuredMessageEncodingStream(stream, contentLength, {});
-        return {
-            body: encodingMessage,
-            encodedContentLength: encodingMessage.messageLength(),
-        };
-    }
-    throw new Error("The specified request body type is not supported for CRC64 checksum");
-}
-async function pump(reader, controller, encodingStream) {
-    const { done, value } = await reader.read();
-    // When no more data needs to be consumed, close the stream
-    if (done) {
-        controller.close();
-        return;
-    }
-    // Enqueue the next data chunk into our target stream
-    encodingStream.sourceDataHandler(Buffer.from(value));
-}
-async function BrowserStream(source, contentLength) {
-    const sourceStream = source instanceof Blob ? source.stream() : source;
-    const reader = sourceStream.getReader();
-    let encodingStream = undefined;
-    const stream = new ReadableStream({
-        start(controller) {
-            encodingStream = new StructuredMessageEncoding((data) => {
-                controller.enqueue(data);
-            }, contentLength);
-        },
-        pull(controller) {
-            pump(reader, controller, encodingStream)
-                .then(() => {
-                return;
-            })
-                .catch(function (error) {
-                controller.error(error);
-            });
-        },
-    });
-    const response = new Response(stream);
-    return {
-        content: await response.blob(),
-        encodedContentLength: encodingStream.messageLength,
-    };
-}
-class StructuredMessageEncodingStream extends Readable$1 {
-    source;
-    encodingMethods;
-    constructor(source, contentLength, options) {
-        super({ highWaterMark: options.highWaterMark });
-        this.source = source;
-        this.encodingMethods = new StructuredMessageEncoding((dataToHandle) => {
-            if (!this.push(dataToHandle)) {
-                source.pause();
-            }
-        }, contentLength);
-        this.setSourceEventHandlers();
-    }
-    messageLength() {
-        return this.encodingMethods.messageLength;
-    }
-    setSourceEventHandlers() {
-        this.source.on("data", this.sourceDataHandler);
-        this.source.on("end", this.sourceErrorOrEndHandler);
-        this.source.on("error", this.sourceErrorOrEndHandler);
-        // needed for Node14
-        this.source.on("aborted", this.sourceAbortedHandler);
-    }
-    removeSourceEventHandlers() {
-        this.source.removeListener("data", this.sourceDataHandler);
-        this.source.removeListener("end", this.sourceErrorOrEndHandler);
-        this.source.removeListener("error", this.sourceErrorOrEndHandler);
-        this.source.removeListener("aborted", this.sourceAbortedHandler);
-    }
-    sourceDataHandler = (data) => {
-        this.encodingMethods.sourceDataHandler(data);
-    };
-    sourceAbortedHandler = () => {
-        const abortError = new AbortError("The operation was aborted.");
-        this.destroy(abortError);
-    };
-    sourceErrorOrEndHandler = (err) => {
-        if (err && err.name === "AbortError") {
-            this.destroy(err);
-            return;
-        }
-        // console.log(
-        //   `Source stream emits end or error, offset: ${
-        //     this.offset
-        //   }, dest end : ${this.end}`
-        // );
-        this.removeSourceEventHandlers();
-    };
-    _read() {
-        this.source.resume();
-    }
-    _destroy(error, callback) {
-        // remove listener from source and release source
-        this.removeSourceEventHandlers();
-        this.source.destroy();
-        callback(error === null ? undefined : error);
-    }
-}
-
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT License.
-const MESSAGE_VERSION = 1;
-const MESSAGE_HEADER_LENGTH = 13;
-const SEGMENT_HEADER_LENGTH = 10;
-const FOOTER_LENGTH = 8;
 var SMRegion;
 (function (SMRegion) {
     SMRegion[SMRegion["StreamHeader"] = 0] = "StreamHeader";
@@ -54040,239 +54650,6 @@ var SMRegion;
     SMRegion[SMRegion["SegmentFooter"] = 3] = "SegmentFooter";
     SMRegion[SMRegion["SegmentContent"] = 4] = "SegmentContent";
 })(SMRegion || (SMRegion = {}));
-class StructuredMessageDecoding {
-    pushData;
-    segmentsCount;
-    //   private currentState: SMRegion;
-    currentOffset;
-    currentDataOffset;
-    messageHeaderBuffer;
-    messageHeaderOffset;
-    segmentNumber;
-    segmentHeaderOffset;
-    segmentHeaderBuffer;
-    segmentContentOffset;
-    segmentContentLength;
-    segmentFooterOffset;
-    segmentFooterBuffer;
-    messageFooterOffset;
-    messageFooterBuffer;
-    segmentCrc64;
-    messageCrc64;
-    state;
-    constructor(pushData) {
-        this.pushData = pushData;
-        this.currentOffset = 0;
-        this.segmentsCount = 0;
-        this.messageHeaderOffset = 0;
-        this.messageHeaderBuffer = new Uint8Array(MESSAGE_HEADER_LENGTH);
-        this.currentDataOffset = 0;
-        this.segmentNumber = 0;
-        this.segmentHeaderOffset = 0;
-        this.segmentHeaderBuffer = new Uint8Array(SEGMENT_HEADER_LENGTH);
-        this.segmentContentOffset = 0;
-        this.segmentContentLength = 0;
-        this.state = SMRegion.StreamHeader;
-        this.segmentFooterOffset = 0;
-        this.segmentFooterBuffer = new Uint8Array(FOOTER_LENGTH);
-        this.messageFooterOffset = 0;
-        this.messageFooterBuffer = new Uint8Array(FOOTER_LENGTH);
-        this.segmentCrc64 = new StorageCRC64Calculator();
-        this.messageCrc64 = new StorageCRC64Calculator();
-    }
-    sourceDataHandler = (data) => {
-        this.currentDataOffset = 0;
-        if (this.state === SMRegion.StreamHeader) {
-            this.parseMessageHeader(data);
-        }
-        while (this.segmentNumber < this.segmentsCount && this.currentDataOffset < data.length) {
-            if (this.state === SMRegion.SegmentHeader) {
-                this.parseSegmentHeader(data);
-            }
-            if (this.state === SMRegion.SegmentContent) {
-                this.parseSegmentContent(data);
-            }
-            if (this.state === SMRegion.SegmentFooter) {
-                this.parseSegmentFooter(data);
-            }
-        }
-        if (this.state === SMRegion.StreamFooter) {
-            this.parseMessageFooter(data);
-        }
-    };
-    parseMessageHeader(data) {
-        const length = Math.min(MESSAGE_HEADER_LENGTH - this.messageHeaderOffset, data.length - this.currentDataOffset);
-        this.messageHeaderBuffer.set(Uint8Array.prototype.slice.call(data, this.currentDataOffset, this.currentDataOffset + length), this.messageHeaderOffset);
-        this.currentDataOffset += length;
-        this.messageHeaderOffset += length;
-        this.currentOffset += length;
-        if (this.messageHeaderOffset === MESSAGE_HEADER_LENGTH) {
-            const currentVersion = this.messageHeaderBuffer[0];
-            if (currentVersion !== MESSAGE_VERSION) {
-                throw new Error("Unexpected message version");
-            }
-            this.segmentsCount = this.toInt16(Uint8Array.prototype.slice.call(this.messageHeaderBuffer, 11, 13));
-            this.state = SMRegion.SegmentHeader;
-        }
-    }
-    parseSegmentHeader(data) {
-        const length = Math.min(SEGMENT_HEADER_LENGTH - this.segmentHeaderOffset, data.length - this.currentDataOffset);
-        this.segmentHeaderBuffer.set(Uint8Array.prototype.slice.call(data, this.currentDataOffset, this.currentDataOffset + length), this.segmentHeaderOffset);
-        this.currentDataOffset += length;
-        this.segmentHeaderOffset += length;
-        this.currentOffset += length;
-        if (this.segmentHeaderOffset === SEGMENT_HEADER_LENGTH) {
-            const currentSegmentNumber = this.toInt16(Uint8Array.prototype.slice.call(this.segmentHeaderBuffer, 0, 2));
-            if (currentSegmentNumber !== this.segmentNumber + 1) {
-                throw new Error("Segment number is unexpected.");
-            }
-            this.segmentContentLength = this.toInt64(this.segmentHeaderBuffer, 2);
-            this.segmentContentOffset = 0;
-            this.state = SMRegion.SegmentContent;
-        }
-    }
-    parseSegmentContent(data) {
-        const length = Math.min(this.segmentContentLength - this.segmentContentOffset, data.length - this.currentDataOffset);
-        const dataToHandle = Uint8Array.prototype.slice.call(data, this.currentDataOffset, this.currentDataOffset + length);
-        this.segmentCrc64.append(dataToHandle, length);
-        this.messageCrc64.append(dataToHandle, length);
-        this.pushData(dataToHandle);
-        this.currentDataOffset += length;
-        this.segmentContentOffset += length;
-        this.currentOffset += length;
-        if (this.segmentContentOffset === this.segmentContentLength) {
-            this.state = SMRegion.SegmentFooter;
-        }
-    }
-    parseSegmentFooter(data) {
-        const length = Math.min(FOOTER_LENGTH - this.segmentFooterOffset, data.length - this.currentDataOffset);
-        this.segmentFooterBuffer.set(Uint8Array.prototype.slice.call(data, this.currentDataOffset, this.currentDataOffset + length), this.segmentFooterOffset);
-        this.currentDataOffset += length;
-        this.segmentFooterOffset += length;
-        this.currentOffset += length;
-        if (this.segmentFooterOffset === FOOTER_LENGTH) {
-            const crc64Result = this.segmentCrc64.final(new Uint8Array([]), 0);
-            if (!this.checkCrc64CheckSum(crc64Result, this.segmentFooterBuffer)) {
-                throw new Error(`Segment check sum mismatch, segmentNumber: ${this.segmentNumber}`);
-            }
-            ++this.segmentNumber;
-            if (this.segmentNumber === this.segmentsCount) {
-                this.state = SMRegion.StreamFooter;
-            }
-            else {
-                this.segmentHeaderOffset = 0;
-                this.segmentFooterOffset = 0;
-                this.segmentCrc64 = new StorageCRC64Calculator();
-                this.state = SMRegion.SegmentHeader;
-            }
-        }
-    }
-    parseMessageFooter(data) {
-        const length = Math.min(FOOTER_LENGTH - this.messageFooterOffset, data.length - this.currentDataOffset);
-        this.messageFooterBuffer.set(Uint8Array.prototype.slice.call(data, this.currentDataOffset, this.currentDataOffset + length), this.messageFooterOffset);
-        this.currentDataOffset += length;
-        this.messageFooterOffset += length;
-        this.currentOffset += length;
-        if (this.messageFooterOffset === FOOTER_LENGTH) {
-            const crc64Result = this.messageCrc64.final(new Uint8Array([]), 0);
-            if (!this.checkCrc64CheckSum(crc64Result, this.messageFooterBuffer)) {
-                throw new Error("Check sum mismatch");
-            }
-            this.pushData(null);
-        }
-    }
-    toInt64(input, offset) {
-        if (input.length < offset + 8) {
-            throw new Error("CRC64 buffer error, something wrong with crc64 calculator");
-        }
-        const view = new DataView(input.buffer, input.byteOffset + offset, 8);
-        return Number(view.getBigUint64(0, true));
-    }
-    toInt16(input) {
-        if (input.length !== 2) {
-            throw new Error("CRC64 buffer error, something wrong with crc64 calculator");
-        }
-        return input[0] + input[1] * 256;
-    }
-    checkCrc64CheckSum(first, second) {
-        if (first.length !== 8 || second.length !== 8) {
-            throw new Error("CRC64 buffer error, something wrong with crc64 calculator");
-        }
-        for (let index = 0; index < 8; ++index) {
-            if (first[index] !== second[index]) {
-                return false;
-            }
-        }
-        return true;
-    }
-}
-
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT License.
-/**
- * To decode structured body for CRC64 content validtion in storage downloading.
- * @param source -
- * @param options -
- * @returns
- */
-function structuredMessageDecodingStream(source, options) {
-    return new StructuredMessageDecodingStream(source, options);
-}
-class StructuredMessageDecodingStream extends Readable$1 {
-    source;
-    decodingMethods;
-    constructor(source, options) {
-        super({ highWaterMark: options.highWaterMark });
-        this.source = source;
-        this.decodingMethods = new StructuredMessageDecoding((dataToHandle) => {
-            if (!this.push(dataToHandle)) {
-                source.pause();
-            }
-        });
-        this.setSourceEventHandlers();
-    }
-    _read() {
-        this.source.resume();
-    }
-    setSourceEventHandlers() {
-        this.source.on("data", this.sourceDataHandler);
-        this.source.on("end", this.sourceErrorOrEndHandler);
-        this.source.on("error", this.sourceErrorOrEndHandler);
-        // needed for Node14
-        this.source.on("aborted", this.sourceAbortedHandler);
-    }
-    removeSourceEventHandlers() {
-        this.source.removeListener("data", this.sourceDataHandler);
-        this.source.removeListener("end", this.sourceErrorOrEndHandler);
-        this.source.removeListener("error", this.sourceErrorOrEndHandler);
-        this.source.removeListener("aborted", this.sourceAbortedHandler);
-    }
-    sourceDataHandler = (data) => {
-        try {
-            this.decodingMethods.sourceDataHandler(data);
-        }
-        catch (err) {
-            this.destroy(err);
-        }
-    };
-    sourceAbortedHandler = () => {
-        const abortError = new AbortError("The operation was aborted.");
-        this.destroy(abortError);
-    };
-    sourceErrorOrEndHandler = (err) => {
-        if (err) {
-            this.destroy(err);
-            return;
-        }
-        this.removeSourceEventHandlers();
-    };
-    _destroy(error, callback) {
-        // remove listener from source and release source
-        this.removeSourceEventHandlers();
-        this.source.destroy();
-        callback(error === null ? undefined : error);
-    }
-}
 
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
@@ -54999,7 +55376,8 @@ class StorageRetryPolicy extends BaseRequestPolicy {
      */
     shouldRetry(isPrimaryRetry, attempt, response, err) {
         if (attempt >= this.retryOptions.maxTries) {
-            logger.info(`RetryPolicy: Attempt(s) ${attempt} >= maxTries ${this.retryOptions.maxTries}, no further try.`);
+            logger.info(`RetryPolicy: Attempt(s) ${attempt} >= maxTries ${this.retryOptions
+                .maxTries}, no further try.`);
             return false;
         }
         // Handle network failures, you may need to customize the list when you implement
@@ -55459,18 +55837,6 @@ function storageRequestFailureDetailsParserPolicy() {
         async sendRequest(request, next) {
             try {
                 const response = await next(request);
-                if (response.status === 400 &&
-                    response.bodyAsText?.includes("<Error><Code>InvalidHeaderValue</Code>") &&
-                    response.bodyAsText.includes("<HeaderName>x-ms-version</HeaderName>")) {
-                    // replace the error message with a more user-friendly one that includes a link to documentation
-                    /* example response text:
-                    `<?xml version="1.0" encoding="utf-8"?>
-          <Error><Code>InvalidHeaderValue</Code><Message>The value for one of the HTTP headers is not in the correct format.
-          RequestId:e5ea566c-101e-001c-1ec4-acf180000000
-          Time:2026-03-05T17:24:34.6688015Z</Message><HeaderName>x-ms-version</HeaderName><HeaderValue>3025-01-01</HeaderValue></Error>`
-                    */
-                    response.bodyAsText = response.bodyAsText.replace(/<Message>.*<\/Message>/s, "<Message>The provided service version is not enabled on this storage account. Please see https://learn.microsoft.com/rest/api/storageservices/versioning-for-the-azure-storage-services for additional information.</Message>");
-                }
                 return response;
             }
             catch (err) {
@@ -55533,8 +55899,8 @@ class UserDelegationKeyCredential {
 
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
-const SDK_VERSION = "12.33.0";
-const SERVICE_VERSION = "2026-06-06";
+const SDK_VERSION = "12.31.0";
+const SERVICE_VERSION = "2026-02-06";
 const BLOCK_BLOB_MAX_UPLOAD_BLOB_BYTES = 256 * 1024 * 1024; // 256MB
 const BLOCK_BLOB_MAX_STAGE_BLOCK_BYTES = 4000 * 1024 * 1024; // 4000MB
 const BLOCK_BLOB_MAX_BLOCKS = 50000;
@@ -55867,7 +56233,7 @@ function getCoreClientOptions(pipeline) {
         }
         const credential = getCredentialFromPipeline(pipeline);
         if (isTokenCredential(credential)) {
-            corePipeline.addPolicy(bearerTokenAuthenticationPolicy({
+            corePipeline.addPolicy(bearerTokenAuthenticationPolicy$1({
                 credential,
                 scopes: restOptions.audience ?? StorageOAuthScopes,
                 challengeCallbacks: { authorizeRequestOnChallenge: authorizeRequestOnTenantChallenge },
@@ -56133,8 +56499,8 @@ var KnownStorageErrorCode;
     KnownStorageErrorCode["FeatureVersionMismatch"] = "FeatureVersionMismatch";
     /** IncrementalCopyBlobMismatch */
     KnownStorageErrorCode["IncrementalCopyBlobMismatch"] = "IncrementalCopyBlobMismatch";
-    /** IncrementalCopyOfEarlierSnapshotNotAllowed */
-    KnownStorageErrorCode["IncrementalCopyOfEarlierSnapshotNotAllowed"] = "IncrementalCopyOfEarlierSnapshotNotAllowed";
+    /** IncrementalCopyOfEarlierVersionSnapshotNotAllowed */
+    KnownStorageErrorCode["IncrementalCopyOfEarlierVersionSnapshotNotAllowed"] = "IncrementalCopyOfEarlierVersionSnapshotNotAllowed";
     /** IncrementalCopySourceMustBeSnapshot */
     KnownStorageErrorCode["IncrementalCopySourceMustBeSnapshot"] = "IncrementalCopySourceMustBeSnapshot";
     /** InfiniteLeaseDurationRequired */
@@ -56863,13 +57229,6 @@ const KeyInfo = {
                     name: "String",
                 },
             },
-            delegatedUserTid: {
-                serializedName: "DelegatedUserTid",
-                xmlName: "DelegatedUserTid",
-                type: {
-                    name: "String",
-                },
-            },
         },
     },
 };
@@ -56923,13 +57282,6 @@ const UserDelegationKey = {
                 serializedName: "SignedVersion",
                 required: true,
                 xmlName: "SignedVersion",
-                type: {
-                    name: "String",
-                },
-            },
-            signedDelegatedUserTenantId: {
-                serializedName: "SignedDelegatedUserTid",
-                xmlName: "SignedDelegatedUserTid",
                 type: {
                     name: "String",
                 },
@@ -57561,7 +57913,6 @@ const BlobPropertiesInternal = {
                         "Cool",
                         "Archive",
                         "Cold",
-                        "Smart",
                     ],
                 },
             },
@@ -57581,32 +57932,6 @@ const BlobPropertiesInternal = {
                         "rehydrate-pending-to-hot",
                         "rehydrate-pending-to-cool",
                         "rehydrate-pending-to-cold",
-                        "rehydrate-pending-to-smart",
-                    ],
-                },
-            },
-            smartAccessTier: {
-                serializedName: "SmartAccessTier",
-                xmlName: "SmartAccessTier",
-                type: {
-                    name: "Enum",
-                    allowedValues: [
-                        "P4",
-                        "P6",
-                        "P10",
-                        "P15",
-                        "P20",
-                        "P30",
-                        "P40",
-                        "P50",
-                        "P60",
-                        "P70",
-                        "P80",
-                        "Hot",
-                        "Cool",
-                        "Archive",
-                        "Cold",
-                        "Smart",
                     ],
                 },
             },
@@ -58588,9 +58913,6 @@ const ServiceGetAccountInfoHeaders = {
                         "Standard_RAGRS",
                         "Standard_ZRS",
                         "Premium_LRS",
-                        "Standard_GZRS",
-                        "Premium_ZRS",
-                        "Standard_RAGZRS",
                     ],
                 },
             },
@@ -60042,9 +60364,6 @@ const ContainerGetAccountInfoHeaders = {
                         "Standard_RAGRS",
                         "Standard_ZRS",
                         "Premium_LRS",
-                        "Standard_GZRS",
-                        "Premium_ZRS",
-                        "Standard_RAGZRS",
                     ],
                 },
             },
@@ -60411,20 +60730,6 @@ const BlobDownloadHeaders = {
                     name: "Boolean",
                 },
             },
-            structuredBodyType: {
-                serializedName: "x-ms-structured-body",
-                xmlName: "x-ms-structured-body",
-                type: {
-                    name: "String",
-                },
-            },
-            structuredContentLength: {
-                serializedName: "x-ms-structured-content-length",
-                xmlName: "x-ms-structured-content-length",
-                type: {
-                    name: "Number",
-                },
-            },
             errorCode: {
                 serializedName: "x-ms-error-code",
                 xmlName: "x-ms-error-code",
@@ -60750,13 +61055,6 @@ const BlobGetPropertiesHeaders = {
                 xmlName: "x-ms-access-tier-change-time",
                 type: {
                     name: "DateTimeRfc1123",
-                },
-            },
-            smartAccessTier: {
-                serializedName: "x-ms-smart-access-tier",
-                xmlName: "x-ms-smart-access-tier",
-                type: {
-                    name: "String",
                 },
             },
             versionId: {
@@ -62265,9 +62563,6 @@ const BlobGetAccountInfoHeaders = {
                         "Standard_RAGRS",
                         "Standard_ZRS",
                         "Premium_LRS",
-                        "Standard_GZRS",
-                        "Premium_ZRS",
-                        "Standard_RAGZRS",
                     ],
                 },
             },
@@ -62902,13 +63197,6 @@ const PageBlobUploadPagesHeaders = {
             encryptionScope: {
                 serializedName: "x-ms-encryption-scope",
                 xmlName: "x-ms-encryption-scope",
-                type: {
-                    name: "String",
-                },
-            },
-            structuredBodyType: {
-                serializedName: "x-ms-structured-body",
-                xmlName: "x-ms-structured-body",
                 type: {
                     name: "String",
                 },
@@ -63776,13 +64064,6 @@ const AppendBlobAppendBlockHeaders = {
                     name: "String",
                 },
             },
-            structuredBodyType: {
-                serializedName: "x-ms-structured-body",
-                xmlName: "x-ms-structured-body",
-                type: {
-                    name: "String",
-                },
-            },
             errorCode: {
                 serializedName: "x-ms-error-code",
                 xmlName: "x-ms-error-code",
@@ -64096,13 +64377,6 @@ const BlockBlobUploadHeaders = {
                     name: "String",
                 },
             },
-            structuredBodyType: {
-                serializedName: "x-ms-structured-body",
-                xmlName: "x-ms-structured-body",
-                type: {
-                    name: "String",
-                },
-            },
             errorCode: {
                 serializedName: "x-ms-error-code",
                 xmlName: "x-ms-error-code",
@@ -64317,13 +64591,6 @@ const BlockBlobStageBlockHeaders = {
             encryptionScope: {
                 serializedName: "x-ms-encryption-scope",
                 xmlName: "x-ms-encryption-scope",
-                type: {
-                    name: "String",
-                },
-            },
-            structuredBodyType: {
-                serializedName: "x-ms-structured-body",
-                xmlName: "x-ms-structured-body",
                 type: {
                     name: "String",
                 },
@@ -64934,7 +65201,7 @@ const timeoutInSeconds = {
 const version$1 = {
     parameterPath: "version",
     mapper: {
-        defaultValue: "2026-06-06",
+        defaultValue: "2026-02-06",
         isConstant: true,
         serializedName: "x-ms-version",
         type: {
@@ -65540,16 +65807,6 @@ const rangeGetContentCRC64 = {
         },
     },
 };
-const structuredBodyType = {
-    parameterPath: ["options", "structuredBodyType"],
-    mapper: {
-        serializedName: "x-ms-structured-body",
-        xmlName: "x-ms-structured-body",
-        type: {
-            name: "String",
-        },
-    },
-};
 const encryptionKey = {
     parameterPath: ["options", "cpkInfo", "encryptionKey"],
     mapper: {
@@ -65628,26 +65885,6 @@ const blobDeleteType = {
         xmlName: "deletetype",
         type: {
             name: "String",
-        },
-    },
-};
-const accessTierIfModifiedSince = {
-    parameterPath: ["options", "accessTierIfModifiedSince"],
-    mapper: {
-        serializedName: "x-ms-access-tier-if-modified-since",
-        xmlName: "x-ms-access-tier-if-modified-since",
-        type: {
-            name: "DateTimeRfc1123",
-        },
-    },
-};
-const accessTierIfUnmodifiedSince = {
-    parameterPath: ["options", "accessTierIfUnmodifiedSince"],
-    mapper: {
-        serializedName: "x-ms-access-tier-if-unmodified-since",
-        xmlName: "x-ms-access-tier-if-unmodified-since",
-        type: {
-            name: "DateTimeRfc1123",
         },
     },
 };
@@ -65841,7 +66078,6 @@ const tier = {
                 "Cool",
                 "Archive",
                 "Cold",
-                "Smart",
             ],
         },
     },
@@ -66080,7 +66316,6 @@ const tier1 = {
                 "Cool",
                 "Archive",
                 "Cold",
-                "Smart",
             ],
         },
     },
@@ -66309,16 +66544,6 @@ const ifSequenceNumberEqualTo = {
         },
     },
 };
-const structuredContentLength = {
-    parameterPath: ["options", "structuredContentLength"],
-    mapper: {
-        serializedName: "x-ms-structured-content-length",
-        xmlName: "x-ms-structured-content-length",
-        type: {
-            name: "Number",
-        },
-    },
-};
 const pageWrite1 = {
     parameterPath: "pageWrite",
     mapper: {
@@ -66368,36 +66593,6 @@ const range1 = {
         serializedName: "x-ms-range",
         required: true,
         xmlName: "x-ms-range",
-        type: {
-            name: "String",
-        },
-    },
-};
-const sourceEncryptionKey = {
-    parameterPath: ["options", "sourceCpkInfo", "sourceEncryptionKey"],
-    mapper: {
-        serializedName: "x-ms-source-encryption-key",
-        xmlName: "x-ms-source-encryption-key",
-        type: {
-            name: "String",
-        },
-    },
-};
-const sourceEncryptionKeySha256 = {
-    parameterPath: ["options", "sourceCpkInfo", "sourceEncryptionKeySha256"],
-    mapper: {
-        serializedName: "x-ms-source-encryption-key-sha256",
-        xmlName: "x-ms-source-encryption-key-sha256",
-        type: {
-            name: "String",
-        },
-    },
-};
-const sourceEncryptionAlgorithm = {
-    parameterPath: ["options", "sourceCpkInfo", "sourceEncryptionAlgorithm"],
-    mapper: {
-        serializedName: "x-ms-source-encryption-algorithm",
-        xmlName: "x-ms-source-encryption-algorithm",
         type: {
             name: "String",
         },
@@ -67902,7 +68097,6 @@ const downloadOperationSpec = {
         range,
         rangeGetContentMD5,
         rangeGetContentCRC64,
-        structuredBodyType,
         encryptionKey,
         encryptionKeySha256,
         encryptionAlgorithm,
@@ -67978,8 +68172,6 @@ const deleteOperationSpec = {
         ifNoneMatch,
         ifTags,
         deleteSnapshots,
-        accessTierIfModifiedSince,
-        accessTierIfUnmodifiedSince,
     ],
     isXML: true,
     serializer: xmlSerializer$3,
@@ -68842,7 +69034,6 @@ const uploadPagesOperationSpec = {
         ifModifiedSince,
         ifUnmodifiedSince,
         range,
-        structuredBodyType,
         encryptionKey,
         encryptionKeySha256,
         encryptionAlgorithm,
@@ -68858,7 +69049,6 @@ const uploadPagesOperationSpec = {
         ifSequenceNumberLessThanOrEqualTo,
         ifSequenceNumberLessThan,
         ifSequenceNumberEqualTo,
-        structuredContentLength,
     ],
     isXML: true,
     contentType: "application/xml; charset=utf-8",
@@ -68947,9 +69137,6 @@ const uploadPagesFromURLOperationSpec = {
         sourceRange,
         sourceContentCrc64,
         range1,
-        sourceEncryptionKey,
-        sourceEncryptionKeySha256,
-        sourceEncryptionAlgorithm,
     ],
     isXML: true,
     serializer: xmlSerializer$2,
@@ -69246,7 +69433,6 @@ const appendBlockOperationSpec = {
         leaseId,
         ifModifiedSince,
         ifUnmodifiedSince,
-        structuredBodyType,
         encryptionKey,
         encryptionKeySha256,
         encryptionAlgorithm,
@@ -69258,7 +69444,6 @@ const appendBlockOperationSpec = {
         transactionalContentCrc64,
         contentType1,
         accept2,
-        structuredContentLength,
         maxSize,
         appendPosition,
     ],
@@ -69306,9 +69491,6 @@ const appendBlockFromUrlOperationSpec = {
         transactionalContentMD5,
         sourceUrl,
         sourceContentCrc64,
-        sourceEncryptionKey,
-        sourceEncryptionKeySha256,
-        sourceEncryptionAlgorithm,
         maxSize,
         appendPosition,
         sourceRange1,
@@ -69465,7 +69647,6 @@ const uploadOperationSpec = {
         leaseId,
         ifModifiedSince,
         ifUnmodifiedSince,
-        structuredBodyType,
         encryptionKey,
         encryptionKeySha256,
         encryptionAlgorithm,
@@ -69488,7 +69669,6 @@ const uploadOperationSpec = {
         transactionalContentCrc64,
         contentType1,
         accept2,
-        structuredContentLength,
         blobType2,
     ],
     isXML: true,
@@ -69545,9 +69725,6 @@ const putBlobFromUrlOperationSpec = {
         copySourceTags,
         fileRequestIntent,
         transactionalContentMD5,
-        sourceEncryptionKey,
-        sourceEncryptionKeySha256,
-        sourceEncryptionAlgorithm,
         blobType2,
         copySourceBlobProperties,
     ],
@@ -69578,7 +69755,6 @@ const stageBlockOperationSpec = {
         requestId,
         contentLength,
         leaseId,
-        structuredBodyType,
         encryptionKey,
         encryptionKeySha256,
         encryptionAlgorithm,
@@ -69587,7 +69763,6 @@ const stageBlockOperationSpec = {
         transactionalContentCrc64,
         contentType1,
         accept2,
-        structuredContentLength,
     ],
     isXML: true,
     contentType: "application/xml; charset=utf-8",
@@ -69631,9 +69806,6 @@ const stageBlockFromURLOperationSpec = {
         fileRequestIntent,
         sourceUrl,
         sourceContentCrc64,
-        sourceEncryptionKey,
-        sourceEncryptionKeySha256,
-        sourceEncryptionAlgorithm,
         sourceRange1,
     ],
     isXML: true,
@@ -69747,7 +69919,7 @@ let StorageClient$1 = class StorageClient extends ExtendedServiceClient {
         const defaults = {
             requestContentType: "application/json; charset=utf-8",
         };
-        const packageDetails = `azsdk-js-azure-storage-blob/12.33.0`;
+        const packageDetails = `azsdk-js-azure-storage-blob/12.30.0`;
         const userAgentPrefix = options.userAgentOptions && options.userAgentOptions.userAgentPrefix
             ? `${options.userAgentOptions.userAgentPrefix} ${packageDetails}`
             : `${packageDetails}`;
@@ -69763,7 +69935,7 @@ let StorageClient$1 = class StorageClient extends ExtendedServiceClient {
         // Parameter assignments
         this.url = url;
         // Assigning values to Constant parameters
-        this.version = options.version || "2026-06-06";
+        this.version = options.version || "2026-02-06";
         this.service = new ServiceImpl(this);
         this.container = new ContainerImpl(this);
         this.blob = new BlobImpl(this);
@@ -69797,13 +69969,6 @@ class StorageContextClient extends StorageClient$1 {
 
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
-const accountNameSuffixes = [
-    "-secondary-ipv6",
-    "-secondary-dualstack",
-    "-ipv6",
-    "-dualstack",
-    "-secondary",
-];
 /**
  * Reserved URL characters must be properly escaped for Storage services like Blob or File.
  *
@@ -70150,15 +70315,7 @@ function getAccountNameFromUrl(url) {
     try {
         if (parsedUrl.hostname.split(".")[1] === "blob") {
             // `${defaultEndpointsProtocol}://${accountName}.blob.${endpointSuffix}`;
-            // `${defaultEndpointsProtocol}://${accountName}-suffix.blob.${endpointSuffix}`;
             accountName = parsedUrl.hostname.split(".")[0];
-            for (let i = 0; i < accountNameSuffixes.length; ++i) {
-                const suffix = accountNameSuffixes[i];
-                if (accountName.endsWith(suffix)) {
-                    accountName = accountName.substring(0, accountName.length - suffix.length);
-                    break;
-                }
-            }
         }
         else if (isIpEndpointStyle(parsedUrl)) {
             // IPv4/IPv6 address hosts... Example - http://192.0.0.10:10001/devstoreaccount1/
@@ -70381,31 +70538,6 @@ function assertResponse(response) {
         return response;
     }
     throw new TypeError(`Unexpected response object ${response}`);
-}
-async function setUploadChecksumParameters(body, contentLength, parameters, uploadOptions, configContentChecksumAlgorithm) {
-    let contentChecksumAlgorithm = uploadOptions.contentChecksumAlgorithm ?? configContentChecksumAlgorithm;
-    if (contentChecksumAlgorithm === undefined) {
-        contentChecksumAlgorithm = "Customized";
-    }
-    if (contentChecksumAlgorithm === "Auto") {
-        contentChecksumAlgorithm = "StorageCrc64";
-    }
-    let bodyInfo = undefined;
-    if (contentChecksumAlgorithm === "Customized") {
-        parameters.transactionalContentMD5 = uploadOptions.transactionalContentMD5;
-        parameters.transactionalContentCrc64 = uploadOptions.transactionalContentCrc64;
-    }
-    else if (contentChecksumAlgorithm === "StorageCrc64") {
-        await StorageCRC64Calculator.init();
-        bodyInfo = await structuredMessageEncoding(body, contentLength);
-        parameters.structuredBodyType = "XSM/1.0; properties=crc64";
-        parameters.structuredContentLength = contentLength;
-    }
-    return {
-        body: contentChecksumAlgorithm === "StorageCrc64" ? bodyInfo.body : body,
-        contentLength: contentChecksumAlgorithm === "StorageCrc64" ? bodyInfo.encodedContentLength : contentLength,
-        contentChecksumAlgorithm: contentChecksumAlgorithm,
-    };
 }
 
 // Copyright (c) Microsoft Corporation.
@@ -71032,11 +71164,6 @@ class SASQueryParameters {
      */
     signedVersion;
     /**
-     * The delegated user tenant id in Azure AD.
-     * Property of user delegation key.
-     */
-    signedDelegatedUserTid;
-    /**
      * Authorized AAD Object ID in GUID format. The AAD Object ID of a user authorized by the owner of the User Delegation Key
      * to perform the action granted by the SAS. The Azure Storage service will ensure that the owner of the user delegation key
      * has the required permissions before granting access but no additional permission check for the user specified in
@@ -71048,18 +71175,6 @@ class SASQueryParameters {
      * This is only used for User Delegation SAS.
      */
     correlationId;
-    /**
-     * Keys for request headers required in the SAS token
-     */
-    requestHeaderKeys;
-    /**
-     * Keys for request query parameters required in the SAS token
-     */
-    requestQueryParameterKeys;
-    /** To indicate the depth of the virtual blob directory specified
-     * in the canonicalizedresource field of the string-to-sign.
-     */
-    directoryDepth;
     /**
      * Optional. IP range allowed for this SAS.
      *
@@ -71074,7 +71189,7 @@ class SASQueryParameters {
         }
         return undefined;
     }
-    constructor(version, signature, permissionsOrOptions, services, resourceTypes, protocol, startsOn, expiresOn, ipRange, identifier, resource, cacheControl, contentDisposition, contentEncoding, contentLanguage, contentType, userDelegationKey, preauthorizedAgentObjectId, correlationId, encryptionScope, delegatedUserObjectId, requestHeaderKeys, requestQueryParameterKeys, directoryDepth) {
+    constructor(version, signature, permissionsOrOptions, services, resourceTypes, protocol, startsOn, expiresOn, ipRange, identifier, resource, cacheControl, contentDisposition, contentEncoding, contentLanguage, contentType, userDelegationKey, preauthorizedAgentObjectId, correlationId, encryptionScope, delegatedUserObjectId) {
         this.version = version;
         this.signature = signature;
         if (permissionsOrOptions !== undefined && typeof permissionsOrOptions !== "string") {
@@ -71095,9 +71210,6 @@ class SASQueryParameters {
             this.contentEncoding = permissionsOrOptions.contentEncoding;
             this.contentLanguage = permissionsOrOptions.contentLanguage;
             this.contentType = permissionsOrOptions.contentType;
-            this.requestHeaderKeys = permissionsOrOptions.requestHeaderKeys;
-            this.requestQueryParameterKeys = permissionsOrOptions.requestQueryParameterKeys;
-            this.directoryDepth = permissionsOrOptions.directoryDepth;
             if (permissionsOrOptions.userDelegationKey) {
                 this.signedOid = permissionsOrOptions.userDelegationKey.signedObjectId;
                 this.signedTenantId = permissionsOrOptions.userDelegationKey.signedTenantId;
@@ -71105,8 +71217,6 @@ class SASQueryParameters {
                 this.signedExpiresOn = permissionsOrOptions.userDelegationKey.signedExpiresOn;
                 this.signedService = permissionsOrOptions.userDelegationKey.signedService;
                 this.signedVersion = permissionsOrOptions.userDelegationKey.signedVersion;
-                this.signedDelegatedUserTid =
-                    permissionsOrOptions.userDelegationKey.signedDelegatedUserTenantId;
                 this.preauthorizedAgentObjectId = permissionsOrOptions.preauthorizedAgentObjectId;
                 this.correlationId = permissionsOrOptions.correlationId;
             }
@@ -71128,9 +71238,6 @@ class SASQueryParameters {
             this.contentEncoding = contentEncoding;
             this.contentLanguage = contentLanguage;
             this.contentType = contentType;
-            this.requestHeaderKeys = requestHeaderKeys;
-            this.requestQueryParameterKeys = requestQueryParameterKeys;
-            this.directoryDepth = directoryDepth;
             if (userDelegationKey) {
                 this.signedOid = userDelegationKey.signedObjectId;
                 this.signedTenantId = userDelegationKey.signedTenantId;
@@ -71138,7 +71245,6 @@ class SASQueryParameters {
                 this.signedExpiresOn = userDelegationKey.signedExpiresOn;
                 this.signedService = userDelegationKey.signedService;
                 this.signedVersion = userDelegationKey.signedVersion;
-                this.signedDelegatedUserTid = userDelegationKey.signedDelegatedUserTenantId;
                 this.preauthorizedAgentObjectId = preauthorizedAgentObjectId;
                 this.correlationId = correlationId;
             }
@@ -71167,6 +71273,7 @@ class SASQueryParameters {
             "skv", // Signed key version
             "sr",
             "sp",
+            "sig",
             "rscc",
             "rscd",
             "rsce",
@@ -71174,12 +71281,7 @@ class SASQueryParameters {
             "rsct",
             "saoid",
             "scid",
-            "sdd",
             "sduoid", // Signed key user delegation object ID
-            "skdutid", // Signed key user delegation tenant ID
-            "srh", // Request Headers
-            "srq", // Request QueryParameters
-            "sig",
         ];
         const queries = [];
         for (const param of params) {
@@ -71229,9 +71331,6 @@ class SASQueryParameters {
                 case "skv": // Signed key version
                     this.tryAppendQueryParameter(queries, param, this.signedVersion);
                     break;
-                case "skdutid":
-                    this.tryAppendQueryParameter(queries, param, this.signedDelegatedUserTid);
-                    break;
                 case "sr":
                     this.tryAppendQueryParameter(queries, param, this.resource);
                     break;
@@ -71264,15 +71363,6 @@ class SASQueryParameters {
                     break;
                 case "sduoid":
                     this.tryAppendQueryParameter(queries, param, this.delegatedUserObjectId);
-                    break;
-                case "srh": // Request headers
-                    this.tryAppendQueryParameter(queries, param, this.requestHeaderKeys);
-                    break;
-                case "srq": // Request headers
-                    this.tryAppendQueryParameter(queries, param, this.requestQueryParameterKeys);
-                    break;
-                case "sdd": // Directory depth
-                    this.tryAppendQueryParameter(queries, param, this.directoryDepth !== undefined ? this.directoryDepth.toString() : "");
                     break;
             }
         }
@@ -71320,10 +71410,7 @@ function generateBlobSASQueryParametersInternal(blobSASSignatureValues, sharedKe
             return generateBlobSASQueryParameters20201206(blobSASSignatureValues, sharedKeyCredential);
         }
         else {
-            if (version >= "2026-04-06") {
-                return generateBlobSASQueryParametersUDK20260406(blobSASSignatureValues, userDelegationKeyCredential);
-            }
-            else if (version >= "2025-07-05") {
+            if (version >= "2025-07-05") {
                 return generateBlobSASQueryParametersUDK20250705(blobSASSignatureValues, userDelegationKeyCredential);
             }
             else {
@@ -71336,13 +71423,7 @@ function generateBlobSASQueryParametersInternal(blobSASSignatureValues, sharedKe
     // https://learn.microsoft.com/rest/api/storageservices/constructing-a-service-sas#constructing-the-signature-string
     if (version >= "2018-11-09") {
         if (sharedKeyCredential !== undefined) {
-            // Version 2020-02-10 delegation SAS signature construction supports blob name as a virtual directory.
-            if (version >= "2020-02-10") {
-                return generateBlobSASQueryParameters20200210(blobSASSignatureValues, sharedKeyCredential);
-            }
-            else {
-                return generateBlobSASQueryParameters20181109(blobSASSignatureValues, sharedKeyCredential);
-            }
+            return generateBlobSASQueryParameters20181109(blobSASSignatureValues, sharedKeyCredential);
         }
         else {
             // Version 2020-02-10 delegation SAS signature construction includes preauthorizedAgentObjectId, agentObjectId, correlationId.
@@ -71500,85 +71581,6 @@ function generateBlobSASQueryParameters20181109(blobSASSignatureValues, sharedKe
 }
 /**
  * ONLY AVAILABLE IN NODE.JS RUNTIME.
- * IMPLEMENTATION FOR API VERSION FROM 2020-02-10.
- *
- * Creates an instance of SASQueryParameters.
- *
- * Only accepts required settings needed to create a SAS. For optional settings please
- * set corresponding properties directly, such as permissions, startsOn and identifier.
- *
- * WARNING: When identifier is not provided, permissions and expiresOn are required.
- * You MUST assign value to identifier or expiresOn & permissions manually if you initial with
- * this constructor.
- *
- * @param blobSASSignatureValues -
- * @param sharedKeyCredential -
- */
-function generateBlobSASQueryParameters20200210(blobSASSignatureValues, sharedKeyCredential) {
-    blobSASSignatureValues = SASSignatureValuesSanityCheckAndAutofill(blobSASSignatureValues);
-    if (!blobSASSignatureValues.identifier &&
-        !(blobSASSignatureValues.permissions && blobSASSignatureValues.expiresOn)) {
-        throw new RangeError("Must provide 'permissions' and 'expiresOn' for Blob SAS generation when 'identifier' is not provided.");
-    }
-    let resource = "c";
-    let timestamp = blobSASSignatureValues.snapshotTime;
-    let directoryDepth = undefined;
-    if (blobSASSignatureValues.blobName) {
-        if (blobSASSignatureValues.isDirectory === true) {
-            resource = "d";
-            directoryDepth = trimBlobName(blobSASSignatureValues.blobName).split("/").length;
-        }
-        else {
-            resource = "b";
-            if (blobSASSignatureValues.snapshotTime) {
-                resource = "bs";
-            }
-            else if (blobSASSignatureValues.versionId) {
-                resource = "bv";
-                timestamp = blobSASSignatureValues.versionId;
-            }
-        }
-    }
-    // Calling parse and toString guarantees the proper ordering and throws on invalid characters.
-    let verifiedPermissions;
-    if (blobSASSignatureValues.permissions) {
-        if (blobSASSignatureValues.blobName) {
-            verifiedPermissions = BlobSASPermissions.parse(blobSASSignatureValues.permissions.toString()).toString();
-        }
-        else {
-            verifiedPermissions = ContainerSASPermissions.parse(blobSASSignatureValues.permissions.toString()).toString();
-        }
-    }
-    // Signature is generated on the un-url-encoded values.
-    const stringToSign = [
-        verifiedPermissions ? verifiedPermissions : "",
-        blobSASSignatureValues.startsOn
-            ? truncatedISO8061Date(blobSASSignatureValues.startsOn, false)
-            : "",
-        blobSASSignatureValues.expiresOn
-            ? truncatedISO8061Date(blobSASSignatureValues.expiresOn, false)
-            : "",
-        getCanonicalName(sharedKeyCredential.accountName, blobSASSignatureValues.containerName, blobSASSignatureValues.blobName),
-        blobSASSignatureValues.identifier,
-        blobSASSignatureValues.ipRange ? ipRangeToString(blobSASSignatureValues.ipRange) : "",
-        blobSASSignatureValues.protocol ? blobSASSignatureValues.protocol : "",
-        blobSASSignatureValues.version,
-        resource,
-        timestamp,
-        blobSASSignatureValues.cacheControl ? blobSASSignatureValues.cacheControl : "",
-        blobSASSignatureValues.contentDisposition ? blobSASSignatureValues.contentDisposition : "",
-        blobSASSignatureValues.contentEncoding ? blobSASSignatureValues.contentEncoding : "",
-        blobSASSignatureValues.contentLanguage ? blobSASSignatureValues.contentLanguage : "",
-        blobSASSignatureValues.contentType ? blobSASSignatureValues.contentType : "",
-    ].join("\n");
-    const signature = sharedKeyCredential.computeHMACSHA256(stringToSign);
-    return {
-        sasQueryParameters: new SASQueryParameters(blobSASSignatureValues.version, signature, verifiedPermissions, undefined, undefined, blobSASSignatureValues.protocol, blobSASSignatureValues.startsOn, blobSASSignatureValues.expiresOn, blobSASSignatureValues.ipRange, blobSASSignatureValues.identifier, resource, blobSASSignatureValues.cacheControl, blobSASSignatureValues.contentDisposition, blobSASSignatureValues.contentEncoding, blobSASSignatureValues.contentLanguage, blobSASSignatureValues.contentType, undefined, undefined, undefined, undefined, undefined, undefined, undefined, directoryDepth),
-        stringToSign: stringToSign,
-    };
-}
-/**
- * ONLY AVAILABLE IN NODE.JS RUNTIME.
  * IMPLEMENTATION FOR API VERSION FROM 2020-12-06.
  *
  * Creates an instance of SASQueryParameters.
@@ -71601,21 +71603,14 @@ function generateBlobSASQueryParameters20201206(blobSASSignatureValues, sharedKe
     }
     let resource = "c";
     let timestamp = blobSASSignatureValues.snapshotTime;
-    let directoryDepth = undefined;
     if (blobSASSignatureValues.blobName) {
-        if (blobSASSignatureValues.isDirectory === true) {
-            resource = "d";
-            directoryDepth = trimBlobName(blobSASSignatureValues.blobName).split("/").length;
+        resource = "b";
+        if (blobSASSignatureValues.snapshotTime) {
+            resource = "bs";
         }
-        else {
-            resource = "b";
-            if (blobSASSignatureValues.snapshotTime) {
-                resource = "bs";
-            }
-            else if (blobSASSignatureValues.versionId) {
-                resource = "bv";
-                timestamp = blobSASSignatureValues.versionId;
-            }
+        else if (blobSASSignatureValues.versionId) {
+            resource = "bv";
+            timestamp = blobSASSignatureValues.versionId;
         }
     }
     // Calling parse and toString guarantees the proper ordering and throws on invalid characters.
@@ -71653,7 +71648,7 @@ function generateBlobSASQueryParameters20201206(blobSASSignatureValues, sharedKe
     ].join("\n");
     const signature = sharedKeyCredential.computeHMACSHA256(stringToSign);
     return {
-        sasQueryParameters: new SASQueryParameters(blobSASSignatureValues.version, signature, verifiedPermissions, undefined, undefined, blobSASSignatureValues.protocol, blobSASSignatureValues.startsOn, blobSASSignatureValues.expiresOn, blobSASSignatureValues.ipRange, blobSASSignatureValues.identifier, resource, blobSASSignatureValues.cacheControl, blobSASSignatureValues.contentDisposition, blobSASSignatureValues.contentEncoding, blobSASSignatureValues.contentLanguage, blobSASSignatureValues.contentType, undefined, undefined, undefined, blobSASSignatureValues.encryptionScope, undefined, undefined, undefined, directoryDepth),
+        sasQueryParameters: new SASQueryParameters(blobSASSignatureValues.version, signature, verifiedPermissions, undefined, undefined, blobSASSignatureValues.protocol, blobSASSignatureValues.startsOn, blobSASSignatureValues.expiresOn, blobSASSignatureValues.ipRange, blobSASSignatureValues.identifier, resource, blobSASSignatureValues.cacheControl, blobSASSignatureValues.contentDisposition, blobSASSignatureValues.contentEncoding, blobSASSignatureValues.contentLanguage, blobSASSignatureValues.contentType, undefined, undefined, undefined, blobSASSignatureValues.encryptionScope),
         stringToSign: stringToSign,
     };
 }
@@ -71758,21 +71753,14 @@ function generateBlobSASQueryParametersUDK20200210(blobSASSignatureValues, userD
     }
     let resource = "c";
     let timestamp = blobSASSignatureValues.snapshotTime;
-    let directoryDepth = undefined;
     if (blobSASSignatureValues.blobName) {
-        if (blobSASSignatureValues.isDirectory === true) {
-            resource = "d";
-            directoryDepth = trimBlobName(blobSASSignatureValues.blobName).split("/").length;
+        resource = "b";
+        if (blobSASSignatureValues.snapshotTime) {
+            resource = "bs";
         }
-        else {
-            resource = "b";
-            if (blobSASSignatureValues.snapshotTime) {
-                resource = "bs";
-            }
-            else if (blobSASSignatureValues.versionId) {
-                resource = "bv";
-                timestamp = blobSASSignatureValues.versionId;
-            }
+        else if (blobSASSignatureValues.versionId) {
+            resource = "bv";
+            timestamp = blobSASSignatureValues.versionId;
         }
     }
     // Calling parse and toString guarantees the proper ordering and throws on invalid characters.
@@ -71821,7 +71809,7 @@ function generateBlobSASQueryParametersUDK20200210(blobSASSignatureValues, userD
     ].join("\n");
     const signature = userDelegationKeyCredential.computeHMACSHA256(stringToSign);
     return {
-        sasQueryParameters: new SASQueryParameters(blobSASSignatureValues.version, signature, verifiedPermissions, undefined, undefined, blobSASSignatureValues.protocol, blobSASSignatureValues.startsOn, blobSASSignatureValues.expiresOn, blobSASSignatureValues.ipRange, blobSASSignatureValues.identifier, resource, blobSASSignatureValues.cacheControl, blobSASSignatureValues.contentDisposition, blobSASSignatureValues.contentEncoding, blobSASSignatureValues.contentLanguage, blobSASSignatureValues.contentType, userDelegationKeyCredential.userDelegationKey, blobSASSignatureValues.preauthorizedAgentObjectId, blobSASSignatureValues.correlationId, undefined, undefined, undefined, undefined, directoryDepth),
+        sasQueryParameters: new SASQueryParameters(blobSASSignatureValues.version, signature, verifiedPermissions, undefined, undefined, blobSASSignatureValues.protocol, blobSASSignatureValues.startsOn, blobSASSignatureValues.expiresOn, blobSASSignatureValues.ipRange, blobSASSignatureValues.identifier, resource, blobSASSignatureValues.cacheControl, blobSASSignatureValues.contentDisposition, blobSASSignatureValues.contentEncoding, blobSASSignatureValues.contentLanguage, blobSASSignatureValues.contentType, userDelegationKeyCredential.userDelegationKey, blobSASSignatureValues.preauthorizedAgentObjectId, blobSASSignatureValues.correlationId),
         stringToSign: stringToSign,
     };
 }
@@ -71847,21 +71835,14 @@ function generateBlobSASQueryParametersUDK20201206(blobSASSignatureValues, userD
     }
     let resource = "c";
     let timestamp = blobSASSignatureValues.snapshotTime;
-    let directoryDepth = undefined;
     if (blobSASSignatureValues.blobName) {
-        if (blobSASSignatureValues.isDirectory === true) {
-            resource = "d";
-            directoryDepth = trimBlobName(blobSASSignatureValues.blobName).split("/").length;
+        resource = "b";
+        if (blobSASSignatureValues.snapshotTime) {
+            resource = "bs";
         }
-        else {
-            resource = "b";
-            if (blobSASSignatureValues.snapshotTime) {
-                resource = "bs";
-            }
-            else if (blobSASSignatureValues.versionId) {
-                resource = "bv";
-                timestamp = blobSASSignatureValues.versionId;
-            }
+        else if (blobSASSignatureValues.versionId) {
+            resource = "bv";
+            timestamp = blobSASSignatureValues.versionId;
         }
     }
     // Calling parse and toString guarantees the proper ordering and throws on invalid characters.
@@ -71911,7 +71892,7 @@ function generateBlobSASQueryParametersUDK20201206(blobSASSignatureValues, userD
     ].join("\n");
     const signature = userDelegationKeyCredential.computeHMACSHA256(stringToSign);
     return {
-        sasQueryParameters: new SASQueryParameters(blobSASSignatureValues.version, signature, verifiedPermissions, undefined, undefined, blobSASSignatureValues.protocol, blobSASSignatureValues.startsOn, blobSASSignatureValues.expiresOn, blobSASSignatureValues.ipRange, blobSASSignatureValues.identifier, resource, blobSASSignatureValues.cacheControl, blobSASSignatureValues.contentDisposition, blobSASSignatureValues.contentEncoding, blobSASSignatureValues.contentLanguage, blobSASSignatureValues.contentType, userDelegationKeyCredential.userDelegationKey, blobSASSignatureValues.preauthorizedAgentObjectId, blobSASSignatureValues.correlationId, blobSASSignatureValues.encryptionScope, undefined, undefined, undefined, directoryDepth),
+        sasQueryParameters: new SASQueryParameters(blobSASSignatureValues.version, signature, verifiedPermissions, undefined, undefined, blobSASSignatureValues.protocol, blobSASSignatureValues.startsOn, blobSASSignatureValues.expiresOn, blobSASSignatureValues.ipRange, blobSASSignatureValues.identifier, resource, blobSASSignatureValues.cacheControl, blobSASSignatureValues.contentDisposition, blobSASSignatureValues.contentEncoding, blobSASSignatureValues.contentLanguage, blobSASSignatureValues.contentType, userDelegationKeyCredential.userDelegationKey, blobSASSignatureValues.preauthorizedAgentObjectId, blobSASSignatureValues.correlationId, blobSASSignatureValues.encryptionScope),
         stringToSign: stringToSign,
     };
 }
@@ -71937,21 +71918,14 @@ function generateBlobSASQueryParametersUDK20250705(blobSASSignatureValues, userD
     }
     let resource = "c";
     let timestamp = blobSASSignatureValues.snapshotTime;
-    let directoryDepth = undefined;
     if (blobSASSignatureValues.blobName) {
-        if (blobSASSignatureValues.isDirectory === true) {
-            resource = "d";
-            directoryDepth = trimBlobName(blobSASSignatureValues.blobName).split("/").length;
+        resource = "b";
+        if (blobSASSignatureValues.snapshotTime) {
+            resource = "bs";
         }
-        else {
-            resource = "b";
-            if (blobSASSignatureValues.snapshotTime) {
-                resource = "bs";
-            }
-            else if (blobSASSignatureValues.versionId) {
-                resource = "bv";
-                timestamp = blobSASSignatureValues.versionId;
-            }
+        else if (blobSASSignatureValues.versionId) {
+            resource = "bv";
+            timestamp = blobSASSignatureValues.versionId;
         }
     }
     // Calling parse and toString guarantees the proper ordering and throws on invalid characters.
@@ -71987,7 +71961,7 @@ function generateBlobSASQueryParametersUDK20250705(blobSASSignatureValues, userD
         blobSASSignatureValues.preauthorizedAgentObjectId,
         undefined, // agentObjectId
         blobSASSignatureValues.correlationId,
-        userDelegationKeyCredential.userDelegationKey.signedDelegatedUserTenantId, // SignedKeyDelegatedUserTenantId, will be added in a future release.
+        undefined, // SignedKeyDelegatedUserTenantId, will be added in a future release.
         blobSASSignatureValues.delegatedUserObjectId,
         blobSASSignatureValues.ipRange ? ipRangeToString(blobSASSignatureValues.ipRange) : "",
         blobSASSignatureValues.protocol ? blobSASSignatureValues.protocol : "",
@@ -72003,144 +71977,9 @@ function generateBlobSASQueryParametersUDK20250705(blobSASSignatureValues, userD
     ].join("\n");
     const signature = userDelegationKeyCredential.computeHMACSHA256(stringToSign);
     return {
-        sasQueryParameters: new SASQueryParameters(blobSASSignatureValues.version, signature, verifiedPermissions, undefined, undefined, blobSASSignatureValues.protocol, blobSASSignatureValues.startsOn, blobSASSignatureValues.expiresOn, blobSASSignatureValues.ipRange, blobSASSignatureValues.identifier, resource, blobSASSignatureValues.cacheControl, blobSASSignatureValues.contentDisposition, blobSASSignatureValues.contentEncoding, blobSASSignatureValues.contentLanguage, blobSASSignatureValues.contentType, userDelegationKeyCredential.userDelegationKey, blobSASSignatureValues.preauthorizedAgentObjectId, blobSASSignatureValues.correlationId, blobSASSignatureValues.encryptionScope, blobSASSignatureValues.delegatedUserObjectId, undefined, undefined, directoryDepth),
+        sasQueryParameters: new SASQueryParameters(blobSASSignatureValues.version, signature, verifiedPermissions, undefined, undefined, blobSASSignatureValues.protocol, blobSASSignatureValues.startsOn, blobSASSignatureValues.expiresOn, blobSASSignatureValues.ipRange, blobSASSignatureValues.identifier, resource, blobSASSignatureValues.cacheControl, blobSASSignatureValues.contentDisposition, blobSASSignatureValues.contentEncoding, blobSASSignatureValues.contentLanguage, blobSASSignatureValues.contentType, userDelegationKeyCredential.userDelegationKey, blobSASSignatureValues.preauthorizedAgentObjectId, blobSASSignatureValues.correlationId, blobSASSignatureValues.encryptionScope, blobSASSignatureValues.delegatedUserObjectId),
         stringToSign: stringToSign,
     };
-}
-/**
- * ONLY AVAILABLE IN NODE.JS RUNTIME.
- * IMPLEMENTATION FOR API VERSION FROM 2020-12-06.
- *
- * Creates an instance of SASQueryParameters.
- *
- * Only accepts required settings needed to create a SAS. For optional settings please
- * set corresponding properties directly, such as permissions, startsOn.
- *
- * WARNING: identifier will be ignored, permissions and expiresOn are required.
- *
- * @param blobSASSignatureValues -
- * @param userDelegationKeyCredential -
- */
-function generateBlobSASQueryParametersUDK20260406(blobSASSignatureValues, userDelegationKeyCredential) {
-    blobSASSignatureValues = SASSignatureValuesSanityCheckAndAutofill(blobSASSignatureValues);
-    // Stored access policies are not supported for a user delegation SAS.
-    if (!blobSASSignatureValues.permissions || !blobSASSignatureValues.expiresOn) {
-        throw new RangeError("Must provide 'permissions' and 'expiresOn' for Blob SAS generation when generating user delegation SAS.");
-    }
-    let resource = "c";
-    let timestamp = blobSASSignatureValues.snapshotTime;
-    let directoryDepth = undefined;
-    if (blobSASSignatureValues.blobName) {
-        if (blobSASSignatureValues.isDirectory === true) {
-            resource = "d";
-            directoryDepth = trimBlobName(blobSASSignatureValues.blobName).split("/").length;
-        }
-        else {
-            resource = "b";
-            if (blobSASSignatureValues.snapshotTime) {
-                resource = "bs";
-            }
-            else if (blobSASSignatureValues.versionId) {
-                resource = "bv";
-                timestamp = blobSASSignatureValues.versionId;
-            }
-        }
-    }
-    // Calling parse and toString guarantees the proper ordering and throws on invalid characters.
-    let verifiedPermissions;
-    if (blobSASSignatureValues.permissions) {
-        if (blobSASSignatureValues.blobName) {
-            verifiedPermissions = BlobSASPermissions.parse(blobSASSignatureValues.permissions.toString()).toString();
-        }
-        else {
-            verifiedPermissions = ContainerSASPermissions.parse(blobSASSignatureValues.permissions.toString()).toString();
-        }
-    }
-    // Signature is generated on the un-url-encoded values.
-    const stringToSign = [
-        verifiedPermissions ? verifiedPermissions : "",
-        blobSASSignatureValues.startsOn
-            ? truncatedISO8061Date(blobSASSignatureValues.startsOn, false)
-            : "",
-        blobSASSignatureValues.expiresOn
-            ? truncatedISO8061Date(blobSASSignatureValues.expiresOn, false)
-            : "",
-        getCanonicalName(userDelegationKeyCredential.accountName, blobSASSignatureValues.containerName, blobSASSignatureValues.blobName),
-        userDelegationKeyCredential.userDelegationKey.signedObjectId,
-        userDelegationKeyCredential.userDelegationKey.signedTenantId,
-        userDelegationKeyCredential.userDelegationKey.signedStartsOn
-            ? truncatedISO8061Date(userDelegationKeyCredential.userDelegationKey.signedStartsOn, false)
-            : "",
-        userDelegationKeyCredential.userDelegationKey.signedExpiresOn
-            ? truncatedISO8061Date(userDelegationKeyCredential.userDelegationKey.signedExpiresOn, false)
-            : "",
-        userDelegationKeyCredential.userDelegationKey.signedService,
-        userDelegationKeyCredential.userDelegationKey.signedVersion,
-        blobSASSignatureValues.preauthorizedAgentObjectId,
-        undefined, // agentObjectId
-        blobSASSignatureValues.correlationId,
-        userDelegationKeyCredential.userDelegationKey.signedDelegatedUserTenantId, // SignedKeyDelegatedUserTenantId, will be added in a future release.
-        blobSASSignatureValues.delegatedUserObjectId,
-        blobSASSignatureValues.ipRange ? ipRangeToString(blobSASSignatureValues.ipRange) : "",
-        blobSASSignatureValues.protocol ? blobSASSignatureValues.protocol : "",
-        blobSASSignatureValues.version,
-        resource,
-        timestamp,
-        blobSASSignatureValues.encryptionScope,
-        formatRequestHeadersForSasSigning(blobSASSignatureValues.requestHeaders),
-        formatRequestQueryParametersForSasSigning(blobSASSignatureValues.requestQueryParameters),
-        blobSASSignatureValues.cacheControl,
-        blobSASSignatureValues.contentDisposition,
-        blobSASSignatureValues.contentEncoding,
-        blobSASSignatureValues.contentLanguage,
-        blobSASSignatureValues.contentType,
-    ].join("\n");
-    const signature = userDelegationKeyCredential.computeHMACSHA256(stringToSign);
-    return {
-        sasQueryParameters: new SASQueryParameters(blobSASSignatureValues.version, signature, verifiedPermissions, undefined, undefined, blobSASSignatureValues.protocol, blobSASSignatureValues.startsOn, blobSASSignatureValues.expiresOn, blobSASSignatureValues.ipRange, blobSASSignatureValues.identifier, resource, blobSASSignatureValues.cacheControl, blobSASSignatureValues.contentDisposition, blobSASSignatureValues.contentEncoding, blobSASSignatureValues.contentLanguage, blobSASSignatureValues.contentType, userDelegationKeyCredential.userDelegationKey, blobSASSignatureValues.preauthorizedAgentObjectId, blobSASSignatureValues.correlationId, blobSASSignatureValues.encryptionScope, blobSASSignatureValues.delegatedUserObjectId, getKeysOfRequestHeaders(blobSASSignatureValues.requestHeaders), getKeysOfRequestHeaders(blobSASSignatureValues.requestQueryParameters), directoryDepth),
-        stringToSign: stringToSign,
-    };
-}
-function formatRequestHeadersForSasSigning(requestHeaders) {
-    if (requestHeaders === undefined) {
-        return undefined;
-    }
-    let canonicalValue = "";
-    Object.keys(requestHeaders).forEach(function (key) {
-        // key: the name of the object key
-        // index: the ordinal position of the key within the object
-        canonicalValue = canonicalValue + key + ":" + requestHeaders[key] + "\n";
-    });
-    return canonicalValue;
-}
-function formatRequestQueryParametersForSasSigning(queryParameters) {
-    if (queryParameters === undefined) {
-        return undefined;
-    }
-    let canonicalValue = "";
-    Object.keys(queryParameters).forEach(function (key) {
-        // key: the name of the object key
-        // index: the ordinal position of the key within the object
-        canonicalValue = canonicalValue + "\n" + key + ":" + queryParameters[key];
-    });
-    return canonicalValue;
-}
-function getKeysOfRequestHeaders(requestHeaders) {
-    if (requestHeaders === undefined) {
-        return undefined;
-    }
-    let requestKeys = "";
-    let index = 0;
-    Object.keys(requestHeaders).forEach(function (key) {
-        // key: the name of the object key
-        // index: the ordinal position of the key within the object
-        if (index !== 0) {
-            requestKeys = requestKeys + ",";
-        }
-        requestKeys = requestKeys + key;
-        ++index;
-    });
-    return requestKeys;
 }
 function getCanonicalName(accountName, containerName, blobName) {
     // Container: "/blob/account/containerName"
@@ -72204,16 +72043,6 @@ function SASSignatureValuesSanityCheckAndAutofill(blobSASSignatureValues) {
     }
     blobSASSignatureValues.version = version;
     return blobSASSignatureValues;
-}
-function trimBlobName(blobName) {
-    let internalName = blobName;
-    while (internalName.startsWith("/")) {
-        internalName = internalName.substring(1);
-    }
-    while (internalName.endsWith("/")) {
-        internalName = internalName.substring(0, internalName.length - 1);
-    }
-    return internalName;
 }
 
 // Copyright (c) Microsoft Corporation.
@@ -72507,7 +72336,6 @@ class RetriableReadableStream extends Readable$1 {
             this.push(null);
         }
         else if (this.offset <= this.end) {
-            // TODO if error is CRC64 not match, directly throw out the error.
             // console.log(
             //   `retries: ${this.retries}, max retries: ${this.maxRetries}`
             // );
@@ -72959,9 +72787,6 @@ class BlobDownloadResponse {
     get legalHold() {
         return this.originalResponse.legalHold;
     }
-    get structuredBodyType() {
-        return this.originalResponse.structuredBodyType;
-    }
     /**
      * The response body as a browser Blob.
      * Always undefined in node.js.
@@ -73001,10 +72826,7 @@ class BlobDownloadResponse {
      */
     constructor(originalResponse, getter, offset, count, options = {}) {
         this.originalResponse = originalResponse;
-        const streamBody = this.originalResponse.structuredBodyType === undefined
-            ? this.originalResponse.readableStreamBody
-            : structuredMessageDecodingStream(this.originalResponse.readableStreamBody, options);
-        this.blobDownloadStream = new RetriableReadableStream(streamBody, getter, offset, count, options);
+        this.blobDownloadStream = new RetriableReadableStream(this.originalResponse.readableStreamBody, getter, offset, count, options);
     }
 }
 
@@ -74870,30 +74692,22 @@ async function streamToBuffer(stream, buffer, offset, end, encoding) {
     return new Promise((resolve, reject) => {
         const timeout = setTimeout(() => reject(new Error(`The operation cannot be completed in timeout.`)), REQUEST_TIMEOUT);
         stream.on("readable", () => {
-            // Already filled the requested amount; ignore any further `readable` events.
             if (pos >= count) {
                 clearTimeout(timeout);
                 resolve();
                 return;
             }
-            // Drain all currently-buffered chunks. Required since Node.js v26, where
-            // `stream.read()` returns one buffered chunk at a time instead of the
-            // concatenation of all queued data (see nodejs/node#60441).
-            let chunk;
-            while ((chunk = stream.read()) !== null) {
-                if (typeof chunk === "string") {
-                    chunk = Buffer.from(chunk, encoding);
-                }
-                // How much data needed in this chunk
-                const chunkLength = pos + chunk.length > count ? count - pos : chunk.length;
-                buffer.fill(chunk.slice(0, chunkLength), offset + pos, offset + pos + chunkLength);
-                pos += chunkLength;
-                if (pos >= count) {
-                    clearTimeout(timeout);
-                    resolve();
-                    return;
-                }
+            let chunk = stream.read();
+            if (!chunk) {
+                return;
             }
+            if (typeof chunk === "string") {
+                chunk = Buffer.from(chunk, encoding);
+            }
+            // How much data needed in this chunk
+            const chunkLength = pos + chunk.length > count ? count - pos : chunk.length;
+            buffer.fill(chunk.slice(0, chunkLength), offset + pos, offset + pos + chunkLength);
+            pos += chunkLength;
         });
         stream.on("end", () => {
             clearTimeout(timeout);
@@ -74953,10 +74767,6 @@ class BlobClient extends StorageClient {
     _versionId;
     _snapshot;
     /**
-     * Config used in creating blob client instances.
-     */
-    blobClientConfig;
-    /**
      * The name of the blob.
      */
     get name() {
@@ -74979,7 +74789,6 @@ class BlobClient extends StorageClient {
             // (url: string, pipeline: Pipeline)
             url = urlOrConnectionString;
             pipeline = credentialOrPipelineOrContainerName;
-            options = blobNameOrOptions;
         }
         else if ((credentialOrPipelineOrContainerName instanceof StorageSharedKeyCredential) ||
             credentialOrPipelineOrContainerName instanceof AnonymousCredential ||
@@ -75037,7 +74846,6 @@ class BlobClient extends StorageClient {
         this.blobContext = this.storageClientContext.blob;
         this._snapshot = getURLParameter(this.url, URLConstants.Parameters.SNAPSHOT);
         this._versionId = getURLParameter(this.url, URLConstants.Parameters.VERSIONID);
-        this.blobClientConfig = options;
     }
     /**
      * Creates a new BlobClient object identical to the source but with the specified snapshot timestamp.
@@ -75047,7 +74855,7 @@ class BlobClient extends StorageClient {
      * @returns A new BlobClient object identical to the source but with the specified snapshot timestamp
      */
     withSnapshot(snapshot) {
-        return new BlobClient(setURLParameter(this.url, URLConstants.Parameters.SNAPSHOT, snapshot.length === 0 ? undefined : snapshot), this.pipeline, this.blobClientConfig);
+        return new BlobClient(setURLParameter(this.url, URLConstants.Parameters.SNAPSHOT, snapshot.length === 0 ? undefined : snapshot), this.pipeline);
     }
     /**
      * Creates a new BlobClient object pointing to a version of this blob.
@@ -75057,28 +74865,28 @@ class BlobClient extends StorageClient {
      * @returns A new BlobClient object pointing to the version of this blob.
      */
     withVersion(versionId) {
-        return new BlobClient(setURLParameter(this.url, URLConstants.Parameters.VERSIONID, versionId.length === 0 ? undefined : versionId), this.pipeline, this.blobClientConfig);
+        return new BlobClient(setURLParameter(this.url, URLConstants.Parameters.VERSIONID, versionId.length === 0 ? undefined : versionId), this.pipeline);
     }
     /**
      * Creates a AppendBlobClient object.
      *
      */
     getAppendBlobClient() {
-        return new AppendBlobClient(this.url, this.pipeline, this.blobClientConfig);
+        return new AppendBlobClient(this.url, this.pipeline);
     }
     /**
      * Creates a BlockBlobClient object.
      *
      */
     getBlockBlobClient() {
-        return new BlockBlobClient(this.url, this.pipeline, this.blobClientConfig);
+        return new BlockBlobClient(this.url, this.pipeline);
     }
     /**
      * Creates a PageBlobClient object.
      *
      */
     getPageBlobClient() {
-        return new PageBlobClient(this.url, this.pipeline, this.blobClientConfig);
+        return new PageBlobClient(this.url, this.pipeline);
     }
     /**
      * Reads or downloads a blob from the system, including its metadata and properties.
@@ -75099,7 +74907,6 @@ class BlobClient extends StorageClient {
      * ```ts snippet:ReadmeSampleDownloadBlob_Node
      * import { BlobServiceClient } from "@azure/storage-blob";
      * import { DefaultAzureCredential } from "@azure/identity";
-     * import { buffer } from "node:stream/consumers";
      *
      * const account = "<account>";
      * const blobServiceClient = new BlobServiceClient(
@@ -75116,10 +74923,22 @@ class BlobClient extends StorageClient {
      * // In Node.js, get downloaded data by accessing downloadBlockBlobResponse.readableStreamBody
      * const downloadBlockBlobResponse = await blobClient.download();
      * if (downloadBlockBlobResponse.readableStreamBody) {
-     *   // Download the raw bytes of the blob. Use `text` from "node:stream/consumers"
-     *   // instead if you want to read the content as a string directly.
-     *   const downloaded = await buffer(downloadBlockBlobResponse.readableStreamBody);
-     *   console.log(`Downloaded blob content: ${downloaded.toString()}`);
+     *   const downloaded = await streamToString(downloadBlockBlobResponse.readableStreamBody);
+     *   console.log(`Downloaded blob content: ${downloaded}`);
+     * }
+     *
+     * async function streamToString(stream: NodeJS.ReadableStream): Promise<string> {
+     *   const result = await new Promise<Buffer<ArrayBuffer>>((resolve, reject) => {
+     *     const chunks: Buffer[] = [];
+     *     stream.on("data", (data) => {
+     *       chunks.push(Buffer.isBuffer(data) ? data : Buffer.from(data));
+     *     });
+     *     stream.on("end", () => {
+     *       resolve(Buffer.concat(chunks));
+     *     });
+     *     stream.on("error", reject);
+     *   });
+     *   return result.toString();
      * }
      * ```
      *
@@ -75155,16 +74974,6 @@ class BlobClient extends StorageClient {
         options.conditions = options.conditions || {};
         ensureCpkIfSpecified(options.customerProvidedKey, this.isHttps);
         return tracingClient.withSpan("BlobClient-download", options, async (updatedOptions) => {
-            let contentChecksumAlgorithm = options.contentChecksumAlgorithm ?? this.blobClientConfig?.downloadContentChecksumAlgorithm;
-            if (contentChecksumAlgorithm === undefined) {
-                contentChecksumAlgorithm = "Customized";
-            }
-            else if (contentChecksumAlgorithm === "Auto") {
-                contentChecksumAlgorithm = "StorageCrc64";
-            }
-            if (contentChecksumAlgorithm === "StorageCrc64") {
-                await StorageCRC64Calculator.init();
-            }
             const res = assertResponse((await this.blobContext.download({
                 abortSignal: options.abortSignal,
                 leaseAccessConditions: options.conditions,
@@ -75181,7 +74990,6 @@ class BlobClient extends StorageClient {
                 snapshot: options.snapshot,
                 cpkInfo: options.customerProvidedKey,
                 tracingOptions: updatedOptions.tracingOptions,
-                structuredBodyType: contentChecksumAlgorithm === "StorageCrc64" ? "XSM/1.0; properties=crc64" : undefined,
             })));
             const wrappedRes = {
                 ...res,
@@ -75201,16 +75009,9 @@ class BlobClient extends StorageClient {
             if (res.contentLength === undefined) {
                 throw new RangeError(`File download response doesn't contain valid content length header`);
             }
-            if (contentChecksumAlgorithm === "StorageCrc64" &&
-                res.structuredContentLength === undefined) {
-                throw new RangeError(`Unexpected structured content length`);
-            }
             if (!res.etag) {
                 throw new RangeError(`File download response doesn't contain valid etag header`);
             }
-            const expectedContentLength = contentChecksumAlgorithm === "StorageCrc64"
-                ? res.structuredContentLength
-                : res.contentLength;
             return new BlobDownloadResponse(wrappedRes, async (start) => {
                 const updatedDownloadOptions = {
                     leaseAccessConditions: options.conditions,
@@ -75222,14 +75023,13 @@ class BlobClient extends StorageClient {
                         ifTags: options.conditions?.tagConditions,
                     },
                     range: rangeToString({
-                        count: offset + expectedContentLength - start,
+                        count: offset + res.contentLength - start,
                         offset: start,
                     }),
                     rangeGetContentMD5: options.rangeGetContentMD5,
                     rangeGetContentCRC64: options.rangeGetContentCrc64,
                     snapshot: options.snapshot,
                     cpkInfo: options.customerProvidedKey,
-                    structuredBodyType: contentChecksumAlgorithm === "StorageCrc64" ? "XSM/1.0; properties=crc64" : undefined,
                 };
                 // Debug purpose only
                 // console.log(
@@ -75237,17 +75037,11 @@ class BlobClient extends StorageClient {
                 //     updatedOptions.range
                 //   }, options: ${JSON.stringify(updatedOptions)}`
                 // );
-                const resBody = (await this.blobContext.download({
+                return (await this.blobContext.download({
                     abortSignal: options.abortSignal,
                     ...updatedDownloadOptions,
                 })).readableStreamBody;
-                if (contentChecksumAlgorithm === "StorageCrc64") {
-                    return structuredMessageDecodingStream(resBody, {});
-                }
-                else {
-                    return resBody;
-                }
-            }, offset, expectedContentLength, {
+            }, offset, res.contentLength, {
                 maxRetryRequests: options.maxRetryRequests,
                 onProgress: options.onProgress,
             });
@@ -75344,8 +75138,6 @@ class BlobClient extends StorageClient {
                     ifTags: options.conditions?.tagConditions,
                 },
                 tracingOptions: updatedOptions.tracingOptions,
-                accessTierIfModifiedSince: options.conditions?.accessTierIfModifiedSince,
-                accessTierIfUnmodifiedSince: options.conditions?.accessTierIfUnmodifiedSince,
             }));
         });
     }
@@ -75782,7 +75574,6 @@ class BlobClient extends StorageClient {
                         conditions: options.conditions,
                         maxRetryRequests: options.maxRetryRequestsPerBlock,
                         customerProvidedKey: options.customerProvidedKey,
-                        contentChecksumAlgorithm: options.contentChecksumAlgorithm,
                         tracingOptions: updatedOptions.tracingOptions,
                     });
                     const stream = response.readableStreamBody;
@@ -76094,7 +75885,6 @@ class AppendBlobClient extends BlobClient {
             // (url: string, pipeline: Pipeline)
             url = urlOrConnectionString;
             pipeline = credentialOrPipelineOrContainerName;
-            options = blobNameOrOptions;
         }
         else if ((credentialOrPipelineOrContainerName instanceof StorageSharedKeyCredential) ||
             credentialOrPipelineOrContainerName instanceof AnonymousCredential ||
@@ -76108,7 +75898,6 @@ class AppendBlobClient extends BlobClient {
             typeof credentialOrPipelineOrContainerName !== "string") {
             // (url: string, credential?: StorageSharedKeyCredential | AnonymousCredential | TokenCredential, options?: StoragePipelineOptions)
             url = urlOrConnectionString;
-            options = blobNameOrOptions;
             // The second parameter is undefined. Use anonymous credential.
             pipeline = newPipeline(new AnonymousCredential(), options);
         }
@@ -76146,7 +75935,6 @@ class AppendBlobClient extends BlobClient {
         }
         super(url, pipeline);
         this.appendBlobContext = this.storageClientContext.appendBlob;
-        this.blobClientConfig = options;
     }
     /**
      * Creates a new AppendBlobClient object identical to the source but with the
@@ -76157,7 +75945,7 @@ class AppendBlobClient extends BlobClient {
      * @returns A new AppendBlobClient object identical to the source but with the specified snapshot timestamp.
      */
     withSnapshot(snapshot) {
-        return new AppendBlobClient(setURLParameter(this.url, URLConstants.Parameters.SNAPSHOT, snapshot.length === 0 ? undefined : snapshot), this.pipeline, this.blobClientConfig);
+        return new AppendBlobClient(setURLParameter(this.url, URLConstants.Parameters.SNAPSHOT, snapshot.length === 0 ? undefined : snapshot), this.pipeline);
     }
     /**
      * Creates a 0-length append blob. Call AppendBlock to append data to an append blob.
@@ -76303,7 +76091,7 @@ class AppendBlobClient extends BlobClient {
         options.conditions = options.conditions || {};
         ensureCpkIfSpecified(options.customerProvidedKey, this.isHttps);
         return tracingClient.withSpan("AppendBlobClient-appendBlock", options, async (updatedOptions) => {
-            const parameters = {
+            return assertResponse(await this.appendBlobContext.appendBlock(contentLength, body, {
                 abortSignal: options.abortSignal,
                 appendPositionAccessConditions: options.conditions,
                 leaseAccessConditions: options.conditions,
@@ -76314,12 +76102,12 @@ class AppendBlobClient extends BlobClient {
                 requestOptions: {
                     onUploadProgress: options.onProgress,
                 },
+                transactionalContentMD5: options.transactionalContentMD5,
+                transactionalContentCrc64: options.transactionalContentCrc64,
                 cpkInfo: options.customerProvidedKey,
                 encryptionScope: options.encryptionScope,
                 tracingOptions: updatedOptions.tracingOptions,
-            };
-            const uploadBodyParameters = await setUploadChecksumParameters(body, contentLength, parameters, options, this.blobClientConfig?.uploadContentChecksumAlgorithm);
-            return assertResponse(await this.appendBlobContext.appendBlock(uploadBodyParameters.contentLength, uploadBodyParameters.body, parameters));
+            }));
         });
     }
     /**
@@ -76363,11 +76151,6 @@ class AppendBlobClient extends BlobClient {
                 encryptionScope: options.encryptionScope,
                 fileRequestIntent: options.sourceShareTokenIntent,
                 tracingOptions: updatedOptions.tracingOptions,
-                sourceCpkInfo: {
-                    sourceEncryptionKey: options.sourceCustomerProvidedKey?.encryptionKey,
-                    sourceEncryptionAlgorithm: options.sourceCustomerProvidedKey?.encryptionAlgorithm,
-                    sourceEncryptionKeySha256: options.sourceCustomerProvidedKey?.encryptionKeySha256,
-                },
             }));
         });
     }
@@ -76400,7 +76183,6 @@ class BlockBlobClient extends BlobClient {
             // (url: string, pipeline: Pipeline)
             url = urlOrConnectionString;
             pipeline = credentialOrPipelineOrContainerName;
-            options = blobNameOrOptions;
         }
         else if ((credentialOrPipelineOrContainerName instanceof StorageSharedKeyCredential) ||
             credentialOrPipelineOrContainerName instanceof AnonymousCredential ||
@@ -76455,7 +76237,6 @@ class BlockBlobClient extends BlobClient {
         super(url, pipeline);
         this.blockBlobContext = this.storageClientContext.blockBlob;
         this._blobContext = this.storageClientContext.blob;
-        this.blobClientConfig = options;
     }
     /**
      * Creates a new BlockBlobClient object identical to the source but with the
@@ -76466,7 +76247,7 @@ class BlockBlobClient extends BlobClient {
      * @returns A new BlockBlobClient object identical to the source but with the specified snapshot timestamp.
      */
     withSnapshot(snapshot) {
-        return new BlockBlobClient(setURLParameter(this.url, URLConstants.Parameters.SNAPSHOT, snapshot.length === 0 ? undefined : snapshot), this.pipeline, this.blobClientConfig);
+        return new BlockBlobClient(setURLParameter(this.url, URLConstants.Parameters.SNAPSHOT, snapshot.length === 0 ? undefined : snapshot), this.pipeline);
     }
     /**
      * ONLY AVAILABLE IN NODE.JS RUNTIME.
@@ -76478,7 +76259,6 @@ class BlockBlobClient extends BlobClient {
      * ```ts snippet:ClientsQuery
      * import { BlobServiceClient } from "@azure/storage-blob";
      * import { DefaultAzureCredential } from "@azure/identity";
-     * import { buffer } from "node:stream/consumers";
      *
      * const account = "<account>";
      * const blobServiceClient = new BlobServiceClient(
@@ -76494,10 +76274,22 @@ class BlockBlobClient extends BlobClient {
      * // Query and convert a blob to a string
      * const queryBlockBlobResponse = await blockBlobClient.query("select from BlobStorage");
      * if (queryBlockBlobResponse.readableStreamBody) {
-     *   // Read the response bytes. Use `text` from "node:stream/consumers" instead
-     *   // if you want the response as a string directly.
-     *   const downloadedBuffer = await buffer(queryBlockBlobResponse.readableStreamBody);
-     *   console.log(`Query blob content: ${downloadedBuffer.toString()}`);
+     *   const downloadedBuffer = await streamToBuffer(queryBlockBlobResponse.readableStreamBody);
+     *   const downloaded = downloadedBuffer.toString();
+     *   console.log(`Query blob content: ${downloaded}`);
+     * }
+     *
+     * async function streamToBuffer(readableStream: NodeJS.ReadableStream): Promise<Buffer> {
+     *   return new Promise((resolve, reject) => {
+     *     const chunks: Buffer[] = [];
+     *     readableStream.on("data", (data) => {
+     *       chunks.push(data instanceof Buffer ? data : Buffer.from(data));
+     *     });
+     *     readableStream.on("end", () => {
+     *       resolve(Buffer.concat(chunks));
+     *     });
+     *     readableStream.on("error", reject);
+     *   });
      * }
      * ```
      *
@@ -76575,7 +76367,7 @@ class BlockBlobClient extends BlobClient {
         options.conditions = options.conditions || {};
         ensureCpkIfSpecified(options.customerProvidedKey, this.isHttps);
         return tracingClient.withSpan("BlockBlobClient-upload", options, async (updatedOptions) => {
-            const parameters = {
+            return assertResponse(await this.blockBlobContext.upload(contentLength, body, {
                 abortSignal: options.abortSignal,
                 blobHttpHeaders: options.blobHTTPHeaders,
                 leaseAccessConditions: options.conditions,
@@ -76595,9 +76387,7 @@ class BlockBlobClient extends BlobClient {
                 tier: toAccessTier(options.tier),
                 blobTagsString: toBlobTagsString(options.tags),
                 tracingOptions: updatedOptions.tracingOptions,
-            };
-            const uploadBodyParameters = await setUploadChecksumParameters(body, contentLength, parameters, options, this.blobClientConfig?.uploadContentChecksumAlgorithm);
-            return assertResponse(await this.blockBlobContext.upload(uploadBodyParameters.contentLength, uploadBodyParameters.body, parameters));
+            }));
         });
     }
     /**
@@ -76644,11 +76434,6 @@ class BlockBlobClient extends BlobClient {
                 copySourceTags: options.copySourceTags,
                 fileRequestIntent: options.sourceShareTokenIntent,
                 tracingOptions: updatedOptions.tracingOptions,
-                sourceCpkInfo: {
-                    sourceEncryptionKey: options.sourceCustomerProvidedKey?.encryptionKey,
-                    sourceEncryptionAlgorithm: options.sourceCustomerProvidedKey?.encryptionAlgorithm,
-                    sourceEncryptionKeySha256: options.sourceCustomerProvidedKey?.encryptionKeySha256,
-                },
             }));
         });
     }
@@ -76666,18 +76451,18 @@ class BlockBlobClient extends BlobClient {
     async stageBlock(blockId, body, contentLength, options = {}) {
         ensureCpkIfSpecified(options.customerProvidedKey, this.isHttps);
         return tracingClient.withSpan("BlockBlobClient-stageBlock", options, async (updatedOptions) => {
-            const parameters = {
+            return assertResponse(await this.blockBlobContext.stageBlock(blockId, contentLength, body, {
                 abortSignal: options.abortSignal,
                 leaseAccessConditions: options.conditions,
                 requestOptions: {
                     onUploadProgress: options.onProgress,
                 },
+                transactionalContentMD5: options.transactionalContentMD5,
+                transactionalContentCrc64: options.transactionalContentCrc64,
                 cpkInfo: options.customerProvidedKey,
                 encryptionScope: options.encryptionScope,
                 tracingOptions: updatedOptions.tracingOptions,
-            };
-            const uploadBodyParameters = await setUploadChecksumParameters(body, contentLength, parameters, options, this.blobClientConfig?.uploadContentChecksumAlgorithm);
-            return assertResponse(await this.blockBlobContext.stageBlock(blockId, uploadBodyParameters.contentLength, uploadBodyParameters.body, parameters));
+            }));
         });
     }
     /**
@@ -76715,11 +76500,6 @@ class BlockBlobClient extends BlobClient {
                 copySourceAuthorization: httpAuthorizationToString(options.sourceAuthorization),
                 fileRequestIntent: options.sourceShareTokenIntent,
                 tracingOptions: updatedOptions.tracingOptions,
-                sourceCpkInfo: {
-                    sourceEncryptionKey: options.sourceCustomerProvidedKey?.encryptionKey,
-                    sourceEncryptionAlgorithm: options.sourceCustomerProvidedKey?.encryptionAlgorithm,
-                    sourceEncryptionKeySha256: options.sourceCustomerProvidedKey?.encryptionKeySha256,
-                },
             }));
         });
     }
@@ -76914,7 +76694,6 @@ class BlockBlobClient extends BlobClient {
                         conditions: options.conditions,
                         encryptionScope: options.encryptionScope,
                         tracingOptions: updatedOptions.tracingOptions,
-                        contentChecksumAlgorithm: options.contentChecksumAlgorithm,
                     });
                     // Update progress after block is successfully uploaded to server, in case of block trying
                     // TODO: Hook with convenience layer progress event in finer level
@@ -76995,7 +76774,6 @@ class BlockBlobClient extends BlobClient {
                     conditions: options.conditions,
                     encryptionScope: options.encryptionScope,
                     tracingOptions: updatedOptions.tracingOptions,
-                    contentChecksumAlgorithm: options.contentChecksumAlgorithm,
                 });
                 // Update progress after block is successfully uploaded to server, in case of block trying
                 transferProgress += length;
@@ -77037,7 +76815,6 @@ class PageBlobClient extends BlobClient {
             // (url: string, pipeline: Pipeline)
             url = urlOrConnectionString;
             pipeline = credentialOrPipelineOrContainerName;
-            options = blobNameOrOptions;
         }
         else if ((credentialOrPipelineOrContainerName instanceof StorageSharedKeyCredential) ||
             credentialOrPipelineOrContainerName instanceof AnonymousCredential ||
@@ -77052,7 +76829,6 @@ class PageBlobClient extends BlobClient {
             // (url: string, credential?: StorageSharedKeyCredential | AnonymousCredential | TokenCredential, options?: StoragePipelineOptions)
             // The second parameter is undefined. Use anonymous credential.
             url = urlOrConnectionString;
-            options = blobNameOrOptions;
             pipeline = newPipeline(new AnonymousCredential(), options);
         }
         else if (credentialOrPipelineOrContainerName &&
@@ -77089,7 +76865,6 @@ class PageBlobClient extends BlobClient {
         }
         super(url, pipeline);
         this.pageBlobContext = this.storageClientContext.pageBlob;
-        this.blobClientConfig = options;
     }
     /**
      * Creates a new PageBlobClient object identical to the source but with the
@@ -77100,7 +76875,7 @@ class PageBlobClient extends BlobClient {
      * @returns A new PageBlobClient object identical to the source but with the specified snapshot timestamp.
      */
     withSnapshot(snapshot) {
-        return new PageBlobClient(setURLParameter(this.url, URLConstants.Parameters.SNAPSHOT, snapshot.length === 0 ? undefined : snapshot), this.pipeline, this.blobClientConfig);
+        return new PageBlobClient(setURLParameter(this.url, URLConstants.Parameters.SNAPSHOT, snapshot.length === 0 ? undefined : snapshot), this.pipeline);
     }
     /**
      * Creates a page blob of the specified length. Call uploadPages to upload data
@@ -77186,7 +76961,7 @@ class PageBlobClient extends BlobClient {
         options.conditions = options.conditions || {};
         ensureCpkIfSpecified(options.customerProvidedKey, this.isHttps);
         return tracingClient.withSpan("PageBlobClient-uploadPages", options, async (updatedOptions) => {
-            const parameters = {
+            return assertResponse(await this.pageBlobContext.uploadPages(count, body, {
                 abortSignal: options.abortSignal,
                 leaseAccessConditions: options.conditions,
                 modifiedAccessConditions: {
@@ -77198,12 +76973,12 @@ class PageBlobClient extends BlobClient {
                 },
                 range: rangeToString({ offset, count }),
                 sequenceNumberAccessConditions: options.conditions,
+                transactionalContentMD5: options.transactionalContentMD5,
+                transactionalContentCrc64: options.transactionalContentCrc64,
                 cpkInfo: options.customerProvidedKey,
                 encryptionScope: options.encryptionScope,
                 tracingOptions: updatedOptions.tracingOptions,
-            };
-            const uploadBodyParameters = await setUploadChecksumParameters(body, count, parameters, options, this.blobClientConfig?.uploadContentChecksumAlgorithm);
-            return assertResponse(await this.pageBlobContext.uploadPages(uploadBodyParameters.contentLength, uploadBodyParameters.body, parameters));
+            }));
         });
     }
     /**
@@ -77243,11 +77018,6 @@ class PageBlobClient extends BlobClient {
                 copySourceAuthorization: httpAuthorizationToString(options.sourceAuthorization),
                 fileRequestIntent: options.sourceShareTokenIntent,
                 tracingOptions: updatedOptions.tracingOptions,
-                sourceCpkInfo: {
-                    sourceEncryptionKey: options.sourceCustomerProvidedKey?.encryptionKey,
-                    sourceEncryptionAlgorithm: options.sourceCustomerProvidedKey?.encryptionAlgorithm,
-                    sourceEncryptionKeySha256: options.sourceCustomerProvidedKey?.encryptionKeySha256,
-                },
             }));
         });
     }
@@ -77826,7 +77596,7 @@ class RateLimitError extends Error {
     }
 }
 
-var __awaiter$7 = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
+var __awaiter$6 = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
         function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
@@ -77930,7 +77700,7 @@ class UploadProgress {
  * @returns
  */
 function uploadCacheArchiveSDK(signedUploadURL, archivePath, options) {
-    return __awaiter$7(this, void 0, void 0, function* () {
+    return __awaiter$6(this, void 0, void 0, function* () {
         var _a;
         const blobClient = new BlobClient(signedUploadURL);
         const blockBlobClient = blobClient.getBlockBlobClient();
@@ -77962,7 +77732,7 @@ function uploadCacheArchiveSDK(signedUploadURL, archivePath, options) {
     });
 }
 
-var __awaiter$6 = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
+var __awaiter$5 = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
         function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
@@ -77995,12 +77765,12 @@ function isRetryableStatusCode(statusCode) {
     return retryableStatusCodes.includes(statusCode);
 }
 function sleep(milliseconds) {
-    return __awaiter$6(this, void 0, void 0, function* () {
+    return __awaiter$5(this, void 0, void 0, function* () {
         return new Promise(resolve => setTimeout(resolve, milliseconds));
     });
 }
 function retry(name_1, method_1, getStatusCode_1) {
-    return __awaiter$6(this, arguments, void 0, function* (name, method, getStatusCode, maxAttempts = DefaultRetryAttempts, delay = DefaultRetryDelay, onError = undefined) {
+    return __awaiter$5(this, arguments, void 0, function* (name, method, getStatusCode, maxAttempts = DefaultRetryAttempts, delay = DefaultRetryDelay, onError = undefined) {
         let errorMessage = '';
         let attempt = 1;
         while (attempt <= maxAttempts) {
@@ -78039,7 +77809,7 @@ function retry(name_1, method_1, getStatusCode_1) {
     });
 }
 function retryTypedResponse(name_1, method_1) {
-    return __awaiter$6(this, arguments, void 0, function* (name, method, maxAttempts = DefaultRetryAttempts, delay = DefaultRetryDelay) {
+    return __awaiter$5(this, arguments, void 0, function* (name, method, maxAttempts = DefaultRetryAttempts, delay = DefaultRetryDelay) {
         return yield retry(name, method, (response) => response.statusCode, maxAttempts, delay, 
         // If the error object contains the statusCode property, extract it and return
         // an TypedResponse<T> so it can be processed by the retry logic.
@@ -78059,12 +77829,12 @@ function retryTypedResponse(name_1, method_1) {
     });
 }
 function retryHttpClientResponse(name_1, method_1) {
-    return __awaiter$6(this, arguments, void 0, function* (name, method, maxAttempts = DefaultRetryAttempts, delay = DefaultRetryDelay) {
+    return __awaiter$5(this, arguments, void 0, function* (name, method, maxAttempts = DefaultRetryAttempts, delay = DefaultRetryDelay) {
         return yield retry(name, method, (response) => response.message.statusCode, maxAttempts, delay);
     });
 }
 
-var __awaiter$5 = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
+var __awaiter$4 = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
         function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
@@ -78080,7 +77850,7 @@ var __awaiter$5 = (undefined && undefined.__awaiter) || function (thisArg, _argu
  * @param output the writable stream
  */
 function pipeResponseToStream(response, output) {
-    return __awaiter$5(this, void 0, void 0, function* () {
+    return __awaiter$4(this, void 0, void 0, function* () {
         const pipeline = util$8.promisify(stream.pipeline);
         yield pipeline(response.message, output);
     });
@@ -78192,10 +77962,10 @@ class DownloadProgress {
  * @param archivePath the local path where the cache is saved
  */
 function downloadCacheHttpClient(archiveLocation, archivePath) {
-    return __awaiter$5(this, void 0, void 0, function* () {
+    return __awaiter$4(this, void 0, void 0, function* () {
         const writeStream = fs.createWriteStream(archivePath);
         const httpClient = new HttpClient$2('actions/cache');
-        const downloadResponse = yield retryHttpClientResponse('downloadCache', () => __awaiter$5(this, void 0, void 0, function* () { return httpClient.get(archiveLocation); }));
+        const downloadResponse = yield retryHttpClientResponse('downloadCache', () => __awaiter$4(this, void 0, void 0, function* () { return httpClient.get(archiveLocation); }));
         // Abort download if no traffic received over the socket.
         downloadResponse.message.socket.setTimeout(SocketTimeout, () => {
             downloadResponse.message.destroy();
@@ -78223,7 +77993,7 @@ function downloadCacheHttpClient(archiveLocation, archivePath) {
  * @param archivePath the local path where the cache is saved
  */
 function downloadCacheHttpClientConcurrent(archiveLocation, archivePath, options) {
-    return __awaiter$5(this, void 0, void 0, function* () {
+    return __awaiter$4(this, void 0, void 0, function* () {
         var _a;
         const archiveDescriptor = yield fs.promises.open(archivePath, 'w');
         const httpClient = new HttpClient$2('actions/cache', undefined, {
@@ -78231,7 +78001,7 @@ function downloadCacheHttpClientConcurrent(archiveLocation, archivePath, options
             keepAlive: true
         });
         try {
-            const res = yield retryHttpClientResponse('downloadCacheMetadata', () => __awaiter$5(this, void 0, void 0, function* () { return yield httpClient.request('HEAD', archiveLocation, null, {}); }));
+            const res = yield retryHttpClientResponse('downloadCacheMetadata', () => __awaiter$4(this, void 0, void 0, function* () { return yield httpClient.request('HEAD', archiveLocation, null, {}); }));
             const lengthHeader = res.message.headers['content-length'];
             if (lengthHeader === undefined || lengthHeader === null) {
                 throw new Error('Content-Length not found on blob response');
@@ -78246,7 +78016,7 @@ function downloadCacheHttpClientConcurrent(archiveLocation, archivePath, options
                 const count = Math.min(blockSize, length - offset);
                 downloads.push({
                     offset,
-                    promiseGetter: () => __awaiter$5(this, void 0, void 0, function* () {
+                    promiseGetter: () => __awaiter$4(this, void 0, void 0, function* () {
                         return yield downloadSegmentRetry(httpClient, archiveLocation, offset, count);
                     })
                 });
@@ -78260,7 +78030,7 @@ function downloadCacheHttpClientConcurrent(archiveLocation, archivePath, options
             const progressFn = progress.onProgress();
             const activeDownloads = [];
             let nextDownload;
-            const waitAndWrite = () => __awaiter$5(this, void 0, void 0, function* () {
+            const waitAndWrite = () => __awaiter$4(this, void 0, void 0, function* () {
                 const segment = yield Promise.race(Object.values(activeDownloads));
                 yield archiveDescriptor.write(segment.buffer, 0, segment.count, segment.offset);
                 actives--;
@@ -78286,7 +78056,7 @@ function downloadCacheHttpClientConcurrent(archiveLocation, archivePath, options
     });
 }
 function downloadSegmentRetry(httpClient, archiveLocation, offset, count) {
-    return __awaiter$5(this, void 0, void 0, function* () {
+    return __awaiter$4(this, void 0, void 0, function* () {
         const retries = 5;
         let failures = 0;
         while (true) {
@@ -78308,8 +78078,8 @@ function downloadSegmentRetry(httpClient, archiveLocation, offset, count) {
     });
 }
 function downloadSegment(httpClient, archiveLocation, offset, count) {
-    return __awaiter$5(this, void 0, void 0, function* () {
-        const partRes = yield retryHttpClientResponse('downloadCachePart', () => __awaiter$5(this, void 0, void 0, function* () {
+    return __awaiter$4(this, void 0, void 0, function* () {
+        const partRes = yield retryHttpClientResponse('downloadCachePart', () => __awaiter$4(this, void 0, void 0, function* () {
             return yield httpClient.get(archiveLocation, {
                 Range: `bytes=${offset}-${offset + count - 1}`
             });
@@ -78333,7 +78103,7 @@ function downloadSegment(httpClient, archiveLocation, offset, count) {
  * @param options the download options with the defaults set
  */
 function downloadCacheStorageSDK(archiveLocation, archivePath, options) {
-    return __awaiter$5(this, void 0, void 0, function* () {
+    return __awaiter$4(this, void 0, void 0, function* () {
         var _a;
         const client = new BlockBlobClient(archiveLocation, undefined, {
             retryOptions: {
@@ -78390,7 +78160,7 @@ function downloadCacheStorageSDK(archiveLocation, archivePath, options) {
         }
     });
 }
-const promiseWithTimeout = (timeoutMs, promise) => __awaiter$5(void 0, void 0, void 0, function* () {
+const promiseWithTimeout = (timeoutMs, promise) => __awaiter$4(void 0, void 0, void 0, function* () {
     let timeoutHandle;
     const timeoutPromise = new Promise(resolve => {
         timeoutHandle = setTimeout(() => resolve('timeout'), timeoutMs);
@@ -78538,7 +78308,7 @@ function getCacheServiceURL() {
     }
 }
 
-var version = "6.2.0";
+var version = "6.3.0";
 var require$$0 = {
 	version: version};
 
@@ -78567,7 +78337,7 @@ function getUserAgentString() {
     return `@actions/cache-${packageVersionExports.version}`;
 }
 
-var __awaiter$4 = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
+var __awaiter$3 = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
         function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
@@ -78602,12 +78372,12 @@ function createHttpClient() {
     return new HttpClient$2(getUserAgentString(), [bearerCredentialHandler], getRequestOptions());
 }
 function getCacheEntry(keys, paths, options) {
-    return __awaiter$4(this, void 0, void 0, function* () {
+    return __awaiter$3(this, void 0, void 0, function* () {
         var _a;
         const httpClient = createHttpClient();
         const version = getCacheVersion(paths, options === null || options === void 0 ? void 0 : options.compressionMethod, options === null || options === void 0 ? void 0 : options.enableCrossOsArchive);
         const resource = `cache?keys=${encodeURIComponent(keys.join(','))}&version=${version}`;
-        const response = yield retryTypedResponse('getCacheEntry', () => __awaiter$4(this, void 0, void 0, function* () { return httpClient.getJson(getCacheApiUrl(resource)); }));
+        const response = yield retryTypedResponse('getCacheEntry', () => __awaiter$3(this, void 0, void 0, function* () { return httpClient.getJson(getCacheApiUrl(resource)); }));
         // Cache not found
         if (response.statusCode === 204) {
             // List cache for primary key only if cache miss occurs
@@ -78638,9 +78408,9 @@ function getCacheEntry(keys, paths, options) {
     });
 }
 function printCachesListForDiagnostics(key, httpClient, version) {
-    return __awaiter$4(this, void 0, void 0, function* () {
+    return __awaiter$3(this, void 0, void 0, function* () {
         const resource = `caches?key=${encodeURIComponent(key)}`;
-        const response = yield retryTypedResponse('listCache', () => __awaiter$4(this, void 0, void 0, function* () { return httpClient.getJson(getCacheApiUrl(resource)); }));
+        const response = yield retryTypedResponse('listCache', () => __awaiter$3(this, void 0, void 0, function* () { return httpClient.getJson(getCacheApiUrl(resource)); }));
         if (response.statusCode === 200) {
             const cacheListResult = response.result;
             const totalCount = cacheListResult === null || cacheListResult === void 0 ? void 0 : cacheListResult.totalCount;
@@ -78654,7 +78424,7 @@ function printCachesListForDiagnostics(key, httpClient, version) {
     });
 }
 function downloadCache(archiveLocation, archivePath, options) {
-    return __awaiter$4(this, void 0, void 0, function* () {
+    return __awaiter$3(this, void 0, void 0, function* () {
         const archiveUrl = new URL$1(archiveLocation);
         const downloadOptions = getDownloadOptions(options);
         if (archiveUrl.hostname.endsWith('.blob.core.windows.net')) {
@@ -78678,7 +78448,7 @@ function downloadCache(archiveLocation, archivePath, options) {
 }
 // Reserve Cache
 function reserveCache(key, paths, options) {
-    return __awaiter$4(this, void 0, void 0, function* () {
+    return __awaiter$3(this, void 0, void 0, function* () {
         const httpClient = createHttpClient();
         const version = getCacheVersion(paths, options === null || options === void 0 ? void 0 : options.compressionMethod, options === null || options === void 0 ? void 0 : options.enableCrossOsArchive);
         const reserveCacheRequest = {
@@ -78686,7 +78456,7 @@ function reserveCache(key, paths, options) {
             version,
             cacheSize: options === null || options === void 0 ? void 0 : options.cacheSize
         };
-        const response = yield retryTypedResponse('reserveCache', () => __awaiter$4(this, void 0, void 0, function* () {
+        const response = yield retryTypedResponse('reserveCache', () => __awaiter$3(this, void 0, void 0, function* () {
             return httpClient.postJson(getCacheApiUrl('caches'), reserveCacheRequest);
         }));
         return response;
@@ -78701,13 +78471,13 @@ function getContentRange(start, end) {
     return `bytes ${start}-${end}/*`;
 }
 function uploadChunk(httpClient, resourceUrl, openStream, start, end) {
-    return __awaiter$4(this, void 0, void 0, function* () {
+    return __awaiter$3(this, void 0, void 0, function* () {
         debug(`Uploading chunk of size ${end - start + 1} bytes at offset ${start} with content range: ${getContentRange(start, end)}`);
         const additionalHeaders = {
             'Content-Type': 'application/octet-stream',
             'Content-Range': getContentRange(start, end)
         };
-        const uploadChunkResponse = yield retryHttpClientResponse(`uploadChunk (start: ${start}, end: ${end})`, () => __awaiter$4(this, void 0, void 0, function* () {
+        const uploadChunkResponse = yield retryHttpClientResponse(`uploadChunk (start: ${start}, end: ${end})`, () => __awaiter$3(this, void 0, void 0, function* () {
             return httpClient.sendStream('PATCH', resourceUrl, openStream(), additionalHeaders);
         }));
         if (!isSuccessStatusCode(uploadChunkResponse.message.statusCode)) {
@@ -78716,7 +78486,7 @@ function uploadChunk(httpClient, resourceUrl, openStream, start, end) {
     });
 }
 function uploadFile(httpClient, cacheId, archivePath, options) {
-    return __awaiter$4(this, void 0, void 0, function* () {
+    return __awaiter$3(this, void 0, void 0, function* () {
         // Upload Chunks
         const fileSize = getArchiveFileSizeInBytes(archivePath);
         const resourceUrl = getCacheApiUrl(`caches/${cacheId.toString()}`);
@@ -78728,7 +78498,7 @@ function uploadFile(httpClient, cacheId, archivePath, options) {
         debug('Awaiting all uploads');
         let offset = 0;
         try {
-            yield Promise.all(parallelUploads.map(() => __awaiter$4(this, void 0, void 0, function* () {
+            yield Promise.all(parallelUploads.map(() => __awaiter$3(this, void 0, void 0, function* () {
                 while (offset < fileSize) {
                     const chunkSize = Math.min(fileSize - offset, maxChunkSize);
                     const start = offset;
@@ -78754,15 +78524,15 @@ function uploadFile(httpClient, cacheId, archivePath, options) {
     });
 }
 function commitCache(httpClient, cacheId, filesize) {
-    return __awaiter$4(this, void 0, void 0, function* () {
+    return __awaiter$3(this, void 0, void 0, function* () {
         const commitCacheRequest = { size: filesize };
-        return yield retryTypedResponse('commitCache', () => __awaiter$4(this, void 0, void 0, function* () {
+        return yield retryTypedResponse('commitCache', () => __awaiter$3(this, void 0, void 0, function* () {
             return httpClient.postJson(getCacheApiUrl(`caches/${cacheId.toString()}`), commitCacheRequest);
         }));
     });
 }
 function saveCache$2(cacheId, archivePath, signedUploadURL, options) {
-    return __awaiter$4(this, void 0, void 0, function* () {
+    return __awaiter$3(this, void 0, void 0, function* () {
         const uploadOptions = getUploadOptions(options);
         if (uploadOptions.useAzureSdk) {
             // Use Azure storage SDK to upload caches directly to Azure
@@ -82374,7 +82144,7 @@ function maskSecretUrls(body) {
     }
 }
 
-var __awaiter$3 = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
+var __awaiter$2 = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
         function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
@@ -82413,14 +82183,14 @@ class CacheServiceClient {
     // This function satisfies the Rpc interface. It is compatible with the JSON
     // JSON generated client.
     request(service, method, contentType, data) {
-        return __awaiter$3(this, void 0, void 0, function* () {
+        return __awaiter$2(this, void 0, void 0, function* () {
             const url = new URL(`/twirp/${service}/${method}`, this.baseUrl).href;
             debug(`[Request] ${method} ${url}`);
             const headers = {
                 'Content-Type': contentType
             };
             try {
-                const { body } = yield this.retryableRequest(() => __awaiter$3(this, void 0, void 0, function* () { return this.httpClient.post(url, JSON.stringify(data), headers); }));
+                const { body } = yield this.retryableRequest(() => __awaiter$2(this, void 0, void 0, function* () { return this.httpClient.post(url, JSON.stringify(data), headers); }));
                 return body;
             }
             catch (error) {
@@ -82429,7 +82199,7 @@ class CacheServiceClient {
         });
     }
     retryableRequest(operation) {
-        return __awaiter$3(this, void 0, void 0, function* () {
+        return __awaiter$2(this, void 0, void 0, function* () {
             let attempt = 0;
             let errorMessage = '';
             let rawBody = '';
@@ -82515,7 +82285,7 @@ class CacheServiceClient {
         return retryableStatusCodes.includes(statusCode);
     }
     sleep(milliseconds) {
-        return __awaiter$3(this, void 0, void 0, function* () {
+        return __awaiter$2(this, void 0, void 0, function* () {
             return new Promise(resolve => setTimeout(resolve, milliseconds));
         });
     }
@@ -82537,7 +82307,7 @@ function internalCacheTwirpClient(options) {
     return new CacheServiceClientJSON(client);
 }
 
-var __awaiter$2 = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
+var __awaiter$1 = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
         function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
@@ -82549,7 +82319,7 @@ var __awaiter$2 = (undefined && undefined.__awaiter) || function (thisArg, _argu
 const IS_WINDOWS = process.platform === 'win32';
 // Returns tar path and type: BSD or GNU
 function getTarPath() {
-    return __awaiter$2(this, void 0, void 0, function* () {
+    return __awaiter$1(this, void 0, void 0, function* () {
         switch (process.platform) {
             case 'win32': {
                 const gnuTar = yield getGnuTarPathOnWindows();
@@ -82586,7 +82356,7 @@ function getTarPath() {
 }
 // Return arguments for tar as per tarPath, compressionMethod, method type and os
 function getTarArgs(tarPath_1, compressionMethod_1, type_1) {
-    return __awaiter$2(this, arguments, void 0, function* (tarPath, compressionMethod, type, archivePath = '') {
+    return __awaiter$1(this, arguments, void 0, function* (tarPath, compressionMethod, type, archivePath = '') {
         const args = [`"${tarPath.path}"`];
         const cacheFileName = getCacheFileName(compressionMethod);
         const tarFile = 'cache.tar';
@@ -82600,19 +82370,21 @@ function getTarArgs(tarPath_1, compressionMethod_1, type_1) {
             case 'create':
                 args.push('--posix', '-cf', BSD_TAR_ZSTD
                     ? tarFile
-                    : cacheFileName.replace(new RegExp(`\\${path.sep}`, 'g'), '/'), '--exclude', BSD_TAR_ZSTD
+                    : cacheFileName.replace(new RegExp(`\\${path$1.sep}`, 'g'), '/'), '--exclude', BSD_TAR_ZSTD
                     ? tarFile
-                    : cacheFileName.replace(new RegExp(`\\${path.sep}`, 'g'), '/'), '-P', '-C', workingDirectory.replace(new RegExp(`\\${path.sep}`, 'g'), '/'), '--files-from', ManifestFilename);
+                    : cacheFileName.replace(new RegExp(`\\${path$1.sep}`, 'g'), '/'), '-P', '-C', workingDirectory.replace(new RegExp(`\\${path$1.sep}`, 'g'), '/'), '--files-from', ManifestFilename);
                 break;
             case 'extract':
                 args.push('-xf', BSD_TAR_ZSTD
                     ? tarFile
-                    : archivePath.replace(new RegExp(`\\${path.sep}`, 'g'), '/'), '-P', '-C', workingDirectory.replace(new RegExp(`\\${path.sep}`, 'g'), '/'));
+                    : archivePath.replace(new RegExp(`\\${path$1.sep}`, 'g'), '/'), '-P', '-C', BSD_TAR_ZSTD
+                    ? quoteAbsolutePath(workingDirectory)
+                    : workingDirectory.replace(new RegExp(`\\${path$1.sep}`, 'g'), '/'));
                 break;
             case 'list':
                 args.push('-tf', BSD_TAR_ZSTD
                     ? tarFile
-                    : archivePath.replace(new RegExp(`\\${path.sep}`, 'g'), '/'), '-P');
+                    : archivePath.replace(new RegExp(`\\${path$1.sep}`, 'g'), '/'), '-P');
                 break;
         }
         // Platform specific args
@@ -82631,7 +82403,7 @@ function getTarArgs(tarPath_1, compressionMethod_1, type_1) {
 }
 // Returns commands to run tar and compression program
 function getCommands(compressionMethod_1, type_1) {
-    return __awaiter$2(this, arguments, void 0, function* (compressionMethod, type, archivePath = '') {
+    return __awaiter$1(this, arguments, void 0, function* (compressionMethod, type, archivePath = '') {
         let args;
         const tarPath = yield getTarPath();
         const tarArgs = yield getTarArgs(tarPath, compressionMethod, type, archivePath);
@@ -82647,19 +82419,22 @@ function getCommands(compressionMethod_1, type_1) {
         else {
             args = [[...tarArgs].join(' '), [...compressionArgs].join(' ')];
         }
-        if (BSD_TAR_ZSTD) {
-            return args;
-        }
-        return [args.join(' ')];
+        return {
+            commands: BSD_TAR_ZSTD ? args : [args.join(' ')],
+            requiresTempDirectory: BSD_TAR_ZSTD && type !== 'create'
+        };
     });
 }
 function getWorkingDirectory() {
     var _a;
     return (_a = process.env['GITHUB_WORKSPACE']) !== null && _a !== void 0 ? _a : process.cwd();
 }
+function quoteAbsolutePath(filePath) {
+    return `"${path$1.resolve(filePath).replace(new RegExp(`\\${path$1.sep}`, 'g'), '/')}"`;
+}
 // Common function for extractTar and listTar to get the compression method
 function getDecompressionProgram(tarPath, compressionMethod, archivePath) {
-    return __awaiter$2(this, void 0, void 0, function* () {
+    return __awaiter$1(this, void 0, void 0, function* () {
         // -d: Decompress.
         // unzstd is equivalent to 'zstd -d'
         // --long=#: Enables long distance matching with # bits. Maximum is 30 (1GB) on 32-bit OS and 31 (2GB) on 64-bit.
@@ -82673,7 +82448,7 @@ function getDecompressionProgram(tarPath, compressionMethod, archivePath) {
                     ? [
                         'zstd -d --long=30 --force -o',
                         TarFilename,
-                        archivePath.replace(new RegExp(`\\${path.sep}`, 'g'), '/')
+                        quoteAbsolutePath(archivePath)
                     ]
                     : [
                         '--use-compress-program',
@@ -82681,11 +82456,7 @@ function getDecompressionProgram(tarPath, compressionMethod, archivePath) {
                     ];
             case CompressionMethod.ZstdWithoutLong:
                 return BSD_TAR_ZSTD
-                    ? [
-                        'zstd -d --force -o',
-                        TarFilename,
-                        archivePath.replace(new RegExp(`\\${path.sep}`, 'g'), '/')
-                    ]
+                    ? ['zstd -d --force -o', TarFilename, quoteAbsolutePath(archivePath)]
                     : ['--use-compress-program', IS_WINDOWS ? '"zstd -d"' : 'unzstd'];
             default:
                 return ['-z'];
@@ -82699,7 +82470,7 @@ function getDecompressionProgram(tarPath, compressionMethod, archivePath) {
 // Using 30 here because we also support 32-bit self-hosted runners.
 // Long range mode is added to zstd in v1.3.2 release, so we will not use --long in older version of zstd.
 function getCompressionProgram(tarPath, compressionMethod) {
-    return __awaiter$2(this, void 0, void 0, function* () {
+    return __awaiter$1(this, void 0, void 0, function* () {
         const cacheFileName = getCacheFileName(compressionMethod);
         const BSD_TAR_ZSTD = tarPath.type === ArchiveToolType.BSD &&
             compressionMethod !== CompressionMethod.Gzip &&
@@ -82709,7 +82480,7 @@ function getCompressionProgram(tarPath, compressionMethod) {
                 return BSD_TAR_ZSTD
                     ? [
                         'zstd -T0 --long=30 --force -o',
-                        cacheFileName.replace(new RegExp(`\\${path.sep}`, 'g'), '/'),
+                        cacheFileName.replace(new RegExp(`\\${path$1.sep}`, 'g'), '/'),
                         TarFilename
                     ]
                     : [
@@ -82720,7 +82491,7 @@ function getCompressionProgram(tarPath, compressionMethod) {
                 return BSD_TAR_ZSTD
                     ? [
                         'zstd -T0 --force -o',
-                        cacheFileName.replace(new RegExp(`\\${path.sep}`, 'g'), '/'),
+                        cacheFileName.replace(new RegExp(`\\${path$1.sep}`, 'g'), '/'),
                         TarFilename
                     ]
                     : ['--use-compress-program', IS_WINDOWS ? '"zstd -T0"' : 'zstdmt'];
@@ -82731,7 +82502,7 @@ function getCompressionProgram(tarPath, compressionMethod) {
 }
 // Executes all commands as separate processes
 function execCommands(commands, cwd) {
-    return __awaiter$2(this, void 0, void 0, function* () {
+    return __awaiter$1(this, void 0, void 0, function* () {
         for (const command of commands) {
             try {
                 yield exec(command, undefined, {
@@ -82745,34 +82516,56 @@ function execCommands(commands, cwd) {
         }
     });
 }
+function execReadCommands(archivePath, compressionMethod, type) {
+    return __awaiter$1(this, void 0, void 0, function* () {
+        const { commands, requiresTempDirectory } = yield getCommands(compressionMethod, type, archivePath);
+        // The Windows BSD-tar fallback decompresses into cache.tar before reading
+        // it. Isolate that intermediate for each list/extract operation, including
+        // debug listings during saves.
+        const tempDirectory = requiresTempDirectory
+            ? yield createTempDirectory()
+            : undefined;
+        try {
+            yield execCommands(commands, tempDirectory);
+        }
+        finally {
+            if (tempDirectory) {
+                try {
+                    yield rmRF(tempDirectory);
+                }
+                catch (error) {
+                    debug(`Failed to delete temporary tar directory: ${error}`);
+                }
+            }
+        }
+    });
+}
 // List the contents of a tar
 function listTar(archivePath, compressionMethod) {
-    return __awaiter$2(this, void 0, void 0, function* () {
-        const commands = yield getCommands(compressionMethod, 'list', archivePath);
-        yield execCommands(commands);
+    return __awaiter$1(this, void 0, void 0, function* () {
+        yield execReadCommands(archivePath, compressionMethod, 'list');
     });
 }
 // Extract a tar
 function extractTar(archivePath, compressionMethod) {
-    return __awaiter$2(this, void 0, void 0, function* () {
+    return __awaiter$1(this, void 0, void 0, function* () {
         // Create directory to extract tar into
         const workingDirectory = getWorkingDirectory();
         yield mkdirP(workingDirectory);
-        const commands = yield getCommands(compressionMethod, 'extract', archivePath);
-        yield execCommands(commands);
+        yield execReadCommands(archivePath, compressionMethod, 'extract');
     });
 }
 // Create a tar
 function createTar(archiveFolder, sourceDirectories, compressionMethod) {
-    return __awaiter$2(this, void 0, void 0, function* () {
+    return __awaiter$1(this, void 0, void 0, function* () {
         // Write source directories to manifest.txt to avoid command length limits
-        writeFileSync(path.join(archiveFolder, ManifestFilename), sourceDirectories.join('\n'));
-        const commands = yield getCommands(compressionMethod, 'create');
+        writeFileSync(path$1.join(archiveFolder, ManifestFilename), sourceDirectories.join('\n'));
+        const { commands } = yield getCommands(compressionMethod, 'create');
         yield execCommands(commands, archiveFolder);
     });
 }
 
-var __awaiter$1 = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
+var __awaiter = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
         function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
@@ -82870,7 +82663,7 @@ function checkKey(key) {
  * @returns string returns the key for the cache hit, otherwise returns undefined
  */
 function restoreCache$1(paths_1, primaryKey_1, restoreKeys_1, options_1) {
-    return __awaiter$1(this, arguments, void 0, function* (paths, primaryKey, restoreKeys, options, enableCrossOsArchive = false) {
+    return __awaiter(this, arguments, void 0, function* (paths, primaryKey, restoreKeys, options, enableCrossOsArchive = false) {
         const cacheServiceVersion = getCacheServiceVersion();
         debug(`Cache service version: ${cacheServiceVersion}`);
         checkPaths(paths);
@@ -82900,7 +82693,7 @@ function restoreCache$1(paths_1, primaryKey_1, restoreKeys_1, options_1) {
  * @returns string returns the key for the cache hit, otherwise returns undefined
  */
 function restoreCacheV1(paths_1, primaryKey_1, restoreKeys_1, options_1) {
-    return __awaiter$1(this, arguments, void 0, function* (paths, primaryKey, restoreKeys, options, enableCrossOsArchive = false) {
+    return __awaiter(this, arguments, void 0, function* (paths, primaryKey, restoreKeys, options, enableCrossOsArchive = false) {
         var _a;
         restoreKeys = restoreKeys || [];
         const keys = [primaryKey, ...restoreKeys];
@@ -82944,7 +82737,7 @@ function restoreCacheV1(paths_1, primaryKey_1, restoreKeys_1, options_1) {
                 info('Lookup only - skipping download');
                 return cacheEntry.cacheKey;
             }
-            archivePath = path.join(yield createTempDirectory(), getCacheFileName(compressionMethod));
+            archivePath = path$1.join(yield createTempDirectory(), getCacheFileName(compressionMethod));
             debug(`Archive Path: ${archivePath}`);
             // Download the cache from the cache entry
             yield downloadCache(cacheEntry.archiveLocation, archivePath, options);
@@ -83000,7 +82793,7 @@ function restoreCacheV1(paths_1, primaryKey_1, restoreKeys_1, options_1) {
  * @returns string returns the key for the cache hit, otherwise returns undefined
  */
 function restoreCacheV2(paths_1, primaryKey_1, restoreKeys_1, options_1) {
-    return __awaiter$1(this, arguments, void 0, function* (paths, primaryKey, restoreKeys, options, enableCrossOsArchive = false) {
+    return __awaiter(this, arguments, void 0, function* (paths, primaryKey, restoreKeys, options, enableCrossOsArchive = false) {
         var _a;
         // Override UploadOptions to force the use of Azure
         options = Object.assign(Object.assign({}, options), { useAzureSdk: true });
@@ -83052,7 +82845,7 @@ function restoreCacheV2(paths_1, primaryKey_1, restoreKeys_1, options_1) {
                 info('Lookup only - skipping download');
                 return response.matchedKey;
             }
-            archivePath = path.join(yield createTempDirectory(), getCacheFileName(compressionMethod));
+            archivePath = path$1.join(yield createTempDirectory(), getCacheFileName(compressionMethod));
             debug(`Archive path: ${archivePath}`);
             debug(`Starting download of archive to: ${archivePath}`);
             yield downloadCache(response.signedDownloadUrl, archivePath, options);
@@ -83108,7 +82901,7 @@ function restoreCacheV2(paths_1, primaryKey_1, restoreKeys_1, options_1) {
  * @returns number returns cacheId if the cache was saved successfully and throws an error if save fails
  */
 function saveCache$1(paths_1, key_1, options_1) {
-    return __awaiter$1(this, arguments, void 0, function* (paths, key, options, enableCrossOsArchive = false) {
+    return __awaiter(this, arguments, void 0, function* (paths, key, options, enableCrossOsArchive = false) {
         const cacheServiceVersion = getCacheServiceVersion();
         debug(`Cache service version: ${cacheServiceVersion}`);
         checkPaths(paths);
@@ -83138,7 +82931,7 @@ function saveCache$1(paths_1, key_1, options_1) {
  * @returns
  */
 function saveCacheV1(paths_1, key_1, options_1) {
-    return __awaiter$1(this, arguments, void 0, function* (paths, key, options, enableCrossOsArchive = false) {
+    return __awaiter(this, arguments, void 0, function* (paths, key, options, enableCrossOsArchive = false) {
         var _a, _b, _c, _d, _e, _f;
         const compressionMethod = yield getCompressionMethod();
         let cacheId = -1;
@@ -83149,7 +82942,7 @@ function saveCacheV1(paths_1, key_1, options_1) {
             throw new Error(`Path Validation Error: Path(s) specified in the action for caching do(es) not exist, hence no cache is being saved.`);
         }
         const archiveFolder = yield createTempDirectory();
-        const archivePath = path.join(archiveFolder, getCacheFileName(compressionMethod));
+        const archivePath = path$1.join(archiveFolder, getCacheFileName(compressionMethod));
         debug(`Archive Path: ${archivePath}`);
         try {
             yield createTar(archiveFolder, cachePaths, compressionMethod);
@@ -83236,7 +83029,7 @@ function saveCacheV1(paths_1, key_1, options_1) {
  * @returns
  */
 function saveCacheV2(paths_1, key_1, options_1) {
-    return __awaiter$1(this, arguments, void 0, function* (paths, key, options, enableCrossOsArchive = false) {
+    return __awaiter(this, arguments, void 0, function* (paths, key, options, enableCrossOsArchive = false) {
         var _a;
         // Override UploadOptions to force the use of Azure
         // ...options goes first because we want to override the default values
@@ -83252,7 +83045,7 @@ function saveCacheV2(paths_1, key_1, options_1) {
             throw new Error(`Path Validation Error: Path(s) specified in the action for caching do(es) not exist, hence no cache is being saved.`);
         }
         const archiveFolder = yield createTempDirectory();
-        const archivePath = path.join(archiveFolder, getCacheFileName(compressionMethod));
+        const archivePath = path$1.join(archiveFolder, getCacheFileName(compressionMethod));
         debug(`Archive Path: ${archivePath}`);
         try {
             yield createTar(archiveFolder, cachePaths, compressionMethod);
@@ -83574,5298 +83367,6 @@ async function pierce(tool, iface) {
     ]);
 }
 
-class Context {
-    /**
-     * Hydrate the context from the environment
-     */
-    constructor() {
-        var _a, _b, _c;
-        this.payload = {};
-        if (process.env.GITHUB_EVENT_PATH) {
-            if (existsSync(process.env.GITHUB_EVENT_PATH)) {
-                this.payload = JSON.parse(readFileSync(process.env.GITHUB_EVENT_PATH, { encoding: 'utf8' }));
-            }
-            else {
-                const path = process.env.GITHUB_EVENT_PATH;
-                process.stdout.write(`GITHUB_EVENT_PATH ${path} does not exist${EOL$2}`);
-            }
-        }
-        this.eventName = process.env.GITHUB_EVENT_NAME;
-        this.sha = process.env.GITHUB_SHA;
-        this.ref = process.env.GITHUB_REF;
-        this.workflow = process.env.GITHUB_WORKFLOW;
-        this.action = process.env.GITHUB_ACTION;
-        this.actor = process.env.GITHUB_ACTOR;
-        this.job = process.env.GITHUB_JOB;
-        this.runAttempt = parseInt(process.env.GITHUB_RUN_ATTEMPT, 10);
-        this.runNumber = parseInt(process.env.GITHUB_RUN_NUMBER, 10);
-        this.runId = parseInt(process.env.GITHUB_RUN_ID, 10);
-        this.apiUrl = (_a = process.env.GITHUB_API_URL) !== null && _a !== void 0 ? _a : `https://api.github.com`;
-        this.serverUrl = (_b = process.env.GITHUB_SERVER_URL) !== null && _b !== void 0 ? _b : `https://github.com`;
-        this.graphqlUrl =
-            (_c = process.env.GITHUB_GRAPHQL_URL) !== null && _c !== void 0 ? _c : `https://api.github.com/graphql`;
-    }
-    get issue() {
-        const payload = this.payload;
-        return Object.assign(Object.assign({}, this.repo), { number: (payload.issue || payload.pull_request || payload).number });
-    }
-    get repo() {
-        if (process.env.GITHUB_REPOSITORY) {
-            const [owner, repo] = process.env.GITHUB_REPOSITORY.split('/');
-            return { owner, repo };
-        }
-        if (this.payload.repository) {
-            return {
-                owner: this.payload.repository.owner.login,
-                repo: this.payload.repository.name
-            };
-        }
-        throw new Error("context.repo requires a GITHUB_REPOSITORY environment variable like 'owner/repo'");
-    }
-}
-
-var lib = {};
-
-var proxy = {};
-
-var hasRequiredProxy;
-
-function requireProxy () {
-	if (hasRequiredProxy) return proxy;
-	hasRequiredProxy = 1;
-	Object.defineProperty(proxy, "__esModule", { value: true });
-	proxy.getProxyUrl = getProxyUrl;
-	proxy.checkBypass = checkBypass;
-	function getProxyUrl(reqUrl) {
-	    const usingSsl = reqUrl.protocol === 'https:';
-	    if (checkBypass(reqUrl)) {
-	        return undefined;
-	    }
-	    const proxyVar = (() => {
-	        if (usingSsl) {
-	            return process.env['https_proxy'] || process.env['HTTPS_PROXY'];
-	        }
-	        else {
-	            return process.env['http_proxy'] || process.env['HTTP_PROXY'];
-	        }
-	    })();
-	    if (proxyVar) {
-	        try {
-	            return new DecodedURL(proxyVar);
-	        }
-	        catch (_a) {
-	            if (!proxyVar.startsWith('http://') && !proxyVar.startsWith('https://'))
-	                return new DecodedURL(`http://${proxyVar}`);
-	        }
-	    }
-	    else {
-	        return undefined;
-	    }
-	}
-	function checkBypass(reqUrl) {
-	    if (!reqUrl.hostname) {
-	        return false;
-	    }
-	    const reqHost = reqUrl.hostname;
-	    if (isLoopbackAddress(reqHost)) {
-	        return true;
-	    }
-	    const noProxy = process.env['no_proxy'] || process.env['NO_PROXY'] || '';
-	    if (!noProxy) {
-	        return false;
-	    }
-	    // Determine the request port
-	    let reqPort;
-	    if (reqUrl.port) {
-	        reqPort = Number(reqUrl.port);
-	    }
-	    else if (reqUrl.protocol === 'http:') {
-	        reqPort = 80;
-	    }
-	    else if (reqUrl.protocol === 'https:') {
-	        reqPort = 443;
-	    }
-	    // Format the request hostname and hostname with port
-	    const upperReqHosts = [reqUrl.hostname.toUpperCase()];
-	    if (typeof reqPort === 'number') {
-	        upperReqHosts.push(`${upperReqHosts[0]}:${reqPort}`);
-	    }
-	    // Compare request host against noproxy
-	    for (const upperNoProxyItem of noProxy
-	        .split(',')
-	        .map(x => x.trim().toUpperCase())
-	        .filter(x => x)) {
-	        if (upperNoProxyItem === '*' ||
-	            upperReqHosts.some(x => x === upperNoProxyItem ||
-	                x.endsWith(`.${upperNoProxyItem}`) ||
-	                (upperNoProxyItem.startsWith('.') &&
-	                    x.endsWith(`${upperNoProxyItem}`)))) {
-	            return true;
-	        }
-	    }
-	    return false;
-	}
-	function isLoopbackAddress(host) {
-	    const hostLower = host.toLowerCase();
-	    return (hostLower === 'localhost' ||
-	        hostLower.startsWith('127.') ||
-	        hostLower.startsWith('[::1]') ||
-	        hostLower.startsWith('[0:0:0:0:0:0:0:1]'));
-	}
-	class DecodedURL extends URL {
-	    constructor(url, base) {
-	        super(url, base);
-	        this._decodedUsername = decodeURIComponent(super.username);
-	        this._decodedPassword = decodeURIComponent(super.password);
-	    }
-	    get username() {
-	        return this._decodedUsername;
-	    }
-	    get password() {
-	        return this._decodedPassword;
-	    }
-	}
-	
-	return proxy;
-}
-
-var hasRequiredLib;
-
-function requireLib () {
-	if (hasRequiredLib) return lib;
-	hasRequiredLib = 1;
-	/* eslint-disable @typescript-eslint/no-explicit-any */
-	var __createBinding = (lib && lib.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-	    if (k2 === undefined) k2 = k;
-	    var desc = Object.getOwnPropertyDescriptor(m, k);
-	    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-	      desc = { enumerable: true, get: function() { return m[k]; } };
-	    }
-	    Object.defineProperty(o, k2, desc);
-	}) : (function(o, m, k, k2) {
-	    if (k2 === undefined) k2 = k;
-	    o[k2] = m[k];
-	}));
-	var __setModuleDefault = (lib && lib.__setModuleDefault) || (Object.create ? (function(o, v) {
-	    Object.defineProperty(o, "default", { enumerable: true, value: v });
-	}) : function(o, v) {
-	    o["default"] = v;
-	});
-	var __importStar = (lib && lib.__importStar) || (function () {
-	    var ownKeys = function(o) {
-	        ownKeys = Object.getOwnPropertyNames || function (o) {
-	            var ar = [];
-	            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-	            return ar;
-	        };
-	        return ownKeys(o);
-	    };
-	    return function (mod) {
-	        if (mod && mod.__esModule) return mod;
-	        var result = {};
-	        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-	        __setModuleDefault(result, mod);
-	        return result;
-	    };
-	})();
-	var __awaiter = (lib && lib.__awaiter) || function (thisArg, _arguments, P, generator) {
-	    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-	    return new (P || (P = Promise))(function (resolve, reject) {
-	        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-	        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-	        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-	        step((generator = generator.apply(thisArg, _arguments || [])).next());
-	    });
-	};
-	Object.defineProperty(lib, "__esModule", { value: true });
-	lib.HttpClient = lib.HttpClientResponse = lib.HttpClientError = lib.MediaTypes = lib.Headers = lib.HttpCodes = void 0;
-	lib.getProxyUrl = getProxyUrl;
-	lib.isHttps = isHttps;
-	const http = __importStar(http__default);
-	const https = __importStar(https__default);
-	const pm = __importStar(requireProxy());
-	const tunnel = __importStar(requireTunnel());
-	const undici_1 = requireUndici();
-	var HttpCodes;
-	(function (HttpCodes) {
-	    HttpCodes[HttpCodes["OK"] = 200] = "OK";
-	    HttpCodes[HttpCodes["MultipleChoices"] = 300] = "MultipleChoices";
-	    HttpCodes[HttpCodes["MovedPermanently"] = 301] = "MovedPermanently";
-	    HttpCodes[HttpCodes["ResourceMoved"] = 302] = "ResourceMoved";
-	    HttpCodes[HttpCodes["SeeOther"] = 303] = "SeeOther";
-	    HttpCodes[HttpCodes["NotModified"] = 304] = "NotModified";
-	    HttpCodes[HttpCodes["UseProxy"] = 305] = "UseProxy";
-	    HttpCodes[HttpCodes["SwitchProxy"] = 306] = "SwitchProxy";
-	    HttpCodes[HttpCodes["TemporaryRedirect"] = 307] = "TemporaryRedirect";
-	    HttpCodes[HttpCodes["PermanentRedirect"] = 308] = "PermanentRedirect";
-	    HttpCodes[HttpCodes["BadRequest"] = 400] = "BadRequest";
-	    HttpCodes[HttpCodes["Unauthorized"] = 401] = "Unauthorized";
-	    HttpCodes[HttpCodes["PaymentRequired"] = 402] = "PaymentRequired";
-	    HttpCodes[HttpCodes["Forbidden"] = 403] = "Forbidden";
-	    HttpCodes[HttpCodes["NotFound"] = 404] = "NotFound";
-	    HttpCodes[HttpCodes["MethodNotAllowed"] = 405] = "MethodNotAllowed";
-	    HttpCodes[HttpCodes["NotAcceptable"] = 406] = "NotAcceptable";
-	    HttpCodes[HttpCodes["ProxyAuthenticationRequired"] = 407] = "ProxyAuthenticationRequired";
-	    HttpCodes[HttpCodes["RequestTimeout"] = 408] = "RequestTimeout";
-	    HttpCodes[HttpCodes["Conflict"] = 409] = "Conflict";
-	    HttpCodes[HttpCodes["Gone"] = 410] = "Gone";
-	    HttpCodes[HttpCodes["TooManyRequests"] = 429] = "TooManyRequests";
-	    HttpCodes[HttpCodes["InternalServerError"] = 500] = "InternalServerError";
-	    HttpCodes[HttpCodes["NotImplemented"] = 501] = "NotImplemented";
-	    HttpCodes[HttpCodes["BadGateway"] = 502] = "BadGateway";
-	    HttpCodes[HttpCodes["ServiceUnavailable"] = 503] = "ServiceUnavailable";
-	    HttpCodes[HttpCodes["GatewayTimeout"] = 504] = "GatewayTimeout";
-	})(HttpCodes || (lib.HttpCodes = HttpCodes = {}));
-	var Headers;
-	(function (Headers) {
-	    Headers["Accept"] = "accept";
-	    Headers["ContentType"] = "content-type";
-	})(Headers || (lib.Headers = Headers = {}));
-	var MediaTypes;
-	(function (MediaTypes) {
-	    MediaTypes["ApplicationJson"] = "application/json";
-	})(MediaTypes || (lib.MediaTypes = MediaTypes = {}));
-	/**
-	 * Returns the proxy URL, depending upon the supplied url and proxy environment variables.
-	 * @param serverUrl  The server URL where the request will be sent. For example, https://api.github.com
-	 */
-	function getProxyUrl(serverUrl) {
-	    const proxyUrl = pm.getProxyUrl(new URL(serverUrl));
-	    return proxyUrl ? proxyUrl.href : '';
-	}
-	const HttpRedirectCodes = [
-	    HttpCodes.MovedPermanently,
-	    HttpCodes.ResourceMoved,
-	    HttpCodes.SeeOther,
-	    HttpCodes.TemporaryRedirect,
-	    HttpCodes.PermanentRedirect
-	];
-	const HttpResponseRetryCodes = [
-	    HttpCodes.BadGateway,
-	    HttpCodes.ServiceUnavailable,
-	    HttpCodes.GatewayTimeout
-	];
-	const RetryableHttpVerbs = ['OPTIONS', 'GET', 'DELETE', 'HEAD'];
-	const ExponentialBackoffCeiling = 10;
-	const ExponentialBackoffTimeSlice = 5;
-	class HttpClientError extends Error {
-	    constructor(message, statusCode) {
-	        super(message);
-	        this.name = 'HttpClientError';
-	        this.statusCode = statusCode;
-	        Object.setPrototypeOf(this, HttpClientError.prototype);
-	    }
-	}
-	lib.HttpClientError = HttpClientError;
-	class HttpClientResponse {
-	    constructor(message) {
-	        this.message = message;
-	    }
-	    readBody() {
-	        return __awaiter(this, void 0, void 0, function* () {
-	            return new Promise((resolve) => __awaiter(this, void 0, void 0, function* () {
-	                let output = Buffer.alloc(0);
-	                this.message.on('data', (chunk) => {
-	                    output = Buffer.concat([output, chunk]);
-	                });
-	                this.message.on('end', () => {
-	                    resolve(output.toString());
-	                });
-	            }));
-	        });
-	    }
-	    readBodyBuffer() {
-	        return __awaiter(this, void 0, void 0, function* () {
-	            return new Promise((resolve) => __awaiter(this, void 0, void 0, function* () {
-	                const chunks = [];
-	                this.message.on('data', (chunk) => {
-	                    chunks.push(chunk);
-	                });
-	                this.message.on('end', () => {
-	                    resolve(Buffer.concat(chunks));
-	                });
-	            }));
-	        });
-	    }
-	}
-	lib.HttpClientResponse = HttpClientResponse;
-	function isHttps(requestUrl) {
-	    const parsedUrl = new URL(requestUrl);
-	    return parsedUrl.protocol === 'https:';
-	}
-	class HttpClient {
-	    constructor(userAgent, handlers, requestOptions) {
-	        this._ignoreSslError = false;
-	        this._allowRedirects = true;
-	        this._allowRedirectDowngrade = false;
-	        this._maxRedirects = 50;
-	        this._allowRetries = false;
-	        this._maxRetries = 1;
-	        this._keepAlive = false;
-	        this._disposed = false;
-	        this.userAgent = this._getUserAgentWithOrchestrationId(userAgent);
-	        this.handlers = handlers || [];
-	        this.requestOptions = requestOptions;
-	        if (requestOptions) {
-	            if (requestOptions.ignoreSslError != null) {
-	                this._ignoreSslError = requestOptions.ignoreSslError;
-	            }
-	            this._socketTimeout = requestOptions.socketTimeout;
-	            if (requestOptions.allowRedirects != null) {
-	                this._allowRedirects = requestOptions.allowRedirects;
-	            }
-	            if (requestOptions.allowRedirectDowngrade != null) {
-	                this._allowRedirectDowngrade = requestOptions.allowRedirectDowngrade;
-	            }
-	            if (requestOptions.maxRedirects != null) {
-	                this._maxRedirects = Math.max(requestOptions.maxRedirects, 0);
-	            }
-	            if (requestOptions.keepAlive != null) {
-	                this._keepAlive = requestOptions.keepAlive;
-	            }
-	            if (requestOptions.allowRetries != null) {
-	                this._allowRetries = requestOptions.allowRetries;
-	            }
-	            if (requestOptions.maxRetries != null) {
-	                this._maxRetries = requestOptions.maxRetries;
-	            }
-	        }
-	    }
-	    options(requestUrl, additionalHeaders) {
-	        return __awaiter(this, void 0, void 0, function* () {
-	            return this.request('OPTIONS', requestUrl, null, additionalHeaders || {});
-	        });
-	    }
-	    get(requestUrl, additionalHeaders) {
-	        return __awaiter(this, void 0, void 0, function* () {
-	            return this.request('GET', requestUrl, null, additionalHeaders || {});
-	        });
-	    }
-	    del(requestUrl, additionalHeaders) {
-	        return __awaiter(this, void 0, void 0, function* () {
-	            return this.request('DELETE', requestUrl, null, additionalHeaders || {});
-	        });
-	    }
-	    post(requestUrl, data, additionalHeaders) {
-	        return __awaiter(this, void 0, void 0, function* () {
-	            return this.request('POST', requestUrl, data, additionalHeaders || {});
-	        });
-	    }
-	    patch(requestUrl, data, additionalHeaders) {
-	        return __awaiter(this, void 0, void 0, function* () {
-	            return this.request('PATCH', requestUrl, data, additionalHeaders || {});
-	        });
-	    }
-	    put(requestUrl, data, additionalHeaders) {
-	        return __awaiter(this, void 0, void 0, function* () {
-	            return this.request('PUT', requestUrl, data, additionalHeaders || {});
-	        });
-	    }
-	    head(requestUrl, additionalHeaders) {
-	        return __awaiter(this, void 0, void 0, function* () {
-	            return this.request('HEAD', requestUrl, null, additionalHeaders || {});
-	        });
-	    }
-	    sendStream(verb, requestUrl, stream, additionalHeaders) {
-	        return __awaiter(this, void 0, void 0, function* () {
-	            return this.request(verb, requestUrl, stream, additionalHeaders);
-	        });
-	    }
-	    /**
-	     * Gets a typed object from an endpoint
-	     * Be aware that not found returns a null.  Other errors (4xx, 5xx) reject the promise
-	     */
-	    getJson(requestUrl_1) {
-	        return __awaiter(this, arguments, void 0, function* (requestUrl, additionalHeaders = {}) {
-	            additionalHeaders[Headers.Accept] = this._getExistingOrDefaultHeader(additionalHeaders, Headers.Accept, MediaTypes.ApplicationJson);
-	            const res = yield this.get(requestUrl, additionalHeaders);
-	            return this._processResponse(res, this.requestOptions);
-	        });
-	    }
-	    postJson(requestUrl_1, obj_1) {
-	        return __awaiter(this, arguments, void 0, function* (requestUrl, obj, additionalHeaders = {}) {
-	            const data = JSON.stringify(obj, null, 2);
-	            additionalHeaders[Headers.Accept] = this._getExistingOrDefaultHeader(additionalHeaders, Headers.Accept, MediaTypes.ApplicationJson);
-	            additionalHeaders[Headers.ContentType] =
-	                this._getExistingOrDefaultContentTypeHeader(additionalHeaders, MediaTypes.ApplicationJson);
-	            const res = yield this.post(requestUrl, data, additionalHeaders);
-	            return this._processResponse(res, this.requestOptions);
-	        });
-	    }
-	    putJson(requestUrl_1, obj_1) {
-	        return __awaiter(this, arguments, void 0, function* (requestUrl, obj, additionalHeaders = {}) {
-	            const data = JSON.stringify(obj, null, 2);
-	            additionalHeaders[Headers.Accept] = this._getExistingOrDefaultHeader(additionalHeaders, Headers.Accept, MediaTypes.ApplicationJson);
-	            additionalHeaders[Headers.ContentType] =
-	                this._getExistingOrDefaultContentTypeHeader(additionalHeaders, MediaTypes.ApplicationJson);
-	            const res = yield this.put(requestUrl, data, additionalHeaders);
-	            return this._processResponse(res, this.requestOptions);
-	        });
-	    }
-	    patchJson(requestUrl_1, obj_1) {
-	        return __awaiter(this, arguments, void 0, function* (requestUrl, obj, additionalHeaders = {}) {
-	            const data = JSON.stringify(obj, null, 2);
-	            additionalHeaders[Headers.Accept] = this._getExistingOrDefaultHeader(additionalHeaders, Headers.Accept, MediaTypes.ApplicationJson);
-	            additionalHeaders[Headers.ContentType] =
-	                this._getExistingOrDefaultContentTypeHeader(additionalHeaders, MediaTypes.ApplicationJson);
-	            const res = yield this.patch(requestUrl, data, additionalHeaders);
-	            return this._processResponse(res, this.requestOptions);
-	        });
-	    }
-	    /**
-	     * Makes a raw http request.
-	     * All other methods such as get, post, patch, and request ultimately call this.
-	     * Prefer get, del, post and patch
-	     */
-	    request(verb, requestUrl, data, headers) {
-	        return __awaiter(this, void 0, void 0, function* () {
-	            if (this._disposed) {
-	                throw new Error('Client has already been disposed.');
-	            }
-	            const parsedUrl = new URL(requestUrl);
-	            let info = this._prepareRequest(verb, parsedUrl, headers);
-	            // Only perform retries on reads since writes may not be idempotent.
-	            const maxTries = this._allowRetries && RetryableHttpVerbs.includes(verb)
-	                ? this._maxRetries + 1
-	                : 1;
-	            let numTries = 0;
-	            let response;
-	            do {
-	                response = yield this.requestRaw(info, data);
-	                // Check if it's an authentication challenge
-	                if (response &&
-	                    response.message &&
-	                    response.message.statusCode === HttpCodes.Unauthorized) {
-	                    let authenticationHandler;
-	                    for (const handler of this.handlers) {
-	                        if (handler.canHandleAuthentication(response)) {
-	                            authenticationHandler = handler;
-	                            break;
-	                        }
-	                    }
-	                    if (authenticationHandler) {
-	                        return authenticationHandler.handleAuthentication(this, info, data);
-	                    }
-	                    else {
-	                        // We have received an unauthorized response but have no handlers to handle it.
-	                        // Let the response return to the caller.
-	                        return response;
-	                    }
-	                }
-	                let redirectsRemaining = this._maxRedirects;
-	                while (response.message.statusCode &&
-	                    HttpRedirectCodes.includes(response.message.statusCode) &&
-	                    this._allowRedirects &&
-	                    redirectsRemaining > 0) {
-	                    const redirectUrl = response.message.headers['location'];
-	                    if (!redirectUrl) {
-	                        // if there's no location to redirect to, we won't
-	                        break;
-	                    }
-	                    const parsedRedirectUrl = new URL(redirectUrl);
-	                    if (parsedUrl.protocol === 'https:' &&
-	                        parsedUrl.protocol !== parsedRedirectUrl.protocol &&
-	                        !this._allowRedirectDowngrade) {
-	                        throw new Error('Redirect from HTTPS to HTTP protocol. This downgrade is not allowed for security reasons. If you want to allow this behavior, set the allowRedirectDowngrade option to true.');
-	                    }
-	                    // we need to finish reading the response before reassigning response
-	                    // which will leak the open socket.
-	                    yield response.readBody();
-	                    // strip authorization header if redirected to a different hostname
-	                    if (parsedRedirectUrl.hostname !== parsedUrl.hostname) {
-	                        for (const header in headers) {
-	                            // header names are case insensitive
-	                            if (header.toLowerCase() === 'authorization') {
-	                                delete headers[header];
-	                            }
-	                        }
-	                    }
-	                    // let's make the request with the new redirectUrl
-	                    info = this._prepareRequest(verb, parsedRedirectUrl, headers);
-	                    response = yield this.requestRaw(info, data);
-	                    redirectsRemaining--;
-	                }
-	                if (!response.message.statusCode ||
-	                    !HttpResponseRetryCodes.includes(response.message.statusCode)) {
-	                    // If not a retry code, return immediately instead of retrying
-	                    return response;
-	                }
-	                numTries += 1;
-	                if (numTries < maxTries) {
-	                    yield response.readBody();
-	                    yield this._performExponentialBackoff(numTries);
-	                }
-	            } while (numTries < maxTries);
-	            return response;
-	        });
-	    }
-	    /**
-	     * Needs to be called if keepAlive is set to true in request options.
-	     */
-	    dispose() {
-	        if (this._agent) {
-	            this._agent.destroy();
-	        }
-	        this._disposed = true;
-	    }
-	    /**
-	     * Raw request.
-	     * @param info
-	     * @param data
-	     */
-	    requestRaw(info, data) {
-	        return __awaiter(this, void 0, void 0, function* () {
-	            return new Promise((resolve, reject) => {
-	                function callbackForResult(err, res) {
-	                    if (err) {
-	                        reject(err);
-	                    }
-	                    else if (!res) {
-	                        // If `err` is not passed, then `res` must be passed.
-	                        reject(new Error('Unknown error'));
-	                    }
-	                    else {
-	                        resolve(res);
-	                    }
-	                }
-	                this.requestRawWithCallback(info, data, callbackForResult);
-	            });
-	        });
-	    }
-	    /**
-	     * Raw request with callback.
-	     * @param info
-	     * @param data
-	     * @param onResult
-	     */
-	    requestRawWithCallback(info, data, onResult) {
-	        if (typeof data === 'string') {
-	            if (!info.options.headers) {
-	                info.options.headers = {};
-	            }
-	            info.options.headers['Content-Length'] = Buffer.byteLength(data, 'utf8');
-	        }
-	        let callbackCalled = false;
-	        function handleResult(err, res) {
-	            if (!callbackCalled) {
-	                callbackCalled = true;
-	                onResult(err, res);
-	            }
-	        }
-	        const req = info.httpModule.request(info.options, (msg) => {
-	            const res = new HttpClientResponse(msg);
-	            handleResult(undefined, res);
-	        });
-	        let socket;
-	        req.on('socket', sock => {
-	            socket = sock;
-	        });
-	        // If we ever get disconnected, we want the socket to timeout eventually
-	        req.setTimeout(this._socketTimeout || 3 * 60000, () => {
-	            if (socket) {
-	                socket.end();
-	            }
-	            handleResult(new Error(`Request timeout: ${info.options.path}`));
-	        });
-	        req.on('error', function (err) {
-	            // err has statusCode property
-	            // res should have headers
-	            handleResult(err);
-	        });
-	        if (data && typeof data === 'string') {
-	            req.write(data, 'utf8');
-	        }
-	        if (data && typeof data !== 'string') {
-	            data.on('close', function () {
-	                req.end();
-	            });
-	            data.pipe(req);
-	        }
-	        else {
-	            req.end();
-	        }
-	    }
-	    /**
-	     * Gets an http agent. This function is useful when you need an http agent that handles
-	     * routing through a proxy server - depending upon the url and proxy environment variables.
-	     * @param serverUrl  The server URL where the request will be sent. For example, https://api.github.com
-	     */
-	    getAgent(serverUrl) {
-	        const parsedUrl = new URL(serverUrl);
-	        return this._getAgent(parsedUrl);
-	    }
-	    getAgentDispatcher(serverUrl) {
-	        const parsedUrl = new URL(serverUrl);
-	        const proxyUrl = pm.getProxyUrl(parsedUrl);
-	        const useProxy = proxyUrl && proxyUrl.hostname;
-	        if (!useProxy) {
-	            return;
-	        }
-	        return this._getProxyAgentDispatcher(parsedUrl, proxyUrl);
-	    }
-	    _prepareRequest(method, requestUrl, headers) {
-	        const info = {};
-	        info.parsedUrl = requestUrl;
-	        const usingSsl = info.parsedUrl.protocol === 'https:';
-	        info.httpModule = usingSsl ? https : http;
-	        const defaultPort = usingSsl ? 443 : 80;
-	        info.options = {};
-	        info.options.host = info.parsedUrl.hostname;
-	        info.options.port = info.parsedUrl.port
-	            ? parseInt(info.parsedUrl.port)
-	            : defaultPort;
-	        info.options.path =
-	            (info.parsedUrl.pathname || '') + (info.parsedUrl.search || '');
-	        info.options.method = method;
-	        info.options.headers = this._mergeHeaders(headers);
-	        if (this.userAgent != null) {
-	            info.options.headers['user-agent'] = this.userAgent;
-	        }
-	        info.options.agent = this._getAgent(info.parsedUrl);
-	        // gives handlers an opportunity to participate
-	        if (this.handlers) {
-	            for (const handler of this.handlers) {
-	                handler.prepareRequest(info.options);
-	            }
-	        }
-	        return info;
-	    }
-	    _mergeHeaders(headers) {
-	        if (this.requestOptions && this.requestOptions.headers) {
-	            return Object.assign({}, lowercaseKeys(this.requestOptions.headers), lowercaseKeys(headers || {}));
-	        }
-	        return lowercaseKeys(headers || {});
-	    }
-	    /**
-	     * Gets an existing header value or returns a default.
-	     * Handles converting number header values to strings since HTTP headers must be strings.
-	     * Note: This returns string | string[] since some headers can have multiple values.
-	     * For headers that must always be a single string (like Content-Type), use the
-	     * specialized _getExistingOrDefaultContentTypeHeader method instead.
-	     */
-	    _getExistingOrDefaultHeader(additionalHeaders, header, _default) {
-	        let clientHeader;
-	        if (this.requestOptions && this.requestOptions.headers) {
-	            const headerValue = lowercaseKeys(this.requestOptions.headers)[header];
-	            if (headerValue) {
-	                clientHeader =
-	                    typeof headerValue === 'number' ? headerValue.toString() : headerValue;
-	            }
-	        }
-	        const additionalValue = additionalHeaders[header];
-	        if (additionalValue !== undefined) {
-	            return typeof additionalValue === 'number'
-	                ? additionalValue.toString()
-	                : additionalValue;
-	        }
-	        if (clientHeader !== undefined) {
-	            return clientHeader;
-	        }
-	        return _default;
-	    }
-	    /**
-	     * Specialized version of _getExistingOrDefaultHeader for Content-Type header.
-	     * Always returns a single string (not an array) since Content-Type should be a single value.
-	     * Converts arrays to comma-separated strings and numbers to strings to ensure type safety.
-	     * This was split from _getExistingOrDefaultHeader to provide stricter typing for callers
-	     * that assign the result to places expecting a string (e.g., additionalHeaders[Headers.ContentType]).
-	     */
-	    _getExistingOrDefaultContentTypeHeader(additionalHeaders, _default) {
-	        let clientHeader;
-	        if (this.requestOptions && this.requestOptions.headers) {
-	            const headerValue = lowercaseKeys(this.requestOptions.headers)[Headers.ContentType];
-	            if (headerValue) {
-	                if (typeof headerValue === 'number') {
-	                    clientHeader = String(headerValue);
-	                }
-	                else if (Array.isArray(headerValue)) {
-	                    clientHeader = headerValue.join(', ');
-	                }
-	                else {
-	                    clientHeader = headerValue;
-	                }
-	            }
-	        }
-	        const additionalValue = additionalHeaders[Headers.ContentType];
-	        // Return the first non-undefined value, converting numbers or arrays to strings if necessary
-	        if (additionalValue !== undefined) {
-	            if (typeof additionalValue === 'number') {
-	                return String(additionalValue);
-	            }
-	            else if (Array.isArray(additionalValue)) {
-	                return additionalValue.join(', ');
-	            }
-	            else {
-	                return additionalValue;
-	            }
-	        }
-	        if (clientHeader !== undefined) {
-	            return clientHeader;
-	        }
-	        return _default;
-	    }
-	    _getAgent(parsedUrl) {
-	        let agent;
-	        const proxyUrl = pm.getProxyUrl(parsedUrl);
-	        const useProxy = proxyUrl && proxyUrl.hostname;
-	        if (this._keepAlive && useProxy) {
-	            agent = this._proxyAgent;
-	        }
-	        if (!useProxy) {
-	            agent = this._agent;
-	        }
-	        // if agent is already assigned use that agent.
-	        if (agent) {
-	            return agent;
-	        }
-	        const usingSsl = parsedUrl.protocol === 'https:';
-	        let maxSockets = 100;
-	        if (this.requestOptions) {
-	            maxSockets = this.requestOptions.maxSockets || http.globalAgent.maxSockets;
-	        }
-	        // This is `useProxy` again, but we need to check `proxyURl` directly for TypeScripts's flow analysis.
-	        if (proxyUrl && proxyUrl.hostname) {
-	            const agentOptions = {
-	                maxSockets,
-	                keepAlive: this._keepAlive,
-	                proxy: Object.assign(Object.assign({}, ((proxyUrl.username || proxyUrl.password) && {
-	                    proxyAuth: `${proxyUrl.username}:${proxyUrl.password}`
-	                })), { host: proxyUrl.hostname, port: proxyUrl.port })
-	            };
-	            let tunnelAgent;
-	            const overHttps = proxyUrl.protocol === 'https:';
-	            if (usingSsl) {
-	                tunnelAgent = overHttps ? tunnel.httpsOverHttps : tunnel.httpsOverHttp;
-	            }
-	            else {
-	                tunnelAgent = overHttps ? tunnel.httpOverHttps : tunnel.httpOverHttp;
-	            }
-	            agent = tunnelAgent(agentOptions);
-	            this._proxyAgent = agent;
-	        }
-	        // if tunneling agent isn't assigned create a new agent
-	        if (!agent) {
-	            const options = { keepAlive: this._keepAlive, maxSockets };
-	            agent = usingSsl ? new https.Agent(options) : new http.Agent(options);
-	            this._agent = agent;
-	        }
-	        if (usingSsl && this._ignoreSslError) {
-	            // we don't want to set NODE_TLS_REJECT_UNAUTHORIZED=0 since that will affect request for entire process
-	            // http.RequestOptions doesn't expose a way to modify RequestOptions.agent.options
-	            // we have to cast it to any and change it directly
-	            agent.options = Object.assign(agent.options || {}, {
-	                rejectUnauthorized: false
-	            });
-	        }
-	        return agent;
-	    }
-	    _getProxyAgentDispatcher(parsedUrl, proxyUrl) {
-	        let proxyAgent;
-	        if (this._keepAlive) {
-	            proxyAgent = this._proxyAgentDispatcher;
-	        }
-	        // if agent is already assigned use that agent.
-	        if (proxyAgent) {
-	            return proxyAgent;
-	        }
-	        const usingSsl = parsedUrl.protocol === 'https:';
-	        proxyAgent = new undici_1.ProxyAgent(Object.assign({ uri: proxyUrl.href, pipelining: !this._keepAlive ? 0 : 1 }, ((proxyUrl.username || proxyUrl.password) && {
-	            token: `Basic ${Buffer.from(`${proxyUrl.username}:${proxyUrl.password}`).toString('base64')}`
-	        })));
-	        this._proxyAgentDispatcher = proxyAgent;
-	        if (usingSsl && this._ignoreSslError) {
-	            // we don't want to set NODE_TLS_REJECT_UNAUTHORIZED=0 since that will affect request for entire process
-	            // http.RequestOptions doesn't expose a way to modify RequestOptions.agent.options
-	            // we have to cast it to any and change it directly
-	            proxyAgent.options = Object.assign(proxyAgent.options.requestTls || {}, {
-	                rejectUnauthorized: false
-	            });
-	        }
-	        return proxyAgent;
-	    }
-	    _getUserAgentWithOrchestrationId(userAgent) {
-	        const baseUserAgent = userAgent || 'actions/http-client';
-	        const orchId = process.env['ACTIONS_ORCHESTRATION_ID'];
-	        if (orchId) {
-	            // Sanitize the orchestration ID to ensure it contains only valid characters
-	            // Valid characters: 0-9, a-z, _, -, .
-	            const sanitizedId = orchId.replace(/[^a-z0-9_.-]/gi, '_');
-	            return `${baseUserAgent} actions_orchestration_id/${sanitizedId}`;
-	        }
-	        return baseUserAgent;
-	    }
-	    _performExponentialBackoff(retryNumber) {
-	        return __awaiter(this, void 0, void 0, function* () {
-	            retryNumber = Math.min(ExponentialBackoffCeiling, retryNumber);
-	            const ms = ExponentialBackoffTimeSlice * Math.pow(2, retryNumber);
-	            return new Promise(resolve => setTimeout(() => resolve(), ms));
-	        });
-	    }
-	    _processResponse(res, options) {
-	        return __awaiter(this, void 0, void 0, function* () {
-	            return new Promise((resolve, reject) => __awaiter(this, void 0, void 0, function* () {
-	                const statusCode = res.message.statusCode || 0;
-	                const response = {
-	                    statusCode,
-	                    result: null,
-	                    headers: {}
-	                };
-	                // not found leads to null obj returned
-	                if (statusCode === HttpCodes.NotFound) {
-	                    resolve(response);
-	                }
-	                // get the result from the body
-	                function dateTimeDeserializer(key, value) {
-	                    if (typeof value === 'string') {
-	                        const a = new Date(value);
-	                        if (!isNaN(a.valueOf())) {
-	                            return a;
-	                        }
-	                    }
-	                    return value;
-	                }
-	                let obj;
-	                let contents;
-	                try {
-	                    contents = yield res.readBody();
-	                    if (contents && contents.length > 0) {
-	                        if (options && options.deserializeDates) {
-	                            obj = JSON.parse(contents, dateTimeDeserializer);
-	                        }
-	                        else {
-	                            obj = JSON.parse(contents);
-	                        }
-	                        response.result = obj;
-	                    }
-	                    response.headers = res.message.headers;
-	                }
-	                catch (err) {
-	                    // Invalid resource (contents not json);  leaving result obj null
-	                }
-	                // note that 3xx redirects are handled by the http layer.
-	                if (statusCode > 299) {
-	                    let msg;
-	                    // if exception/error in body, attempt to get better error
-	                    if (obj && obj.message) {
-	                        msg = obj.message;
-	                    }
-	                    else if (contents && contents.length > 0) {
-	                        // it may be the case that the exception is in the body message as string
-	                        msg = contents;
-	                    }
-	                    else {
-	                        msg = `Failed request: (${statusCode})`;
-	                    }
-	                    const err = new HttpClientError(msg, statusCode);
-	                    err.result = response.result;
-	                    reject(err);
-	                }
-	                else {
-	                    resolve(response);
-	                }
-	            }));
-	        });
-	    }
-	}
-	lib.HttpClient = HttpClient;
-	const lowercaseKeys = (obj) => Object.keys(obj).reduce((c, k) => ((c[k.toLowerCase()] = obj[k]), c), {});
-	
-	return lib;
-}
-
-var libExports = requireLib();
-
-var __awaiter = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
-function getProxyAgent(destinationUrl) {
-    const hc = new libExports.HttpClient();
-    return hc.getAgent(destinationUrl);
-}
-function getProxyAgentDispatcher(destinationUrl) {
-    const hc = new libExports.HttpClient();
-    return hc.getAgentDispatcher(destinationUrl);
-}
-function getProxyFetch(destinationUrl) {
-    const httpDispatcher = getProxyAgentDispatcher(destinationUrl);
-    const proxyFetch = (url, opts) => __awaiter(this, void 0, void 0, function* () {
-        return undiciExports.fetch(url, Object.assign(Object.assign({}, opts), { dispatcher: httpDispatcher }));
-    });
-    return proxyFetch;
-}
-function getApiBaseUrl() {
-    return process.env['GITHUB_API_URL'] || 'https://api.github.com';
-}
-
-function getUserAgent() {
-  if (typeof navigator === "object" && "userAgent" in navigator) {
-    return navigator.userAgent;
-  }
-
-  if (typeof process === "object" && process.version !== undefined) {
-    return `Node.js/${process.version.substr(1)} (${process.platform}; ${
-      process.arch
-    })`;
-  }
-
-  return "<environment undetectable>";
-}
-
-// @ts-check
-
-function register(state, name, method, options) {
-  if (typeof method !== "function") {
-    throw new Error("method for before hook must be a function");
-  }
-
-  if (!options) {
-    options = {};
-  }
-
-  if (Array.isArray(name)) {
-    return name.reverse().reduce((callback, name) => {
-      return register.bind(null, state, name, callback, options);
-    }, method)();
-  }
-
-  return Promise.resolve().then(() => {
-    if (!state.registry[name]) {
-      return method(options);
-    }
-
-    return state.registry[name].reduce((method, registered) => {
-      return registered.hook.bind(null, method, options);
-    }, method)();
-  });
-}
-
-// @ts-check
-
-function addHook(state, kind, name, hook) {
-  const orig = hook;
-  if (!state.registry[name]) {
-    state.registry[name] = [];
-  }
-
-  if (kind === "before") {
-    hook = (method, options) => {
-      return Promise.resolve()
-        .then(orig.bind(null, options))
-        .then(method.bind(null, options));
-    };
-  }
-
-  if (kind === "after") {
-    hook = (method, options) => {
-      let result;
-      return Promise.resolve()
-        .then(method.bind(null, options))
-        .then((result_) => {
-          result = result_;
-          return orig(result, options);
-        })
-        .then(() => {
-          return result;
-        });
-    };
-  }
-
-  if (kind === "error") {
-    hook = (method, options) => {
-      return Promise.resolve()
-        .then(method.bind(null, options))
-        .catch((error) => {
-          return orig(error, options);
-        });
-    };
-  }
-
-  state.registry[name].push({
-    hook: hook,
-    orig: orig,
-  });
-}
-
-// @ts-check
-
-function removeHook(state, name, method) {
-  if (!state.registry[name]) {
-    return;
-  }
-
-  const index = state.registry[name]
-    .map((registered) => {
-      return registered.orig;
-    })
-    .indexOf(method);
-
-  if (index === -1) {
-    return;
-  }
-
-  state.registry[name].splice(index, 1);
-}
-
-// @ts-check
-
-
-// bind with array of arguments: https://stackoverflow.com/a/21792913
-const bind = Function.bind;
-const bindable = bind.bind(bind);
-
-function bindApi(hook, state, name) {
-  const removeHookRef = bindable(removeHook, null).apply(
-    null,
-    [state]
-  );
-  hook.api = { remove: removeHookRef };
-  hook.remove = removeHookRef;
-  ["before", "error", "after", "wrap"].forEach((kind) => {
-    const args = [state, kind];
-    hook[kind] = hook.api[kind] = bindable(addHook, null).apply(null, args);
-  });
-}
-
-function Collection() {
-  const state = {
-    registry: {},
-  };
-
-  const hook = register.bind(null, state);
-  bindApi(hook, state);
-
-  return hook;
-}
-
-var Hook = { Collection };
-
-// pkg/dist-src/defaults.js
-
-// pkg/dist-src/version.js
-var VERSION$5 = "0.0.0-development";
-
-// pkg/dist-src/defaults.js
-var userAgent = `octokit-endpoint.js/${VERSION$5} ${getUserAgent()}`;
-var DEFAULTS = {
-  method: "GET",
-  baseUrl: "https://api.github.com",
-  headers: {
-    accept: "application/vnd.github.v3+json",
-    "user-agent": userAgent
-  },
-  mediaType: {
-    format: ""
-  }
-};
-
-// pkg/dist-src/util/lowercase-keys.js
-function lowercaseKeys(object) {
-  if (!object) {
-    return {};
-  }
-  return Object.keys(object).reduce((newObj, key) => {
-    newObj[key.toLowerCase()] = object[key];
-    return newObj;
-  }, {});
-}
-
-// pkg/dist-src/util/is-plain-object.js
-function isPlainObject$1(value) {
-  if (typeof value !== "object" || value === null) return false;
-  if (Object.prototype.toString.call(value) !== "[object Object]") return false;
-  const proto = Object.getPrototypeOf(value);
-  if (proto === null) return true;
-  const Ctor = Object.prototype.hasOwnProperty.call(proto, "constructor") && proto.constructor;
-  return typeof Ctor === "function" && Ctor instanceof Ctor && Function.prototype.call(Ctor) === Function.prototype.call(value);
-}
-
-// pkg/dist-src/util/merge-deep.js
-function mergeDeep(defaults, options) {
-  const result = Object.assign({}, defaults);
-  Object.keys(options).forEach((key) => {
-    if (isPlainObject$1(options[key])) {
-      if (!(key in defaults)) Object.assign(result, { [key]: options[key] });
-      else result[key] = mergeDeep(defaults[key], options[key]);
-    } else {
-      Object.assign(result, { [key]: options[key] });
-    }
-  });
-  return result;
-}
-
-// pkg/dist-src/util/remove-undefined-properties.js
-function removeUndefinedProperties(obj) {
-  for (const key in obj) {
-    if (obj[key] === void 0) {
-      delete obj[key];
-    }
-  }
-  return obj;
-}
-
-// pkg/dist-src/merge.js
-function merge(defaults, route, options) {
-  if (typeof route === "string") {
-    let [method, url] = route.split(" ");
-    options = Object.assign(url ? { method, url } : { url: method }, options);
-  } else {
-    options = Object.assign({}, route);
-  }
-  options.headers = lowercaseKeys(options.headers);
-  removeUndefinedProperties(options);
-  removeUndefinedProperties(options.headers);
-  const mergedOptions = mergeDeep(defaults || {}, options);
-  if (options.url === "/graphql") {
-    if (defaults && defaults.mediaType.previews?.length) {
-      mergedOptions.mediaType.previews = defaults.mediaType.previews.filter(
-        (preview) => !mergedOptions.mediaType.previews.includes(preview)
-      ).concat(mergedOptions.mediaType.previews);
-    }
-    mergedOptions.mediaType.previews = (mergedOptions.mediaType.previews || []).map((preview) => preview.replace(/-preview/, ""));
-  }
-  return mergedOptions;
-}
-
-// pkg/dist-src/util/add-query-parameters.js
-function addQueryParameters(url, parameters) {
-  const separator = /\?/.test(url) ? "&" : "?";
-  const names = Object.keys(parameters);
-  if (names.length === 0) {
-    return url;
-  }
-  return url + separator + names.map((name) => {
-    if (name === "q") {
-      return "q=" + parameters.q.split("+").map(encodeURIComponent).join("+");
-    }
-    return `${name}=${encodeURIComponent(parameters[name])}`;
-  }).join("&");
-}
-
-// pkg/dist-src/util/extract-url-variable-names.js
-var urlVariableRegex = /\{[^{}}]+\}/g;
-function removeNonChars(variableName) {
-  return variableName.replace(/(?:^\W+)|(?:(?<!\W)\W+$)/g, "").split(/,/);
-}
-function extractUrlVariableNames(url) {
-  const matches = url.match(urlVariableRegex);
-  if (!matches) {
-    return [];
-  }
-  return matches.map(removeNonChars).reduce((a, b) => a.concat(b), []);
-}
-
-// pkg/dist-src/util/omit.js
-function omit(object, keysToOmit) {
-  const result = { __proto__: null };
-  for (const key of Object.keys(object)) {
-    if (keysToOmit.indexOf(key) === -1) {
-      result[key] = object[key];
-    }
-  }
-  return result;
-}
-
-// pkg/dist-src/util/url-template.js
-function encodeReserved(str) {
-  return str.split(/(%[0-9A-Fa-f]{2})/g).map(function(part) {
-    if (!/%[0-9A-Fa-f]/.test(part)) {
-      part = encodeURI(part).replace(/%5B/g, "[").replace(/%5D/g, "]");
-    }
-    return part;
-  }).join("");
-}
-function encodeUnreserved(str) {
-  return encodeURIComponent(str).replace(/[!'()*]/g, function(c) {
-    return "%" + c.charCodeAt(0).toString(16).toUpperCase();
-  });
-}
-function encodeValue(operator, value, key) {
-  value = operator === "+" || operator === "#" ? encodeReserved(value) : encodeUnreserved(value);
-  if (key) {
-    return encodeUnreserved(key) + "=" + value;
-  } else {
-    return value;
-  }
-}
-function isDefined(value) {
-  return value !== void 0 && value !== null;
-}
-function isKeyOperator(operator) {
-  return operator === ";" || operator === "&" || operator === "?";
-}
-function getValues(context, operator, key, modifier) {
-  var value = context[key], result = [];
-  if (isDefined(value) && value !== "") {
-    if (typeof value === "string" || typeof value === "number" || typeof value === "bigint" || typeof value === "boolean") {
-      value = value.toString();
-      if (modifier && modifier !== "*") {
-        value = value.substring(0, parseInt(modifier, 10));
-      }
-      result.push(
-        encodeValue(operator, value, isKeyOperator(operator) ? key : "")
-      );
-    } else {
-      if (modifier === "*") {
-        if (Array.isArray(value)) {
-          value.filter(isDefined).forEach(function(value2) {
-            result.push(
-              encodeValue(operator, value2, isKeyOperator(operator) ? key : "")
-            );
-          });
-        } else {
-          Object.keys(value).forEach(function(k) {
-            if (isDefined(value[k])) {
-              result.push(encodeValue(operator, value[k], k));
-            }
-          });
-        }
-      } else {
-        const tmp = [];
-        if (Array.isArray(value)) {
-          value.filter(isDefined).forEach(function(value2) {
-            tmp.push(encodeValue(operator, value2));
-          });
-        } else {
-          Object.keys(value).forEach(function(k) {
-            if (isDefined(value[k])) {
-              tmp.push(encodeUnreserved(k));
-              tmp.push(encodeValue(operator, value[k].toString()));
-            }
-          });
-        }
-        if (isKeyOperator(operator)) {
-          result.push(encodeUnreserved(key) + "=" + tmp.join(","));
-        } else if (tmp.length !== 0) {
-          result.push(tmp.join(","));
-        }
-      }
-    }
-  } else {
-    if (operator === ";") {
-      if (isDefined(value)) {
-        result.push(encodeUnreserved(key));
-      }
-    } else if (value === "" && (operator === "&" || operator === "?")) {
-      result.push(encodeUnreserved(key) + "=");
-    } else if (value === "") {
-      result.push("");
-    }
-  }
-  return result;
-}
-function parseUrl(template) {
-  return {
-    expand: expand.bind(null, template)
-  };
-}
-function expand(template, context) {
-  var operators = ["+", "#", ".", "/", ";", "?", "&"];
-  template = template.replace(
-    /\{([^\{\}]+)\}|([^\{\}]+)/g,
-    function(_, expression, literal) {
-      if (expression) {
-        let operator = "";
-        const values = [];
-        if (operators.indexOf(expression.charAt(0)) !== -1) {
-          operator = expression.charAt(0);
-          expression = expression.substr(1);
-        }
-        expression.split(/,/g).forEach(function(variable) {
-          var tmp = /([^:\*]*)(?::(\d+)|(\*))?/.exec(variable);
-          values.push(getValues(context, operator, tmp[1], tmp[2] || tmp[3]));
-        });
-        if (operator && operator !== "+") {
-          var separator = ",";
-          if (operator === "?") {
-            separator = "&";
-          } else if (operator !== "#") {
-            separator = operator;
-          }
-          return (values.length !== 0 ? operator : "") + values.join(separator);
-        } else {
-          return values.join(",");
-        }
-      } else {
-        return encodeReserved(literal);
-      }
-    }
-  );
-  if (template === "/") {
-    return template;
-  } else {
-    return template.replace(/\/$/, "");
-  }
-}
-
-// pkg/dist-src/parse.js
-function parse$1(options) {
-  let method = options.method.toUpperCase();
-  let url = (options.url || "/").replace(/:([a-z]\w+)/g, "{$1}");
-  let headers = Object.assign({}, options.headers);
-  let body;
-  let parameters = omit(options, [
-    "method",
-    "baseUrl",
-    "url",
-    "headers",
-    "request",
-    "mediaType"
-  ]);
-  const urlVariableNames = extractUrlVariableNames(url);
-  url = parseUrl(url).expand(parameters);
-  if (!/^http/.test(url)) {
-    url = options.baseUrl + url;
-  }
-  const omittedParameters = Object.keys(options).filter((option) => urlVariableNames.includes(option)).concat("baseUrl");
-  const remainingParameters = omit(parameters, omittedParameters);
-  const isBinaryRequest = /application\/octet-stream/i.test(headers.accept);
-  if (!isBinaryRequest) {
-    if (options.mediaType.format) {
-      headers.accept = headers.accept.split(/,/).map(
-        (format) => format.replace(
-          /application\/vnd(\.\w+)(\.v3)?(\.\w+)?(\+json)?$/,
-          `application/vnd$1$2.${options.mediaType.format}`
-        )
-      ).join(",");
-    }
-    if (url.endsWith("/graphql")) {
-      if (options.mediaType.previews?.length) {
-        const previewsFromAcceptHeader = headers.accept.match(/(?<![\w-])[\w-]+(?=-preview)/g) || [];
-        headers.accept = previewsFromAcceptHeader.concat(options.mediaType.previews).map((preview) => {
-          const format = options.mediaType.format ? `.${options.mediaType.format}` : "+json";
-          return `application/vnd.github.${preview}-preview${format}`;
-        }).join(",");
-      }
-    }
-  }
-  if (["GET", "HEAD"].includes(method)) {
-    url = addQueryParameters(url, remainingParameters);
-  } else {
-    if ("data" in remainingParameters) {
-      body = remainingParameters.data;
-    } else {
-      if (Object.keys(remainingParameters).length) {
-        body = remainingParameters;
-      }
-    }
-  }
-  if (!headers["content-type"] && typeof body !== "undefined") {
-    headers["content-type"] = "application/json; charset=utf-8";
-  }
-  if (["PATCH", "PUT"].includes(method) && typeof body === "undefined") {
-    body = "";
-  }
-  return Object.assign(
-    { method, url, headers },
-    typeof body !== "undefined" ? { body } : null,
-    options.request ? { request: options.request } : null
-  );
-}
-
-// pkg/dist-src/endpoint-with-defaults.js
-function endpointWithDefaults(defaults, route, options) {
-  return parse$1(merge(defaults, route, options));
-}
-
-// pkg/dist-src/with-defaults.js
-function withDefaults$2(oldDefaults, newDefaults) {
-  const DEFAULTS2 = merge(oldDefaults, newDefaults);
-  const endpoint2 = endpointWithDefaults.bind(null, DEFAULTS2);
-  return Object.assign(endpoint2, {
-    DEFAULTS: DEFAULTS2,
-    defaults: withDefaults$2.bind(null, DEFAULTS2),
-    merge: merge.bind(null, DEFAULTS2),
-    parse: parse$1
-  });
-}
-
-// pkg/dist-src/index.js
-var endpoint = withDefaults$2(null, DEFAULTS);
-
-/*!
- * content-type
- * Copyright(c) 2015 Douglas Christopher Wilson
- * MIT Licensed
- */
-const SP = 32; // " "
-const HTAB = 9; // "\t"
-const SEMI = 59; // ";"
-const EQ = 61; // "="
-const DQUOTE = 34; // '"'
-const BSLASH = 92; // "\\"
-const COMMA = 44; // ","
-const LOWER_CASE = 1;
-const OWS = 2;
-const SEMI_FLAG = 4;
-const COMMA_FLAG = 8;
-const TOKEN_FLAG = 16;
-const NON_ASCII = 0xff00;
-const CASE_FLAGS = LOWER_CASE | NON_ASCII;
-/**
- * Character flags used to normalize HTTP field values while scanning.
- * Out-of-range reads intentionally coerce to zero in bitwise expressions.
- */
-const CHAR_MAP = new Uint8Array(0x100);
-CHAR_MAP[HTAB] |= OWS;
-CHAR_MAP[SP] |= OWS;
-CHAR_MAP[SEMI] |= SEMI_FLAG;
-CHAR_MAP[COMMA] |= COMMA_FLAG;
-for (let code = 0x80 /* non-ASCII */; code <= 0xff; code++) {
-    CHAR_MAP[code] |= LOWER_CASE;
-}
-for (const char of "!#$%&'*+-.^_`|~") {
-    CHAR_MAP[char.charCodeAt(0)] |= TOKEN_FLAG;
-}
-for (let code = 0x30 /* 0 */; code <= 0x39 /* 9 */; code++) {
-    CHAR_MAP[code] |= TOKEN_FLAG;
-}
-for (let code = 0x41 /* A */; code <= 0x5a /* Z */; code++) {
-    CHAR_MAP[code] |= LOWER_CASE | TOKEN_FLAG;
-}
-for (let code = 0x61 /* a */; code <= 0x7a /* z */; code++) {
-    CHAR_MAP[code] |= TOKEN_FLAG;
-}
-/**
- * Null object perf optimization. Faster than `Object.create(null)` and `{ __proto__: null }`.
- */
-const NullObject = /* @__PURE__ */ (() => {
-    const C = function () { };
-    C.prototype = Object.create(null);
-    return C;
-})();
-/**
- * Parse a `Content-Type` header.
- */
-function parse(header, options) {
-    const stopFlags = SEMI_FLAG | (0);
-    const len = header.length;
-    let valueStart = 0;
-    while ((CHAR_MAP[header.charCodeAt(valueStart)] & OWS) !== 0) {
-        valueStart++;
-    }
-    let index = valueStart;
-    let typeFlags = 0;
-    let whitespace = -1;
-    let stop = 0;
-    while (index < len) {
-        const code = header.charCodeAt(index);
-        const flags = CHAR_MAP[code];
-        if ((flags & stopFlags) !== 0) {
-            stop |= flags & COMMA_FLAG;
-            break;
-        }
-        if ((flags & OWS) !== 0) {
-            if (whitespace === -1)
-                whitespace = index;
-        }
-        else {
-            whitespace = -1;
-        }
-        typeFlags |= (code & NON_ASCII) | flags;
-        index++;
-    }
-    const valueEnd = whitespace === -1 ? index : whitespace;
-    const value = header.slice(valueStart, valueEnd);
-    const type = (typeFlags & CASE_FLAGS) === 0 ? value : value.toLowerCase();
-    if (index === len || stop !== 0) {
-        return { type, index, parameters: new NullObject() };
-    }
-    return parseParameters(header, type, index, len, stopFlags);
-}
-/**
- * Parses the parameters of a `Content-Type` header starting at the given index.
- */
-function parseParameters(header, type, index, len, stopFlags) {
-    const parameters = new NullObject();
-    parameter: while (index < len) {
-        index++; // Skip over ;
-        while ((CHAR_MAP[header.charCodeAt(index)] & OWS) !== 0) {
-            index++;
-        }
-        const keyStart = index;
-        let keyFlags = 0;
-        let keyWhitespace = -1;
-        while (index < len) {
-            const code = header.charCodeAt(index);
-            const flags = CHAR_MAP[code];
-            if ((flags & stopFlags) !== 0) {
-                if ((flags & COMMA_FLAG) !== 0)
-                    break parameter;
-                continue parameter;
-            }
-            if (code === EQ) {
-                const keyEnd = keyWhitespace === -1 ? index : keyWhitespace;
-                const value = header.slice(keyStart, keyEnd);
-                const key = (keyFlags & CASE_FLAGS) === 0 ? value : value.toLowerCase();
-                index++;
-                while ((CHAR_MAP[header.charCodeAt(index)] & OWS) !== 0) {
-                    index++;
-                }
-                if (index < len && header.charCodeAt(index) === DQUOTE) {
-                    const quotedStart = ++index;
-                    let escaped = false;
-                    while (index < len) {
-                        const code = header.charCodeAt(index);
-                        if (code === DQUOTE) {
-                            if (parameters[key] === undefined) {
-                                parameters[key] = escaped
-                                    ? unescapeQuotedPairs(header, quotedStart, index)
-                                    : header.slice(quotedStart, index);
-                            }
-                            index++;
-                            let stop = 0;
-                            // Discard characters between quote and delimiter.
-                            while (index < len) {
-                                const code = header.charCodeAt(index);
-                                const flags = CHAR_MAP[code];
-                                if ((flags & stopFlags) !== 0) {
-                                    stop = flags & COMMA_FLAG;
-                                    break;
-                                }
-                                index++;
-                            }
-                            if (stop !== 0)
-                                break parameter;
-                            continue parameter;
-                        }
-                        if (code === BSLASH && index + 1 < len) {
-                            escaped = true;
-                            index += 2;
-                            continue;
-                        }
-                        index++;
-                    }
-                    continue parameter;
-                }
-                const valueStart = index;
-                let stop = 0;
-                let valueWhitespace = -1;
-                while (index < len) {
-                    const code = header.charCodeAt(index);
-                    const flags = CHAR_MAP[code];
-                    if ((flags & stopFlags) !== 0) {
-                        stop = flags & COMMA_FLAG;
-                        break;
-                    }
-                    if ((flags & OWS) !== 0) {
-                        if (valueWhitespace === -1)
-                            valueWhitespace = index;
-                    }
-                    else {
-                        valueWhitespace = -1;
-                    }
-                    index++;
-                }
-                if (parameters[key] === undefined) {
-                    const valueEnd = valueWhitespace === -1 ? index : valueWhitespace;
-                    parameters[key] = header.slice(valueStart, valueEnd);
-                }
-                if (stop !== 0)
-                    break parameter;
-                continue parameter;
-            }
-            if ((flags & OWS) !== 0) {
-                if (keyWhitespace === -1)
-                    keyWhitespace = index;
-            }
-            else {
-                keyWhitespace = -1;
-            }
-            keyFlags |= (code & NON_ASCII) | flags;
-            index++;
-        }
-    }
-    return { type, index, parameters };
-}
-/**
- * Remove backslashes from quoted pairs in a known-terminated quoted string body.
- */
-function unescapeQuotedPairs(str, start, end) {
-    let result = "";
-    for (let index = start; index < end; index++) {
-        if (str.charCodeAt(index) === BSLASH) {
-            result += str.slice(start, index);
-            start = ++index;
-        }
-    }
-    return result + str.slice(start, end);
-}
-
-const intRegex = /^-?\d+$/;
-const noiseValue = /^-?\d+n+$/; // Noise - strings that match the custom format before being converted to it
-const originalStringify = JSON.stringify;
-const originalParse = JSON.parse;
-const customFormat = /^-?\d+n$/;
-
-const bigIntsStringify = /([\[:])?"(-?\d+)n"($|\s*[,\}\]])/g;
-const noiseStringify = /([\[:])?("-?\d+n+)n("$|"\s*[,\}\]])/g;
-
-/**
- * @typedef {(this: any, key: string | number | undefined, value: any) => any} Replacer
- * @typedef {(key: string | number | undefined, value: any, context?: { source: string }) => any} Reviver
- */
-
-/**
- * Checks if a value is unstringifiable according to native JSON.stringify rules.
- *
- * @param {any} val The value to check.
- * @returns {boolean} True if the value is undefined, a function, or a symbol.
- */
-const isUnstringifiable = (val) =>
-  val === undefined || typeof val === "function" || typeof val === "symbol";
-
-/**
- * Checks if a value is a native JSON.rawJSON object (Node.js 22+).
- *
- * @param {any} val The value to check.
- * @returns {boolean} True if the value is a RawJSON instance.
- */
-const isRawJSON = (val) =>
-  val !== null &&
-  typeof val === "object" &&
-  val.constructor &&
-  val.constructor.name === "RawJSON";
-
-/**
- * Iteratively converts a JS value to a JSON string.
- * Used as a fallback when the native JSON.stringify hits the Maximum Call Stack size.
- * Fully compliant with JSON formatting (space), replacers, and toJSON behaviors.
- *
- * @param {any} rootValue The value to stringify.
- * @param {Replacer | Array<string | number> | null} [replacer] User's custom replacer function.
- * @param {string | number} [spaceParam] Indentation for pretty-printing.
- * @returns {string | undefined} The generated JSON string.
- */
-const stringifyIteratively = (rootValue, replacer, spaceParam) => {
-  let space = "";
-  const propertyList = Array.isArray(replacer)
-    ? new Set(replacer.map(String))
-    : null;
-
-  /**
-   * Prepares a value for stringification by resolving toJSON, handling BigInts,
-   * applying custom replacers, and unwrapping primitive objects.
-   *
-   * @param {object|Array} parent The parent object or array holding the value.
-   * @param {string} key The key associated with the value.
-   * @param {any} val The raw value to process.
-   * @returns {any} The processed value ready for stringification.
-   */
-  const prepareVal = (parent, key, val) => {
-    const isObject = val !== null && typeof val === "object";
-    const hasToJSON = isObject && typeof val.toJSON === "function";
-
-    if (hasToJSON) {
-      val = val.toJSON(key);
-    }
-
-    const isNoise = typeof val === "string" && noiseValue.test(val);
-
-    if (isNoise) return val + "n";
-
-    const isBigInt = typeof val === "bigint";
-
-    if (isBigInt) {
-      const supportsRawJSON = "rawJSON" in JSON;
-
-      if (supportsRawJSON) return JSON.rawJSON(val.toString());
-
-      return val.toString() + "n";
-    }
-
-    const isPostReplacerObject = val !== null && typeof val === "object";
-
-    if (isPostReplacerObject) {
-      const isPrimitiveWrapper =
-        val instanceof Number ||
-        val instanceof String ||
-        val instanceof Boolean;
-
-      if (isPrimitiveWrapper) {
-        val = val.valueOf();
-      }
-    }
-
-    return val;
-  };
-
-  const rootProcessed = prepareVal({ }, "", rootValue);
-
-  if (isUnstringifiable(rootProcessed)) {
-    return undefined;
-  }
-
-  const isRootPrimitive =
-    rootProcessed === null || typeof rootProcessed !== "object";
-  const isRootNativeRawJSON = isRawJSON(rootProcessed);
-
-  if (isRootPrimitive || isRootNativeRawJSON) {
-    return originalStringify(rootProcessed);
-  }
-
-  const chunks = [];
-
-  const stack = [
-    {
-      parent: { "": rootProcessed },
-      key: "",
-      val: rootProcessed,
-      isArray: Array.isArray(rootProcessed),
-      keys: Array.isArray(rootProcessed) ? null : Object.keys(rootProcessed),
-      index: 0,
-      first: true,
-    },
-  ];
-
-  const visited = new WeakSet([rootProcessed]);
-
-  while (stack.length > 0) {
-    const node = stack[stack.length - 1];
-
-    if (node.index === 0) {
-      chunks.push(node.isArray ? "[" : "{");
-    }
-
-    let isDone = false;
-
-    if (node.isArray) {
-      if (node.index < node.val.length) {
-        if (!node.first) chunks.push(",");
-
-        const childRaw = node.val[node.index];
-        const childVal = prepareVal(node.val, String(node.index), childRaw);
-
-        if (isUnstringifiable(childVal)) {
-          chunks.push("null");
-          node.first = false;
-          node.index++;
-        } else {
-          const isComplexObject =
-            childVal !== null && typeof childVal === "object";
-          const isNativeRaw = isRawJSON(childVal);
-
-          if (isComplexObject && !isNativeRaw) {
-            if (visited.has(childVal)) {
-              throw new TypeError("Converting circular structure to JSON");
-            }
-
-            visited.add(childVal);
-
-            stack.push({
-              parent: node.val,
-              key: String(node.index),
-              val: childVal,
-              isArray: Array.isArray(childVal),
-              keys: Array.isArray(childVal) ? null : Object.keys(childVal),
-              index: 0,
-              first: true,
-            });
-
-            node.first = false;
-            node.index++;
-          } else {
-            chunks.push(originalStringify(childVal));
-            node.first = false;
-            node.index++;
-          }
-        }
-      } else {
-        isDone = true;
-      }
-    } else {
-      while (node.index < node.keys.length) {
-        const k = node.keys[node.index++];
-
-        const isFilteredOutByArray = propertyList && !propertyList.has(k);
-
-        if (isFilteredOutByArray) continue;
-
-        const childRaw = node.val[k];
-        const childVal = prepareVal(node.val, k, childRaw);
-
-        if (isUnstringifiable(childVal)) continue;
-
-        if (!node.first) chunks.push(",");
-
-        {
-          chunks.push(originalStringify(k) + ":");
-        }
-
-        const isComplexObject =
-          childVal !== null && typeof childVal === "object";
-        const isNativeRaw = isRawJSON(childVal);
-
-        if (isComplexObject && !isNativeRaw) {
-          if (visited.has(childVal)) {
-            throw new TypeError("Converting circular structure to JSON");
-          }
-
-          visited.add(childVal);
-
-          stack.push({
-            parent: node.val,
-            key: k,
-            val: childVal,
-            isArray: Array.isArray(childVal),
-            keys: Array.isArray(childVal) ? null : Object.keys(childVal),
-            index: 0,
-            first: true,
-          });
-
-          node.first = false;
-
-          break; // Stop current loop level to process the newly pushed stack node
-        } else {
-          chunks.push(originalStringify(childVal));
-          node.first = false;
-        }
-      }
-
-      const isNodeFullyProcessed =
-        node.index >= node.keys.length && stack[stack.length - 1] === node;
-
-      if (isNodeFullyProcessed) {
-        isDone = true;
-      }
-    }
-
-    if (isDone) {
-
-      if (!node.first && space) ;
-
-      chunks.push(node.isArray ? "]" : "}");
-      visited.delete(node.val);
-      stack.pop();
-    }
-  }
-
-  return chunks.join("");
-};
-
-/**
- * Converts a JavaScript value to a JSON string.
- *
- * Supports serialization of BigInt values using two strategies:
- * 1. Custom format "123n" → "123" (universal fallback)
- * 2. Native JSON.rawJSON() (Node.js 22+, fastest) when available
- *
- * All other values are serialized exactly like native JSON.stringify().
- *
- * @param {*} value The value to convert to a JSON string.
- * @param {Replacer | Array<string | number> | null} [replacer]
- * A function that alters the behavior of the stringification process,
- * or an array of strings/numbers to indicate properties to exclude.
- * @param {string | number} [space]
- * A string or number to specify indentation or pretty-printing.
- * @returns {string} The JSON string representation.
- */
-const JSONStringify = (value, replacer, space) => {
-  try {
-    const supportsRawJSON = "rawJSON" in JSON;
-
-    if (supportsRawJSON) {
-      return originalStringify(
-        value,
-        (key, val) => {
-          if (typeof val === "bigint") return JSON.rawJSON(val.toString());
-
-          const hasFunctionReplacer = typeof replacer === "function";
-
-          if (hasFunctionReplacer) ;
-
-          const isKeyInArrayReplacer =
-            Array.isArray(replacer) && replacer.includes(key);
-
-          if (isKeyInArrayReplacer) return val;
-
-          return val;
-        },
-        space,
-      );
-    }
-
-    if (!value) return originalStringify(value, replacer, space);
-
-    const convertedToCustomJSON = originalStringify(
-      value,
-      (key, val) => {
-        const isNoise = typeof val === "string" && noiseValue.test(val);
-
-        if (isNoise) return val.toString() + "n"; // Mark noise values with additional "n" to offset the deletion of one "n" during the processing
-
-        if (typeof val === "bigint") return val.toString() + "n";
-
-        const hasFunctionReplacer = typeof replacer === "function";
-
-        if (hasFunctionReplacer) ;
-
-        const isKeyInArrayReplacer =
-          Array.isArray(replacer) && replacer.includes(key);
-
-        if (isKeyInArrayReplacer) return val;
-
-        return val;
-      },
-      space,
-    );
-
-    const processedJSON = convertedToCustomJSON.replace(
-      bigIntsStringify,
-      "$1$2$3",
-    ); // Delete one "n" off the end of every BigInt value
-
-    const denoisedJSON = processedJSON.replace(noiseStringify, "$1$2$3"); // Remove one "n" off the end of every noisy string
-
-    return denoisedJSON;
-  } catch (error) {
-    if (error instanceof RangeError) {
-      const convertedJSON = stringifyIteratively(value, replacer);
-
-      if (convertedJSON === undefined) return undefined;
-
-      const supportsRawJSON = "rawJSON" in JSON;
-
-      if (supportsRawJSON) return convertedJSON;
-
-      const processedJSON = convertedJSON.replace(bigIntsStringify, "$1$2$3");
-
-      return processedJSON.replace(noiseStringify, "$1$2$3");
-    }
-
-    throw error;
-  }
-};
-
-const featureCache = new Map();
-
-/**
- * Detects if the current JSON.parse implementation supports the context.source feature.
- *
- * Uses toString() fingerprinting to cache results and automatically detect runtime
- * replacements of JSON.parse (polyfills, mocks, etc.).
- *
- * @returns {boolean} true if context.source is supported, false otherwise.
- */
-const isContextSourceSupported = () => {
-  const parseFingerprint = JSON.parse.toString();
-
-  if (featureCache.has(parseFingerprint)) {
-    return featureCache.get(parseFingerprint);
-  }
-
-  try {
-    const result = JSON.parse(
-      "1",
-      (_, __, context) => !!context?.source && context.source === "1",
-    );
-    featureCache.set(parseFingerprint, result);
-
-    return result;
-  } catch {
-    featureCache.set(parseFingerprint, false);
-
-    return false;
-  }
-};
-
-/**
- * Reviver function that converts custom-format BigInt strings back to BigInt values.
- * Also handles "noise" strings that accidentally match the BigInt format.
- *
- * @param {string | number | undefined} key The object key.
- * @param {*} value The value being parsed.
- * @param {object} [context] Parse context (if supported by JSON.parse).
- * @param {Reviver} [userReviver] User's custom reviver function.
- * @returns {any} The transformed value.
- */
-const convertMarkedBigIntsReviver = (key, value, context, userReviver) => {
-  const isCustomFormatBigInt =
-    typeof value === "string" && customFormat.test(value);
-
-  if (isCustomFormatBigInt) return BigInt(value.slice(0, -1));
-
-  const isNoiseValue = typeof value === "string" && noiseValue.test(value);
-  if (isNoiseValue) return value.slice(0, -1);
-
-  return value;
-};
-
-/**
- * Fast JSON.parse implementation (~2x faster than classic fallback).
- * Uses JSON.parse's context.source feature to detect integers and convert
- * large numbers directly to BigInt without string manipulation.
- *
- * Does not support legacy custom format from v1 of this library.
- *
- * @param {string} text JSON string to parse.
- * @param {Reviver} [reviver] Transform function to apply to each value.
- * @returns {any} Parsed JavaScript value.
- */
-const JSONParseV2 = (text, reviver) => {
-  return JSON.parse(text, (key, value, context) => {
-    const isNumber = typeof value === "number";
-    const isOutOfBounds =
-      value > Number.MAX_SAFE_INTEGER || value < Number.MIN_SAFE_INTEGER;
-    const isBigNumber = isNumber && isOutOfBounds;
-    const isInt = context && intRegex.test(context.source);
-    const isBigInt = isBigNumber && isInt;
-
-    if (isBigInt) return BigInt(context.source);
-
-    return value;
-  });
-};
-
-const MAX_INT = Number.MAX_SAFE_INTEGER.toString();
-const MAX_DIGITS = MAX_INT.length;
-const stringsOrLargeNumbers =
-  /"(?:[^"\\]|\\.)*"|-?(0|[1-9][0-9]*)(\.[0-9]+)?([eE][+-]?[0-9]+)?/g;
-const noiseValueWithQuotes = /^"-?\d+n+"$/; // Noise - strings that match the custom format before being converted to it
-
-/**
- * Iteratively traverses the parsed object bottom-up (post-order),
- * emulating the native JSON.parse reviver behavior.
- * This avoids Call Stack overflows (RangeError) on deeply nested structures.
- *
- * @param {any} parsed The natively parsed JSON object.
- * @param {Reviver} [userReviver] User's custom reviver function.
- * @returns {any} The fully processed object.
- */
-const applyReviverIteratively = (parsed, userReviver) => {
-  const rootHolder = { "": parsed };
-  const stack = [{ parent: rootHolder, key: "", visited: false }];
-
-  while (stack.length > 0) {
-    const node = stack[stack.length - 1];
-
-    if (!node.visited) {
-      node.visited = true;
-
-      const value = node.parent[node.key];
-      const isComplexObject = value !== null && typeof value === "object";
-
-      if (isComplexObject) {
-        const keys = Object.keys(value);
-
-        for (let i = keys.length - 1; i >= 0; i--) {
-          stack.push({ parent: value, key: keys[i], visited: false });
-        }
-      }
-    } else {
-      const { parent, key } = node;
-      let value = parent[key];
-
-      if (typeof value === "string") {
-        const isCustomFormatBigInt = customFormat.test(value);
-
-        if (isCustomFormatBigInt) {
-          value = BigInt(value.slice(0, -1));
-        } else {
-          const isNoise = noiseValue.test(value);
-
-          if (isNoise) value = value.slice(0, -1);
-        }
-      }
-
-      const isDeleted = value === undefined;
-
-      if (isDeleted) {
-        delete parent[key];
-      } else {
-        parent[key] = value;
-      }
-
-      stack.pop();
-    }
-  }
-
-  return rootHolder[""];
-};
-
-/**
- * Pre-processes the JSON string to mark large numbers with an 'n' suffix.
- *
- * @param {string} text The raw JSON string.
- * @returns {string} The serialized string with marked BigInts.
- */
-const serializeBigInts = (text) => {
-  return text.replace(
-    stringsOrLargeNumbers,
-    (match, digits, fractional, exponential) => {
-      const isString = match[0] === '"';
-      const isNoise = isString && noiseValueWithQuotes.test(match);
-
-      if (isNoise) return match.substring(0, match.length - 1) + 'n"'; // Mark noise values with additional "n" to offset the deletion of one "n" during the processing
-
-      const hasFractionalOrExponential = fractional || exponential;
-
-      // With a fixed number of digits, we can correctly use lexicographical comparison to do a numeric comparison
-      const isLessThanMaxSafeInt =
-        digits &&
-        (digits.length < MAX_DIGITS ||
-          (digits.length === MAX_DIGITS && digits <= MAX_INT));
-
-      const isStandardValue =
-        isString || hasFractionalOrExponential || isLessThanMaxSafeInt;
-
-      if (isStandardValue) return match;
-
-      return '"' + match + 'n"';
-    },
-  );
-};
-
-/**
- * Converts a JSON string into a JavaScript value.
- *
- * Supports parsing of large integers using two strategies:
- * 1. Classic fallback: Marks large numbers with "123n" format, then converts to BigInt
- * 2. Fast path (JSONParseV2): Uses context.source feature (~2x faster) when available
- *
- * All other JSON values are parsed exactly like native JSON.parse().
- *
- * @param {string} text A valid JSON string.
- * @param {Reviver} [reviver]
- * A function that transforms the results. This function is called for each member
- * of the object. If a member contains nested objects, the nested objects are
- * transformed before the parent object is.
- * @returns {any} The parsed JavaScript value.
- * @throws {SyntaxError} If text is not valid JSON.
- */
-const JSONParse = (text, reviver) => {
-  if (!text) return originalParse(text, reviver);
-
-  try {
-    if (isContextSourceSupported()) return JSONParseV2(text, reviver); // Shortcut to a faster (2x) and simpler version
-
-    // Find and mark big numbers with "n"
-    const serializedData = serializeBigInts(text);
-
-    return originalParse(serializedData, (key, value, context) =>
-      convertMarkedBigIntsReviver(key, value, context, reviver),
-    );
-  } catch (error) {
-    if (error instanceof RangeError) {
-      const serializedData = serializeBigInts(text);
-      const parsed = originalParse(serializedData);
-
-      return applyReviverIteratively(parsed);
-    }
-
-    throw error;
-  }
-};
-
-class RequestError extends Error {
-  name;
-  /**
-   * http status code
-   */
-  status;
-  /**
-   * Request options that lead to the error.
-   */
-  request;
-  /**
-   * Response object if a response was received
-   */
-  response;
-  constructor(message, statusCode, options) {
-    super(message, { cause: options.cause });
-    this.name = "HttpError";
-    this.status = Number.parseInt(statusCode);
-    if (Number.isNaN(this.status)) {
-      this.status = 0;
-    }
-    /* v8 ignore else -- @preserve -- Bug with vitest coverage where it sees an else branch that doesn't exist */
-    if ("response" in options) {
-      this.response = options.response;
-    }
-    const requestCopy = Object.assign({}, options.request);
-    if (options.request.headers.authorization) {
-      requestCopy.headers = Object.assign({}, options.request.headers, {
-        authorization: options.request.headers.authorization.replace(
-          /(?<! ) .*$/,
-          " [REDACTED]"
-        )
-      });
-    }
-    requestCopy.url = requestCopy.url.replace(/\bclient_secret=\w+/g, "client_secret=[REDACTED]").replace(/\baccess_token=\w+/g, "access_token=[REDACTED]");
-    this.request = requestCopy;
-  }
-}
-
-// pkg/dist-src/index.js
-
-// pkg/dist-src/version.js
-var VERSION$4 = "10.0.16";
-
-// pkg/dist-src/defaults.js
-var defaults_default = {
-  headers: {
-    "user-agent": `octokit-request.js/${VERSION$4} ${getUserAgent()}`
-  }
-};
-
-// pkg/dist-src/is-plain-object.js
-function isPlainObject(value) {
-  if (typeof value !== "object" || value === null) return false;
-  if (Object.prototype.toString.call(value) !== "[object Object]") return false;
-  const proto = Object.getPrototypeOf(value);
-  if (proto === null) return true;
-  const Ctor = Object.prototype.hasOwnProperty.call(proto, "constructor") && proto.constructor;
-  return typeof Ctor === "function" && Ctor instanceof Ctor && Function.prototype.call(Ctor) === Function.prototype.call(value);
-}
-var noop$1 = () => "";
-async function fetchWrapper(requestOptions) {
-  const fetch = requestOptions.request?.fetch || globalThis.fetch;
-  if (!fetch) {
-    throw new Error(
-      "fetch is not set. Please pass a fetch implementation as new Octokit({ request: { fetch }}). Learn more at https://github.com/octokit/octokit.js/#fetch-missing"
-    );
-  }
-  const log = requestOptions.request?.log || console;
-  const parseSuccessResponseBody = requestOptions.request?.parseSuccessResponseBody !== false;
-  const body = isPlainObject(requestOptions.body) || Array.isArray(requestOptions.body) ? JSONStringify(requestOptions.body) : requestOptions.body;
-  const requestHeaders = Object.fromEntries(
-    Object.entries(requestOptions.headers).map(([name, value]) => [
-      name,
-      String(value)
-    ])
-  );
-  let fetchResponse;
-  try {
-    fetchResponse = await fetch(requestOptions.url, {
-      method: requestOptions.method,
-      body,
-      redirect: requestOptions.request?.redirect,
-      headers: requestHeaders,
-      signal: requestOptions.request?.signal,
-      // duplex must be set if request.body is ReadableStream or Async Iterables.
-      // See https://fetch.spec.whatwg.org/#dom-requestinit-duplex.
-      ...requestOptions.body && { duplex: "half" }
-    });
-  } catch (error) {
-    let message = "Unknown Error";
-    if (error instanceof Error) {
-      if (error.name === "AbortError") {
-        error.status = 500;
-        throw error;
-      }
-      message = error.message;
-      if (error.name === "TypeError" && "cause" in error) {
-        if (error.cause instanceof Error) {
-          message = error.cause.message;
-        } else if (typeof error.cause === "string") {
-          message = error.cause;
-        }
-      }
-    }
-    const requestError = new RequestError(message, 500, {
-      request: requestOptions
-    });
-    requestError.cause = error;
-    throw requestError;
-  }
-  const status = fetchResponse.status;
-  const url = fetchResponse.url;
-  const responseHeaders = {};
-  for (const [key, value] of fetchResponse.headers) {
-    responseHeaders[key] = value;
-  }
-  const octokitResponse = {
-    url,
-    status,
-    headers: responseHeaders,
-    data: ""
-  };
-  if ("deprecation" in responseHeaders) {
-    const matches = responseHeaders.link && responseHeaders.link.match(/<([^<>]+)>; rel="deprecation"/);
-    const deprecationLink = matches && matches.pop();
-    log.warn(
-      `[@octokit/request] "${requestOptions.method} ${requestOptions.url}" is deprecated. It is scheduled to be removed on ${responseHeaders.sunset}${deprecationLink ? `. See ${deprecationLink}` : ""}`
-    );
-  }
-  if (status === 204 || status === 205) {
-    return octokitResponse;
-  }
-  if (requestOptions.method === "HEAD") {
-    if (status < 400) {
-      return octokitResponse;
-    }
-    throw new RequestError(fetchResponse.statusText, status, {
-      response: octokitResponse,
-      request: requestOptions
-    });
-  }
-  if (status === 304) {
-    octokitResponse.data = await getResponseData(fetchResponse);
-    throw new RequestError("Not modified", status, {
-      response: octokitResponse,
-      request: requestOptions
-    });
-  }
-  if (status >= 400) {
-    octokitResponse.data = await getResponseData(fetchResponse);
-    throw new RequestError(toErrorMessage(octokitResponse.data), status, {
-      response: octokitResponse,
-      request: requestOptions
-    });
-  }
-  octokitResponse.data = parseSuccessResponseBody ? await getResponseData(fetchResponse) : fetchResponse.body;
-  return octokitResponse;
-}
-async function getResponseData(response) {
-  const contentType = response.headers.get("content-type");
-  if (!contentType) {
-    return response.text().catch(noop$1);
-  }
-  const mimetype = parse(contentType);
-  if (isJSONResponse(mimetype)) {
-    let text = "";
-    try {
-      text = await response.text();
-      return JSONParse(text);
-    } catch (err) {
-      return text;
-    }
-  } else if (mimetype.type.startsWith("text/") || // `application/octet-stream` is the canonical "arbitrary binary" type
-  // (RFC 2046) and must never be decoded as text, even when the response
-  // carries a (misleading) `charset=utf-8` parameter — see #751.
-  mimetype.parameters.charset?.toLowerCase() === "utf-8" && mimetype.type !== "application/octet-stream") {
-    return response.text().catch(noop$1);
-  } else {
-    return response.arrayBuffer().catch(
-      /* v8 ignore next -- @preserve */
-      () => new ArrayBuffer(0)
-    );
-  }
-}
-function isJSONResponse(mimetype) {
-  return mimetype.type === "application/json" || mimetype.type === "application/scim+json";
-}
-function toErrorMessage(data) {
-  if (typeof data === "string") {
-    return data;
-  }
-  if (data instanceof ArrayBuffer) {
-    return "Unknown error";
-  }
-  if (typeof data === "object" && data !== null && "message" in data) {
-    const objectData = data;
-    const suffix = "documentation_url" in objectData ? ` - ${objectData.documentation_url}` : "";
-    return Array.isArray(objectData.errors) ? `${objectData.message}: ${objectData.errors.map((v) => JSON.stringify(v)).join(", ")}${suffix}` : `${objectData.message}${suffix}`;
-  }
-  return `Unknown error: ${JSON.stringify(data)}`;
-}
-
-// pkg/dist-src/with-defaults.js
-function withDefaults$1(oldEndpoint, newDefaults) {
-  const endpoint2 = oldEndpoint.defaults(newDefaults);
-  const newApi = function(route, parameters) {
-    const endpointOptions = endpoint2.merge(route, parameters);
-    if (!endpointOptions.request || !endpointOptions.request.hook) {
-      return fetchWrapper(endpoint2.parse(endpointOptions));
-    }
-    const request2 = (route2, parameters2) => {
-      return fetchWrapper(
-        endpoint2.parse(endpoint2.merge(route2, parameters2))
-      );
-    };
-    Object.assign(request2, {
-      endpoint: endpoint2,
-      defaults: withDefaults$1.bind(null, endpoint2)
-    });
-    return endpointOptions.request.hook(request2, endpointOptions);
-  };
-  return Object.assign(newApi, {
-    endpoint: endpoint2,
-    defaults: withDefaults$1.bind(null, endpoint2)
-  });
-}
-
-// pkg/dist-src/index.js
-var request = withDefaults$1(endpoint, defaults_default);
-/* v8 ignore next -- @preserve */
-/* v8 ignore else -- @preserve */
-
-// pkg/dist-src/index.js
-
-// pkg/dist-src/version.js
-var VERSION$3 = "0.0.0-development";
-
-// pkg/dist-src/error.js
-function _buildMessageForResponseErrors(data) {
-  return `Request failed due to following response errors:
-` + data.errors.map((e) => ` - ${e.message}`).join("\n");
-}
-var GraphqlResponseError = class extends Error {
-  constructor(request2, headers, response) {
-    super(_buildMessageForResponseErrors(response));
-    this.request = request2;
-    this.headers = headers;
-    this.response = response;
-    this.errors = response.errors;
-    this.data = response.data;
-    if (Error.captureStackTrace) {
-      Error.captureStackTrace(this, this.constructor);
-    }
-  }
-  request;
-  headers;
-  response;
-  name = "GraphqlResponseError";
-  errors;
-  data;
-};
-
-// pkg/dist-src/graphql.js
-var NON_VARIABLE_OPTIONS = [
-  "method",
-  "baseUrl",
-  "url",
-  "headers",
-  "request",
-  "query",
-  "mediaType",
-  "operationName"
-];
-var FORBIDDEN_VARIABLE_OPTIONS = ["query", "method", "url"];
-var GHES_V3_SUFFIX_REGEX = /\/api\/v3\/?$/;
-function graphql(request2, query, options) {
-  if (options) {
-    if (typeof query === "string" && "query" in options) {
-      return Promise.reject(
-        new Error(`[@octokit/graphql] "query" cannot be used as variable name`)
-      );
-    }
-    for (const key in options) {
-      if (!FORBIDDEN_VARIABLE_OPTIONS.includes(key)) continue;
-      return Promise.reject(
-        new Error(
-          `[@octokit/graphql] "${key}" cannot be used as variable name`
-        )
-      );
-    }
-  }
-  const parsedOptions = typeof query === "string" ? Object.assign({ query }, options) : query;
-  const requestOptions = Object.keys(
-    parsedOptions
-  ).reduce((result, key) => {
-    if (NON_VARIABLE_OPTIONS.includes(key)) {
-      result[key] = parsedOptions[key];
-      return result;
-    }
-    if (!result.variables) {
-      result.variables = {};
-    }
-    result.variables[key] = parsedOptions[key];
-    return result;
-  }, {});
-  const baseUrl = parsedOptions.baseUrl || request2.endpoint.DEFAULTS.baseUrl;
-  if (GHES_V3_SUFFIX_REGEX.test(baseUrl)) {
-    requestOptions.url = baseUrl.replace(GHES_V3_SUFFIX_REGEX, "/api/graphql");
-  }
-  return request2(requestOptions).then((response) => {
-    if (response.data.errors) {
-      const headers = {};
-      for (const key of Object.keys(response.headers)) {
-        headers[key] = response.headers[key];
-      }
-      throw new GraphqlResponseError(
-        requestOptions,
-        headers,
-        response.data
-      );
-    }
-    return response.data.data;
-  });
-}
-
-// pkg/dist-src/with-defaults.js
-function withDefaults(request2, newDefaults) {
-  const newRequest = request2.defaults(newDefaults);
-  const newApi = (query, options) => {
-    return graphql(newRequest, query, options);
-  };
-  return Object.assign(newApi, {
-    defaults: withDefaults.bind(null, newRequest),
-    endpoint: newRequest.endpoint
-  });
-}
-
-// pkg/dist-src/index.js
-withDefaults(request, {
-  headers: {
-    "user-agent": `octokit-graphql.js/${VERSION$3} ${getUserAgent()}`
-  },
-  method: "POST",
-  url: "/graphql"
-});
-function withCustomRequest(customRequest) {
-  return withDefaults(customRequest, {
-    method: "POST",
-    url: "/graphql"
-  });
-}
-/* v8 ignore if -- @preserve */
-
-// pkg/dist-src/is-jwt.js
-var b64url = "(?:[a-zA-Z0-9_-]+)";
-var sep = "\\.";
-var jwtRE = new RegExp(`^${b64url}${sep}${b64url}${sep}${b64url}$`);
-var isJWT = jwtRE.test.bind(jwtRE);
-
-// pkg/dist-src/auth.js
-async function auth(token) {
-  const isApp = isJWT(token);
-  const isInstallation = token.startsWith("v1.") || token.startsWith("ghs_");
-  const isUserToServer = token.startsWith("ghu_");
-  const tokenType = isApp ? "app" : isInstallation ? "installation" : isUserToServer ? "user-to-server" : "oauth";
-  return {
-    type: "token",
-    token,
-    tokenType
-  };
-}
-
-// pkg/dist-src/with-authorization-prefix.js
-function withAuthorizationPrefix(token) {
-  if (token.split(/\./).length === 3) {
-    return `bearer ${token}`;
-  }
-  return `token ${token}`;
-}
-
-// pkg/dist-src/hook.js
-async function hook(token, request, route, parameters) {
-  const endpoint = request.endpoint.merge(
-    route,
-    parameters
-  );
-  endpoint.headers.authorization = withAuthorizationPrefix(token);
-  return request(endpoint);
-}
-
-// pkg/dist-src/index.js
-var createTokenAuth = function createTokenAuth2(token) {
-  if (!token) {
-    throw new Error("[@octokit/auth-token] No token passed to createTokenAuth");
-  }
-  if (typeof token !== "string") {
-    throw new Error(
-      "[@octokit/auth-token] Token passed to createTokenAuth is not a string"
-    );
-  }
-  token = token.replace(/^(token|bearer) +/i, "");
-  return Object.assign(auth.bind(null, token), {
-    hook: hook.bind(null, token)
-  });
-};
-
-const VERSION$2 = "7.0.8";
-
-const noop = () => {
-};
-const consoleWarn = console.warn.bind(console);
-const consoleError = console.error.bind(console);
-function createLogger(logger = {}) {
-  if (typeof logger.debug !== "function") {
-    logger.debug = noop;
-  }
-  if (typeof logger.info !== "function") {
-    logger.info = noop;
-  }
-  if (typeof logger.warn !== "function") {
-    logger.warn = consoleWarn;
-  }
-  if (typeof logger.error !== "function") {
-    logger.error = consoleError;
-  }
-  return logger;
-}
-const userAgentTrail = `octokit-core.js/${VERSION$2} ${getUserAgent()}`;
-class Octokit {
-  static VERSION = VERSION$2;
-  static defaults(defaults) {
-    const OctokitWithDefaults = class extends this {
-      constructor(...args) {
-        const options = args[0] || {};
-        if (typeof defaults === "function") {
-          super(defaults(options));
-          return;
-        }
-        super(
-          Object.assign(
-            {},
-            defaults,
-            options,
-            options.userAgent && defaults.userAgent ? {
-              userAgent: `${options.userAgent} ${defaults.userAgent}`
-            } : null
-          )
-        );
-      }
-    };
-    return OctokitWithDefaults;
-  }
-  static plugins = [];
-  /**
-   * Attach a plugin (or many) to your Octokit instance.
-   *
-   * @example
-   * const API = Octokit.plugin(plugin1, plugin2, plugin3, ...)
-   */
-  static plugin(...newPlugins) {
-    const currentPlugins = this.plugins;
-    const NewOctokit = class extends this {
-      static plugins = currentPlugins.concat(
-        newPlugins.filter((plugin) => !currentPlugins.includes(plugin))
-      );
-    };
-    return NewOctokit;
-  }
-  constructor(options = {}) {
-    const hook = new Hook.Collection();
-    const requestDefaults = {
-      baseUrl: request.endpoint.DEFAULTS.baseUrl,
-      headers: {},
-      request: Object.assign({}, options.request, {
-        // @ts-ignore internal usage only, no need to type
-        hook: hook.bind(null, "request")
-      }),
-      mediaType: {
-        previews: [],
-        format: ""
-      }
-    };
-    requestDefaults.headers["user-agent"] = options.userAgent ? `${options.userAgent} ${userAgentTrail}` : userAgentTrail;
-    if (options.baseUrl) {
-      requestDefaults.baseUrl = options.baseUrl;
-    }
-    if (options.previews) {
-      requestDefaults.mediaType.previews = options.previews;
-    }
-    if (options.timeZone) {
-      requestDefaults.headers["time-zone"] = options.timeZone;
-    }
-    this.request = request.defaults(requestDefaults);
-    this.graphql = withCustomRequest(this.request).defaults(requestDefaults);
-    this.log = createLogger(options.log);
-    this.hook = hook;
-    if (!options.authStrategy) {
-      if (!options.auth) {
-        this.auth = async () => ({
-          type: "unauthenticated"
-        });
-      } else {
-        const auth = createTokenAuth(options.auth);
-        hook.wrap("request", auth.hook);
-        this.auth = auth;
-      }
-    } else {
-      const { authStrategy, ...otherOptions } = options;
-      const auth = authStrategy(
-        Object.assign(
-          {
-            request: this.request,
-            log: this.log,
-            // we pass the current octokit instance as well as its constructor options
-            // to allow for authentication strategies that return a new octokit instance
-            // that shares the same internal state as the current one. The original
-            // requirement for this was the "event-octokit" authentication strategy
-            // of https://github.com/probot/octokit-auth-probot.
-            octokit: this,
-            octokitOptions: otherOptions
-          },
-          options.auth
-        )
-      );
-      hook.wrap("request", auth.hook);
-      this.auth = auth;
-    }
-    const classConstructor = this.constructor;
-    for (let i = 0; i < classConstructor.plugins.length; ++i) {
-      Object.assign(this, classConstructor.plugins[i](this, options));
-    }
-  }
-  // assigned during constructor
-  request;
-  graphql;
-  log;
-  hook;
-  // TODO: type `octokit.auth` based on passed options.authStrategy
-  auth;
-}
-
-const VERSION$1 = "17.0.0";
-
-const Endpoints = {
-  actions: {
-    addCustomLabelsToSelfHostedRunnerForOrg: [
-      "POST /orgs/{org}/actions/runners/{runner_id}/labels"
-    ],
-    addCustomLabelsToSelfHostedRunnerForRepo: [
-      "POST /repos/{owner}/{repo}/actions/runners/{runner_id}/labels"
-    ],
-    addRepoAccessToSelfHostedRunnerGroupInOrg: [
-      "PUT /orgs/{org}/actions/runner-groups/{runner_group_id}/repositories/{repository_id}"
-    ],
-    addSelectedRepoToOrgSecret: [
-      "PUT /orgs/{org}/actions/secrets/{secret_name}/repositories/{repository_id}"
-    ],
-    addSelectedRepoToOrgVariable: [
-      "PUT /orgs/{org}/actions/variables/{name}/repositories/{repository_id}"
-    ],
-    approveWorkflowRun: [
-      "POST /repos/{owner}/{repo}/actions/runs/{run_id}/approve"
-    ],
-    cancelWorkflowRun: [
-      "POST /repos/{owner}/{repo}/actions/runs/{run_id}/cancel"
-    ],
-    createEnvironmentVariable: [
-      "POST /repos/{owner}/{repo}/environments/{environment_name}/variables"
-    ],
-    createHostedRunnerForOrg: ["POST /orgs/{org}/actions/hosted-runners"],
-    createOrUpdateEnvironmentSecret: [
-      "PUT /repos/{owner}/{repo}/environments/{environment_name}/secrets/{secret_name}"
-    ],
-    createOrUpdateOrgSecret: ["PUT /orgs/{org}/actions/secrets/{secret_name}"],
-    createOrUpdateRepoSecret: [
-      "PUT /repos/{owner}/{repo}/actions/secrets/{secret_name}"
-    ],
-    createOrgVariable: ["POST /orgs/{org}/actions/variables"],
-    createRegistrationTokenForOrg: [
-      "POST /orgs/{org}/actions/runners/registration-token"
-    ],
-    createRegistrationTokenForRepo: [
-      "POST /repos/{owner}/{repo}/actions/runners/registration-token"
-    ],
-    createRemoveTokenForOrg: ["POST /orgs/{org}/actions/runners/remove-token"],
-    createRemoveTokenForRepo: [
-      "POST /repos/{owner}/{repo}/actions/runners/remove-token"
-    ],
-    createRepoVariable: ["POST /repos/{owner}/{repo}/actions/variables"],
-    createWorkflowDispatch: [
-      "POST /repos/{owner}/{repo}/actions/workflows/{workflow_id}/dispatches"
-    ],
-    deleteActionsCacheById: [
-      "DELETE /repos/{owner}/{repo}/actions/caches/{cache_id}"
-    ],
-    deleteActionsCacheByKey: [
-      "DELETE /repos/{owner}/{repo}/actions/caches{?key,ref}"
-    ],
-    deleteArtifact: [
-      "DELETE /repos/{owner}/{repo}/actions/artifacts/{artifact_id}"
-    ],
-    deleteCustomImageFromOrg: [
-      "DELETE /orgs/{org}/actions/hosted-runners/images/custom/{image_definition_id}"
-    ],
-    deleteCustomImageVersionFromOrg: [
-      "DELETE /orgs/{org}/actions/hosted-runners/images/custom/{image_definition_id}/versions/{version}"
-    ],
-    deleteEnvironmentSecret: [
-      "DELETE /repos/{owner}/{repo}/environments/{environment_name}/secrets/{secret_name}"
-    ],
-    deleteEnvironmentVariable: [
-      "DELETE /repos/{owner}/{repo}/environments/{environment_name}/variables/{name}"
-    ],
-    deleteHostedRunnerForOrg: [
-      "DELETE /orgs/{org}/actions/hosted-runners/{hosted_runner_id}"
-    ],
-    deleteOrgSecret: ["DELETE /orgs/{org}/actions/secrets/{secret_name}"],
-    deleteOrgVariable: ["DELETE /orgs/{org}/actions/variables/{name}"],
-    deleteRepoSecret: [
-      "DELETE /repos/{owner}/{repo}/actions/secrets/{secret_name}"
-    ],
-    deleteRepoVariable: [
-      "DELETE /repos/{owner}/{repo}/actions/variables/{name}"
-    ],
-    deleteSelfHostedRunnerFromOrg: [
-      "DELETE /orgs/{org}/actions/runners/{runner_id}"
-    ],
-    deleteSelfHostedRunnerFromRepo: [
-      "DELETE /repos/{owner}/{repo}/actions/runners/{runner_id}"
-    ],
-    deleteWorkflowRun: ["DELETE /repos/{owner}/{repo}/actions/runs/{run_id}"],
-    deleteWorkflowRunLogs: [
-      "DELETE /repos/{owner}/{repo}/actions/runs/{run_id}/logs"
-    ],
-    disableSelectedRepositoryGithubActionsOrganization: [
-      "DELETE /orgs/{org}/actions/permissions/repositories/{repository_id}"
-    ],
-    disableWorkflow: [
-      "PUT /repos/{owner}/{repo}/actions/workflows/{workflow_id}/disable"
-    ],
-    downloadArtifact: [
-      "GET /repos/{owner}/{repo}/actions/artifacts/{artifact_id}/{archive_format}"
-    ],
-    downloadJobLogsForWorkflowRun: [
-      "GET /repos/{owner}/{repo}/actions/jobs/{job_id}/logs"
-    ],
-    downloadWorkflowRunAttemptLogs: [
-      "GET /repos/{owner}/{repo}/actions/runs/{run_id}/attempts/{attempt_number}/logs"
-    ],
-    downloadWorkflowRunLogs: [
-      "GET /repos/{owner}/{repo}/actions/runs/{run_id}/logs"
-    ],
-    enableSelectedRepositoryGithubActionsOrganization: [
-      "PUT /orgs/{org}/actions/permissions/repositories/{repository_id}"
-    ],
-    enableWorkflow: [
-      "PUT /repos/{owner}/{repo}/actions/workflows/{workflow_id}/enable"
-    ],
-    forceCancelWorkflowRun: [
-      "POST /repos/{owner}/{repo}/actions/runs/{run_id}/force-cancel"
-    ],
-    generateRunnerJitconfigForOrg: [
-      "POST /orgs/{org}/actions/runners/generate-jitconfig"
-    ],
-    generateRunnerJitconfigForRepo: [
-      "POST /repos/{owner}/{repo}/actions/runners/generate-jitconfig"
-    ],
-    getActionsCacheList: ["GET /repos/{owner}/{repo}/actions/caches"],
-    getActionsCacheUsage: ["GET /repos/{owner}/{repo}/actions/cache/usage"],
-    getActionsCacheUsageByRepoForOrg: [
-      "GET /orgs/{org}/actions/cache/usage-by-repository"
-    ],
-    getActionsCacheUsageForOrg: ["GET /orgs/{org}/actions/cache/usage"],
-    getAllowedActionsOrganization: [
-      "GET /orgs/{org}/actions/permissions/selected-actions"
-    ],
-    getAllowedActionsRepository: [
-      "GET /repos/{owner}/{repo}/actions/permissions/selected-actions"
-    ],
-    getArtifact: ["GET /repos/{owner}/{repo}/actions/artifacts/{artifact_id}"],
-    getCustomImageForOrg: [
-      "GET /orgs/{org}/actions/hosted-runners/images/custom/{image_definition_id}"
-    ],
-    getCustomImageVersionForOrg: [
-      "GET /orgs/{org}/actions/hosted-runners/images/custom/{image_definition_id}/versions/{version}"
-    ],
-    getCustomOidcSubClaimForRepo: [
-      "GET /repos/{owner}/{repo}/actions/oidc/customization/sub"
-    ],
-    getEnvironmentPublicKey: [
-      "GET /repos/{owner}/{repo}/environments/{environment_name}/secrets/public-key"
-    ],
-    getEnvironmentSecret: [
-      "GET /repos/{owner}/{repo}/environments/{environment_name}/secrets/{secret_name}"
-    ],
-    getEnvironmentVariable: [
-      "GET /repos/{owner}/{repo}/environments/{environment_name}/variables/{name}"
-    ],
-    getGithubActionsDefaultWorkflowPermissionsOrganization: [
-      "GET /orgs/{org}/actions/permissions/workflow"
-    ],
-    getGithubActionsDefaultWorkflowPermissionsRepository: [
-      "GET /repos/{owner}/{repo}/actions/permissions/workflow"
-    ],
-    getGithubActionsPermissionsOrganization: [
-      "GET /orgs/{org}/actions/permissions"
-    ],
-    getGithubActionsPermissionsRepository: [
-      "GET /repos/{owner}/{repo}/actions/permissions"
-    ],
-    getHostedRunnerForOrg: [
-      "GET /orgs/{org}/actions/hosted-runners/{hosted_runner_id}"
-    ],
-    getHostedRunnersGithubOwnedImagesForOrg: [
-      "GET /orgs/{org}/actions/hosted-runners/images/github-owned"
-    ],
-    getHostedRunnersLimitsForOrg: [
-      "GET /orgs/{org}/actions/hosted-runners/limits"
-    ],
-    getHostedRunnersMachineSpecsForOrg: [
-      "GET /orgs/{org}/actions/hosted-runners/machine-sizes"
-    ],
-    getHostedRunnersPartnerImagesForOrg: [
-      "GET /orgs/{org}/actions/hosted-runners/images/partner"
-    ],
-    getHostedRunnersPlatformsForOrg: [
-      "GET /orgs/{org}/actions/hosted-runners/platforms"
-    ],
-    getJobForWorkflowRun: ["GET /repos/{owner}/{repo}/actions/jobs/{job_id}"],
-    getOrgPublicKey: ["GET /orgs/{org}/actions/secrets/public-key"],
-    getOrgSecret: ["GET /orgs/{org}/actions/secrets/{secret_name}"],
-    getOrgVariable: ["GET /orgs/{org}/actions/variables/{name}"],
-    getPendingDeploymentsForRun: [
-      "GET /repos/{owner}/{repo}/actions/runs/{run_id}/pending_deployments"
-    ],
-    getRepoPermissions: [
-      "GET /repos/{owner}/{repo}/actions/permissions",
-      {},
-      { renamed: ["actions", "getGithubActionsPermissionsRepository"] }
-    ],
-    getRepoPublicKey: ["GET /repos/{owner}/{repo}/actions/secrets/public-key"],
-    getRepoSecret: ["GET /repos/{owner}/{repo}/actions/secrets/{secret_name}"],
-    getRepoVariable: ["GET /repos/{owner}/{repo}/actions/variables/{name}"],
-    getReviewsForRun: [
-      "GET /repos/{owner}/{repo}/actions/runs/{run_id}/approvals"
-    ],
-    getSelfHostedRunnerForOrg: ["GET /orgs/{org}/actions/runners/{runner_id}"],
-    getSelfHostedRunnerForRepo: [
-      "GET /repos/{owner}/{repo}/actions/runners/{runner_id}"
-    ],
-    getWorkflow: ["GET /repos/{owner}/{repo}/actions/workflows/{workflow_id}"],
-    getWorkflowAccessToRepository: [
-      "GET /repos/{owner}/{repo}/actions/permissions/access"
-    ],
-    getWorkflowRun: ["GET /repos/{owner}/{repo}/actions/runs/{run_id}"],
-    getWorkflowRunAttempt: [
-      "GET /repos/{owner}/{repo}/actions/runs/{run_id}/attempts/{attempt_number}"
-    ],
-    getWorkflowRunUsage: [
-      "GET /repos/{owner}/{repo}/actions/runs/{run_id}/timing"
-    ],
-    getWorkflowUsage: [
-      "GET /repos/{owner}/{repo}/actions/workflows/{workflow_id}/timing"
-    ],
-    listArtifactsForRepo: ["GET /repos/{owner}/{repo}/actions/artifacts"],
-    listCustomImageVersionsForOrg: [
-      "GET /orgs/{org}/actions/hosted-runners/images/custom/{image_definition_id}/versions"
-    ],
-    listCustomImagesForOrg: [
-      "GET /orgs/{org}/actions/hosted-runners/images/custom"
-    ],
-    listEnvironmentSecrets: [
-      "GET /repos/{owner}/{repo}/environments/{environment_name}/secrets"
-    ],
-    listEnvironmentVariables: [
-      "GET /repos/{owner}/{repo}/environments/{environment_name}/variables"
-    ],
-    listGithubHostedRunnersInGroupForOrg: [
-      "GET /orgs/{org}/actions/runner-groups/{runner_group_id}/hosted-runners"
-    ],
-    listHostedRunnersForOrg: ["GET /orgs/{org}/actions/hosted-runners"],
-    listJobsForWorkflowRun: [
-      "GET /repos/{owner}/{repo}/actions/runs/{run_id}/jobs"
-    ],
-    listJobsForWorkflowRunAttempt: [
-      "GET /repos/{owner}/{repo}/actions/runs/{run_id}/attempts/{attempt_number}/jobs"
-    ],
-    listLabelsForSelfHostedRunnerForOrg: [
-      "GET /orgs/{org}/actions/runners/{runner_id}/labels"
-    ],
-    listLabelsForSelfHostedRunnerForRepo: [
-      "GET /repos/{owner}/{repo}/actions/runners/{runner_id}/labels"
-    ],
-    listOrgSecrets: ["GET /orgs/{org}/actions/secrets"],
-    listOrgVariables: ["GET /orgs/{org}/actions/variables"],
-    listRepoOrganizationSecrets: [
-      "GET /repos/{owner}/{repo}/actions/organization-secrets"
-    ],
-    listRepoOrganizationVariables: [
-      "GET /repos/{owner}/{repo}/actions/organization-variables"
-    ],
-    listRepoSecrets: ["GET /repos/{owner}/{repo}/actions/secrets"],
-    listRepoVariables: ["GET /repos/{owner}/{repo}/actions/variables"],
-    listRepoWorkflows: ["GET /repos/{owner}/{repo}/actions/workflows"],
-    listRunnerApplicationsForOrg: ["GET /orgs/{org}/actions/runners/downloads"],
-    listRunnerApplicationsForRepo: [
-      "GET /repos/{owner}/{repo}/actions/runners/downloads"
-    ],
-    listSelectedReposForOrgSecret: [
-      "GET /orgs/{org}/actions/secrets/{secret_name}/repositories"
-    ],
-    listSelectedReposForOrgVariable: [
-      "GET /orgs/{org}/actions/variables/{name}/repositories"
-    ],
-    listSelectedRepositoriesEnabledGithubActionsOrganization: [
-      "GET /orgs/{org}/actions/permissions/repositories"
-    ],
-    listSelfHostedRunnersForOrg: ["GET /orgs/{org}/actions/runners"],
-    listSelfHostedRunnersForRepo: ["GET /repos/{owner}/{repo}/actions/runners"],
-    listWorkflowRunArtifacts: [
-      "GET /repos/{owner}/{repo}/actions/runs/{run_id}/artifacts"
-    ],
-    listWorkflowRuns: [
-      "GET /repos/{owner}/{repo}/actions/workflows/{workflow_id}/runs"
-    ],
-    listWorkflowRunsForRepo: ["GET /repos/{owner}/{repo}/actions/runs"],
-    reRunJobForWorkflowRun: [
-      "POST /repos/{owner}/{repo}/actions/jobs/{job_id}/rerun"
-    ],
-    reRunWorkflow: ["POST /repos/{owner}/{repo}/actions/runs/{run_id}/rerun"],
-    reRunWorkflowFailedJobs: [
-      "POST /repos/{owner}/{repo}/actions/runs/{run_id}/rerun-failed-jobs"
-    ],
-    removeAllCustomLabelsFromSelfHostedRunnerForOrg: [
-      "DELETE /orgs/{org}/actions/runners/{runner_id}/labels"
-    ],
-    removeAllCustomLabelsFromSelfHostedRunnerForRepo: [
-      "DELETE /repos/{owner}/{repo}/actions/runners/{runner_id}/labels"
-    ],
-    removeCustomLabelFromSelfHostedRunnerForOrg: [
-      "DELETE /orgs/{org}/actions/runners/{runner_id}/labels/{name}"
-    ],
-    removeCustomLabelFromSelfHostedRunnerForRepo: [
-      "DELETE /repos/{owner}/{repo}/actions/runners/{runner_id}/labels/{name}"
-    ],
-    removeSelectedRepoFromOrgSecret: [
-      "DELETE /orgs/{org}/actions/secrets/{secret_name}/repositories/{repository_id}"
-    ],
-    removeSelectedRepoFromOrgVariable: [
-      "DELETE /orgs/{org}/actions/variables/{name}/repositories/{repository_id}"
-    ],
-    reviewCustomGatesForRun: [
-      "POST /repos/{owner}/{repo}/actions/runs/{run_id}/deployment_protection_rule"
-    ],
-    reviewPendingDeploymentsForRun: [
-      "POST /repos/{owner}/{repo}/actions/runs/{run_id}/pending_deployments"
-    ],
-    setAllowedActionsOrganization: [
-      "PUT /orgs/{org}/actions/permissions/selected-actions"
-    ],
-    setAllowedActionsRepository: [
-      "PUT /repos/{owner}/{repo}/actions/permissions/selected-actions"
-    ],
-    setCustomLabelsForSelfHostedRunnerForOrg: [
-      "PUT /orgs/{org}/actions/runners/{runner_id}/labels"
-    ],
-    setCustomLabelsForSelfHostedRunnerForRepo: [
-      "PUT /repos/{owner}/{repo}/actions/runners/{runner_id}/labels"
-    ],
-    setCustomOidcSubClaimForRepo: [
-      "PUT /repos/{owner}/{repo}/actions/oidc/customization/sub"
-    ],
-    setGithubActionsDefaultWorkflowPermissionsOrganization: [
-      "PUT /orgs/{org}/actions/permissions/workflow"
-    ],
-    setGithubActionsDefaultWorkflowPermissionsRepository: [
-      "PUT /repos/{owner}/{repo}/actions/permissions/workflow"
-    ],
-    setGithubActionsPermissionsOrganization: [
-      "PUT /orgs/{org}/actions/permissions"
-    ],
-    setGithubActionsPermissionsRepository: [
-      "PUT /repos/{owner}/{repo}/actions/permissions"
-    ],
-    setSelectedReposForOrgSecret: [
-      "PUT /orgs/{org}/actions/secrets/{secret_name}/repositories"
-    ],
-    setSelectedReposForOrgVariable: [
-      "PUT /orgs/{org}/actions/variables/{name}/repositories"
-    ],
-    setSelectedRepositoriesEnabledGithubActionsOrganization: [
-      "PUT /orgs/{org}/actions/permissions/repositories"
-    ],
-    setWorkflowAccessToRepository: [
-      "PUT /repos/{owner}/{repo}/actions/permissions/access"
-    ],
-    updateEnvironmentVariable: [
-      "PATCH /repos/{owner}/{repo}/environments/{environment_name}/variables/{name}"
-    ],
-    updateHostedRunnerForOrg: [
-      "PATCH /orgs/{org}/actions/hosted-runners/{hosted_runner_id}"
-    ],
-    updateOrgVariable: ["PATCH /orgs/{org}/actions/variables/{name}"],
-    updateRepoVariable: [
-      "PATCH /repos/{owner}/{repo}/actions/variables/{name}"
-    ]
-  },
-  activity: {
-    checkRepoIsStarredByAuthenticatedUser: ["GET /user/starred/{owner}/{repo}"],
-    deleteRepoSubscription: ["DELETE /repos/{owner}/{repo}/subscription"],
-    deleteThreadSubscription: [
-      "DELETE /notifications/threads/{thread_id}/subscription"
-    ],
-    getFeeds: ["GET /feeds"],
-    getRepoSubscription: ["GET /repos/{owner}/{repo}/subscription"],
-    getThread: ["GET /notifications/threads/{thread_id}"],
-    getThreadSubscriptionForAuthenticatedUser: [
-      "GET /notifications/threads/{thread_id}/subscription"
-    ],
-    listEventsForAuthenticatedUser: ["GET /users/{username}/events"],
-    listNotificationsForAuthenticatedUser: ["GET /notifications"],
-    listOrgEventsForAuthenticatedUser: [
-      "GET /users/{username}/events/orgs/{org}"
-    ],
-    listPublicEvents: ["GET /events"],
-    listPublicEventsForRepoNetwork: ["GET /networks/{owner}/{repo}/events"],
-    listPublicEventsForUser: ["GET /users/{username}/events/public"],
-    listPublicOrgEvents: ["GET /orgs/{org}/events"],
-    listReceivedEventsForUser: ["GET /users/{username}/received_events"],
-    listReceivedPublicEventsForUser: [
-      "GET /users/{username}/received_events/public"
-    ],
-    listRepoEvents: ["GET /repos/{owner}/{repo}/events"],
-    listRepoNotificationsForAuthenticatedUser: [
-      "GET /repos/{owner}/{repo}/notifications"
-    ],
-    listReposStarredByAuthenticatedUser: ["GET /user/starred"],
-    listReposStarredByUser: ["GET /users/{username}/starred"],
-    listReposWatchedByUser: ["GET /users/{username}/subscriptions"],
-    listStargazersForRepo: ["GET /repos/{owner}/{repo}/stargazers"],
-    listWatchedReposForAuthenticatedUser: ["GET /user/subscriptions"],
-    listWatchersForRepo: ["GET /repos/{owner}/{repo}/subscribers"],
-    markNotificationsAsRead: ["PUT /notifications"],
-    markRepoNotificationsAsRead: ["PUT /repos/{owner}/{repo}/notifications"],
-    markThreadAsDone: ["DELETE /notifications/threads/{thread_id}"],
-    markThreadAsRead: ["PATCH /notifications/threads/{thread_id}"],
-    setRepoSubscription: ["PUT /repos/{owner}/{repo}/subscription"],
-    setThreadSubscription: [
-      "PUT /notifications/threads/{thread_id}/subscription"
-    ],
-    starRepoForAuthenticatedUser: ["PUT /user/starred/{owner}/{repo}"],
-    unstarRepoForAuthenticatedUser: ["DELETE /user/starred/{owner}/{repo}"]
-  },
-  apps: {
-    addRepoToInstallation: [
-      "PUT /user/installations/{installation_id}/repositories/{repository_id}",
-      {},
-      { renamed: ["apps", "addRepoToInstallationForAuthenticatedUser"] }
-    ],
-    addRepoToInstallationForAuthenticatedUser: [
-      "PUT /user/installations/{installation_id}/repositories/{repository_id}"
-    ],
-    checkToken: ["POST /applications/{client_id}/token"],
-    createFromManifest: ["POST /app-manifests/{code}/conversions"],
-    createInstallationAccessToken: [
-      "POST /app/installations/{installation_id}/access_tokens"
-    ],
-    deleteAuthorization: ["DELETE /applications/{client_id}/grant"],
-    deleteInstallation: ["DELETE /app/installations/{installation_id}"],
-    deleteToken: ["DELETE /applications/{client_id}/token"],
-    getAuthenticated: ["GET /app"],
-    getBySlug: ["GET /apps/{app_slug}"],
-    getInstallation: ["GET /app/installations/{installation_id}"],
-    getOrgInstallation: ["GET /orgs/{org}/installation"],
-    getRepoInstallation: ["GET /repos/{owner}/{repo}/installation"],
-    getSubscriptionPlanForAccount: [
-      "GET /marketplace_listing/accounts/{account_id}"
-    ],
-    getSubscriptionPlanForAccountStubbed: [
-      "GET /marketplace_listing/stubbed/accounts/{account_id}"
-    ],
-    getUserInstallation: ["GET /users/{username}/installation"],
-    getWebhookConfigForApp: ["GET /app/hook/config"],
-    getWebhookDelivery: ["GET /app/hook/deliveries/{delivery_id}"],
-    listAccountsForPlan: ["GET /marketplace_listing/plans/{plan_id}/accounts"],
-    listAccountsForPlanStubbed: [
-      "GET /marketplace_listing/stubbed/plans/{plan_id}/accounts"
-    ],
-    listInstallationReposForAuthenticatedUser: [
-      "GET /user/installations/{installation_id}/repositories"
-    ],
-    listInstallationRequestsForAuthenticatedApp: [
-      "GET /app/installation-requests"
-    ],
-    listInstallations: ["GET /app/installations"],
-    listInstallationsForAuthenticatedUser: ["GET /user/installations"],
-    listPlans: ["GET /marketplace_listing/plans"],
-    listPlansStubbed: ["GET /marketplace_listing/stubbed/plans"],
-    listReposAccessibleToInstallation: ["GET /installation/repositories"],
-    listSubscriptionsForAuthenticatedUser: ["GET /user/marketplace_purchases"],
-    listSubscriptionsForAuthenticatedUserStubbed: [
-      "GET /user/marketplace_purchases/stubbed"
-    ],
-    listWebhookDeliveries: ["GET /app/hook/deliveries"],
-    redeliverWebhookDelivery: [
-      "POST /app/hook/deliveries/{delivery_id}/attempts"
-    ],
-    removeRepoFromInstallation: [
-      "DELETE /user/installations/{installation_id}/repositories/{repository_id}",
-      {},
-      { renamed: ["apps", "removeRepoFromInstallationForAuthenticatedUser"] }
-    ],
-    removeRepoFromInstallationForAuthenticatedUser: [
-      "DELETE /user/installations/{installation_id}/repositories/{repository_id}"
-    ],
-    resetToken: ["PATCH /applications/{client_id}/token"],
-    revokeInstallationAccessToken: ["DELETE /installation/token"],
-    scopeToken: ["POST /applications/{client_id}/token/scoped"],
-    suspendInstallation: ["PUT /app/installations/{installation_id}/suspended"],
-    unsuspendInstallation: [
-      "DELETE /app/installations/{installation_id}/suspended"
-    ],
-    updateWebhookConfigForApp: ["PATCH /app/hook/config"]
-  },
-  billing: {
-    getGithubActionsBillingOrg: ["GET /orgs/{org}/settings/billing/actions"],
-    getGithubActionsBillingUser: [
-      "GET /users/{username}/settings/billing/actions"
-    ],
-    getGithubBillingPremiumRequestUsageReportOrg: [
-      "GET /organizations/{org}/settings/billing/premium_request/usage"
-    ],
-    getGithubBillingPremiumRequestUsageReportUser: [
-      "GET /users/{username}/settings/billing/premium_request/usage"
-    ],
-    getGithubBillingUsageReportOrg: [
-      "GET /organizations/{org}/settings/billing/usage"
-    ],
-    getGithubBillingUsageReportUser: [
-      "GET /users/{username}/settings/billing/usage"
-    ],
-    getGithubPackagesBillingOrg: ["GET /orgs/{org}/settings/billing/packages"],
-    getGithubPackagesBillingUser: [
-      "GET /users/{username}/settings/billing/packages"
-    ],
-    getSharedStorageBillingOrg: [
-      "GET /orgs/{org}/settings/billing/shared-storage"
-    ],
-    getSharedStorageBillingUser: [
-      "GET /users/{username}/settings/billing/shared-storage"
-    ]
-  },
-  campaigns: {
-    createCampaign: ["POST /orgs/{org}/campaigns"],
-    deleteCampaign: ["DELETE /orgs/{org}/campaigns/{campaign_number}"],
-    getCampaignSummary: ["GET /orgs/{org}/campaigns/{campaign_number}"],
-    listOrgCampaigns: ["GET /orgs/{org}/campaigns"],
-    updateCampaign: ["PATCH /orgs/{org}/campaigns/{campaign_number}"]
-  },
-  checks: {
-    create: ["POST /repos/{owner}/{repo}/check-runs"],
-    createSuite: ["POST /repos/{owner}/{repo}/check-suites"],
-    get: ["GET /repos/{owner}/{repo}/check-runs/{check_run_id}"],
-    getSuite: ["GET /repos/{owner}/{repo}/check-suites/{check_suite_id}"],
-    listAnnotations: [
-      "GET /repos/{owner}/{repo}/check-runs/{check_run_id}/annotations"
-    ],
-    listForRef: ["GET /repos/{owner}/{repo}/commits/{ref}/check-runs"],
-    listForSuite: [
-      "GET /repos/{owner}/{repo}/check-suites/{check_suite_id}/check-runs"
-    ],
-    listSuitesForRef: ["GET /repos/{owner}/{repo}/commits/{ref}/check-suites"],
-    rerequestRun: [
-      "POST /repos/{owner}/{repo}/check-runs/{check_run_id}/rerequest"
-    ],
-    rerequestSuite: [
-      "POST /repos/{owner}/{repo}/check-suites/{check_suite_id}/rerequest"
-    ],
-    setSuitesPreferences: [
-      "PATCH /repos/{owner}/{repo}/check-suites/preferences"
-    ],
-    update: ["PATCH /repos/{owner}/{repo}/check-runs/{check_run_id}"]
-  },
-  codeScanning: {
-    commitAutofix: [
-      "POST /repos/{owner}/{repo}/code-scanning/alerts/{alert_number}/autofix/commits"
-    ],
-    createAutofix: [
-      "POST /repos/{owner}/{repo}/code-scanning/alerts/{alert_number}/autofix"
-    ],
-    createVariantAnalysis: [
-      "POST /repos/{owner}/{repo}/code-scanning/codeql/variant-analyses"
-    ],
-    deleteAnalysis: [
-      "DELETE /repos/{owner}/{repo}/code-scanning/analyses/{analysis_id}{?confirm_delete}"
-    ],
-    deleteCodeqlDatabase: [
-      "DELETE /repos/{owner}/{repo}/code-scanning/codeql/databases/{language}"
-    ],
-    getAlert: [
-      "GET /repos/{owner}/{repo}/code-scanning/alerts/{alert_number}",
-      {},
-      { renamedParameters: { alert_id: "alert_number" } }
-    ],
-    getAnalysis: [
-      "GET /repos/{owner}/{repo}/code-scanning/analyses/{analysis_id}"
-    ],
-    getAutofix: [
-      "GET /repos/{owner}/{repo}/code-scanning/alerts/{alert_number}/autofix"
-    ],
-    getCodeqlDatabase: [
-      "GET /repos/{owner}/{repo}/code-scanning/codeql/databases/{language}"
-    ],
-    getDefaultSetup: ["GET /repos/{owner}/{repo}/code-scanning/default-setup"],
-    getSarif: ["GET /repos/{owner}/{repo}/code-scanning/sarifs/{sarif_id}"],
-    getVariantAnalysis: [
-      "GET /repos/{owner}/{repo}/code-scanning/codeql/variant-analyses/{codeql_variant_analysis_id}"
-    ],
-    getVariantAnalysisRepoTask: [
-      "GET /repos/{owner}/{repo}/code-scanning/codeql/variant-analyses/{codeql_variant_analysis_id}/repos/{repo_owner}/{repo_name}"
-    ],
-    listAlertInstances: [
-      "GET /repos/{owner}/{repo}/code-scanning/alerts/{alert_number}/instances"
-    ],
-    listAlertsForOrg: ["GET /orgs/{org}/code-scanning/alerts"],
-    listAlertsForRepo: ["GET /repos/{owner}/{repo}/code-scanning/alerts"],
-    listAlertsInstances: [
-      "GET /repos/{owner}/{repo}/code-scanning/alerts/{alert_number}/instances",
-      {},
-      { renamed: ["codeScanning", "listAlertInstances"] }
-    ],
-    listCodeqlDatabases: [
-      "GET /repos/{owner}/{repo}/code-scanning/codeql/databases"
-    ],
-    listRecentAnalyses: ["GET /repos/{owner}/{repo}/code-scanning/analyses"],
-    updateAlert: [
-      "PATCH /repos/{owner}/{repo}/code-scanning/alerts/{alert_number}"
-    ],
-    updateDefaultSetup: [
-      "PATCH /repos/{owner}/{repo}/code-scanning/default-setup"
-    ],
-    uploadSarif: ["POST /repos/{owner}/{repo}/code-scanning/sarifs"]
-  },
-  codeSecurity: {
-    attachConfiguration: [
-      "POST /orgs/{org}/code-security/configurations/{configuration_id}/attach"
-    ],
-    attachEnterpriseConfiguration: [
-      "POST /enterprises/{enterprise}/code-security/configurations/{configuration_id}/attach"
-    ],
-    createConfiguration: ["POST /orgs/{org}/code-security/configurations"],
-    createConfigurationForEnterprise: [
-      "POST /enterprises/{enterprise}/code-security/configurations"
-    ],
-    deleteConfiguration: [
-      "DELETE /orgs/{org}/code-security/configurations/{configuration_id}"
-    ],
-    deleteConfigurationForEnterprise: [
-      "DELETE /enterprises/{enterprise}/code-security/configurations/{configuration_id}"
-    ],
-    detachConfiguration: [
-      "DELETE /orgs/{org}/code-security/configurations/detach"
-    ],
-    getConfiguration: [
-      "GET /orgs/{org}/code-security/configurations/{configuration_id}"
-    ],
-    getConfigurationForRepository: [
-      "GET /repos/{owner}/{repo}/code-security-configuration"
-    ],
-    getConfigurationsForEnterprise: [
-      "GET /enterprises/{enterprise}/code-security/configurations"
-    ],
-    getConfigurationsForOrg: ["GET /orgs/{org}/code-security/configurations"],
-    getDefaultConfigurations: [
-      "GET /orgs/{org}/code-security/configurations/defaults"
-    ],
-    getDefaultConfigurationsForEnterprise: [
-      "GET /enterprises/{enterprise}/code-security/configurations/defaults"
-    ],
-    getRepositoriesForConfiguration: [
-      "GET /orgs/{org}/code-security/configurations/{configuration_id}/repositories"
-    ],
-    getRepositoriesForEnterpriseConfiguration: [
-      "GET /enterprises/{enterprise}/code-security/configurations/{configuration_id}/repositories"
-    ],
-    getSingleConfigurationForEnterprise: [
-      "GET /enterprises/{enterprise}/code-security/configurations/{configuration_id}"
-    ],
-    setConfigurationAsDefault: [
-      "PUT /orgs/{org}/code-security/configurations/{configuration_id}/defaults"
-    ],
-    setConfigurationAsDefaultForEnterprise: [
-      "PUT /enterprises/{enterprise}/code-security/configurations/{configuration_id}/defaults"
-    ],
-    updateConfiguration: [
-      "PATCH /orgs/{org}/code-security/configurations/{configuration_id}"
-    ],
-    updateEnterpriseConfiguration: [
-      "PATCH /enterprises/{enterprise}/code-security/configurations/{configuration_id}"
-    ]
-  },
-  codesOfConduct: {
-    getAllCodesOfConduct: ["GET /codes_of_conduct"],
-    getConductCode: ["GET /codes_of_conduct/{key}"]
-  },
-  codespaces: {
-    addRepositoryForSecretForAuthenticatedUser: [
-      "PUT /user/codespaces/secrets/{secret_name}/repositories/{repository_id}"
-    ],
-    addSelectedRepoToOrgSecret: [
-      "PUT /orgs/{org}/codespaces/secrets/{secret_name}/repositories/{repository_id}"
-    ],
-    checkPermissionsForDevcontainer: [
-      "GET /repos/{owner}/{repo}/codespaces/permissions_check"
-    ],
-    codespaceMachinesForAuthenticatedUser: [
-      "GET /user/codespaces/{codespace_name}/machines"
-    ],
-    createForAuthenticatedUser: ["POST /user/codespaces"],
-    createOrUpdateOrgSecret: [
-      "PUT /orgs/{org}/codespaces/secrets/{secret_name}"
-    ],
-    createOrUpdateRepoSecret: [
-      "PUT /repos/{owner}/{repo}/codespaces/secrets/{secret_name}"
-    ],
-    createOrUpdateSecretForAuthenticatedUser: [
-      "PUT /user/codespaces/secrets/{secret_name}"
-    ],
-    createWithPrForAuthenticatedUser: [
-      "POST /repos/{owner}/{repo}/pulls/{pull_number}/codespaces"
-    ],
-    createWithRepoForAuthenticatedUser: [
-      "POST /repos/{owner}/{repo}/codespaces"
-    ],
-    deleteForAuthenticatedUser: ["DELETE /user/codespaces/{codespace_name}"],
-    deleteFromOrganization: [
-      "DELETE /orgs/{org}/members/{username}/codespaces/{codespace_name}"
-    ],
-    deleteOrgSecret: ["DELETE /orgs/{org}/codespaces/secrets/{secret_name}"],
-    deleteRepoSecret: [
-      "DELETE /repos/{owner}/{repo}/codespaces/secrets/{secret_name}"
-    ],
-    deleteSecretForAuthenticatedUser: [
-      "DELETE /user/codespaces/secrets/{secret_name}"
-    ],
-    exportForAuthenticatedUser: [
-      "POST /user/codespaces/{codespace_name}/exports"
-    ],
-    getCodespacesForUserInOrg: [
-      "GET /orgs/{org}/members/{username}/codespaces"
-    ],
-    getExportDetailsForAuthenticatedUser: [
-      "GET /user/codespaces/{codespace_name}/exports/{export_id}"
-    ],
-    getForAuthenticatedUser: ["GET /user/codespaces/{codespace_name}"],
-    getOrgPublicKey: ["GET /orgs/{org}/codespaces/secrets/public-key"],
-    getOrgSecret: ["GET /orgs/{org}/codespaces/secrets/{secret_name}"],
-    getPublicKeyForAuthenticatedUser: [
-      "GET /user/codespaces/secrets/public-key"
-    ],
-    getRepoPublicKey: [
-      "GET /repos/{owner}/{repo}/codespaces/secrets/public-key"
-    ],
-    getRepoSecret: [
-      "GET /repos/{owner}/{repo}/codespaces/secrets/{secret_name}"
-    ],
-    getSecretForAuthenticatedUser: [
-      "GET /user/codespaces/secrets/{secret_name}"
-    ],
-    listDevcontainersInRepositoryForAuthenticatedUser: [
-      "GET /repos/{owner}/{repo}/codespaces/devcontainers"
-    ],
-    listForAuthenticatedUser: ["GET /user/codespaces"],
-    listInOrganization: [
-      "GET /orgs/{org}/codespaces",
-      {},
-      { renamedParameters: { org_id: "org" } }
-    ],
-    listInRepositoryForAuthenticatedUser: [
-      "GET /repos/{owner}/{repo}/codespaces"
-    ],
-    listOrgSecrets: ["GET /orgs/{org}/codespaces/secrets"],
-    listRepoSecrets: ["GET /repos/{owner}/{repo}/codespaces/secrets"],
-    listRepositoriesForSecretForAuthenticatedUser: [
-      "GET /user/codespaces/secrets/{secret_name}/repositories"
-    ],
-    listSecretsForAuthenticatedUser: ["GET /user/codespaces/secrets"],
-    listSelectedReposForOrgSecret: [
-      "GET /orgs/{org}/codespaces/secrets/{secret_name}/repositories"
-    ],
-    preFlightWithRepoForAuthenticatedUser: [
-      "GET /repos/{owner}/{repo}/codespaces/new"
-    ],
-    publishForAuthenticatedUser: [
-      "POST /user/codespaces/{codespace_name}/publish"
-    ],
-    removeRepositoryForSecretForAuthenticatedUser: [
-      "DELETE /user/codespaces/secrets/{secret_name}/repositories/{repository_id}"
-    ],
-    removeSelectedRepoFromOrgSecret: [
-      "DELETE /orgs/{org}/codespaces/secrets/{secret_name}/repositories/{repository_id}"
-    ],
-    repoMachinesForAuthenticatedUser: [
-      "GET /repos/{owner}/{repo}/codespaces/machines"
-    ],
-    setRepositoriesForSecretForAuthenticatedUser: [
-      "PUT /user/codespaces/secrets/{secret_name}/repositories"
-    ],
-    setSelectedReposForOrgSecret: [
-      "PUT /orgs/{org}/codespaces/secrets/{secret_name}/repositories"
-    ],
-    startForAuthenticatedUser: ["POST /user/codespaces/{codespace_name}/start"],
-    stopForAuthenticatedUser: ["POST /user/codespaces/{codespace_name}/stop"],
-    stopInOrganization: [
-      "POST /orgs/{org}/members/{username}/codespaces/{codespace_name}/stop"
-    ],
-    updateForAuthenticatedUser: ["PATCH /user/codespaces/{codespace_name}"]
-  },
-  copilot: {
-    addCopilotSeatsForTeams: [
-      "POST /orgs/{org}/copilot/billing/selected_teams"
-    ],
-    addCopilotSeatsForUsers: [
-      "POST /orgs/{org}/copilot/billing/selected_users"
-    ],
-    cancelCopilotSeatAssignmentForTeams: [
-      "DELETE /orgs/{org}/copilot/billing/selected_teams"
-    ],
-    cancelCopilotSeatAssignmentForUsers: [
-      "DELETE /orgs/{org}/copilot/billing/selected_users"
-    ],
-    copilotMetricsForOrganization: ["GET /orgs/{org}/copilot/metrics"],
-    copilotMetricsForTeam: ["GET /orgs/{org}/team/{team_slug}/copilot/metrics"],
-    getCopilotOrganizationDetails: ["GET /orgs/{org}/copilot/billing"],
-    getCopilotSeatDetailsForUser: [
-      "GET /orgs/{org}/members/{username}/copilot"
-    ],
-    listCopilotSeats: ["GET /orgs/{org}/copilot/billing/seats"]
-  },
-  credentials: { revoke: ["POST /credentials/revoke"] },
-  dependabot: {
-    addSelectedRepoToOrgSecret: [
-      "PUT /orgs/{org}/dependabot/secrets/{secret_name}/repositories/{repository_id}"
-    ],
-    createOrUpdateOrgSecret: [
-      "PUT /orgs/{org}/dependabot/secrets/{secret_name}"
-    ],
-    createOrUpdateRepoSecret: [
-      "PUT /repos/{owner}/{repo}/dependabot/secrets/{secret_name}"
-    ],
-    deleteOrgSecret: ["DELETE /orgs/{org}/dependabot/secrets/{secret_name}"],
-    deleteRepoSecret: [
-      "DELETE /repos/{owner}/{repo}/dependabot/secrets/{secret_name}"
-    ],
-    getAlert: ["GET /repos/{owner}/{repo}/dependabot/alerts/{alert_number}"],
-    getOrgPublicKey: ["GET /orgs/{org}/dependabot/secrets/public-key"],
-    getOrgSecret: ["GET /orgs/{org}/dependabot/secrets/{secret_name}"],
-    getRepoPublicKey: [
-      "GET /repos/{owner}/{repo}/dependabot/secrets/public-key"
-    ],
-    getRepoSecret: [
-      "GET /repos/{owner}/{repo}/dependabot/secrets/{secret_name}"
-    ],
-    listAlertsForEnterprise: [
-      "GET /enterprises/{enterprise}/dependabot/alerts"
-    ],
-    listAlertsForOrg: ["GET /orgs/{org}/dependabot/alerts"],
-    listAlertsForRepo: ["GET /repos/{owner}/{repo}/dependabot/alerts"],
-    listOrgSecrets: ["GET /orgs/{org}/dependabot/secrets"],
-    listRepoSecrets: ["GET /repos/{owner}/{repo}/dependabot/secrets"],
-    listSelectedReposForOrgSecret: [
-      "GET /orgs/{org}/dependabot/secrets/{secret_name}/repositories"
-    ],
-    removeSelectedRepoFromOrgSecret: [
-      "DELETE /orgs/{org}/dependabot/secrets/{secret_name}/repositories/{repository_id}"
-    ],
-    repositoryAccessForOrg: [
-      "GET /organizations/{org}/dependabot/repository-access"
-    ],
-    setRepositoryAccessDefaultLevel: [
-      "PUT /organizations/{org}/dependabot/repository-access/default-level"
-    ],
-    setSelectedReposForOrgSecret: [
-      "PUT /orgs/{org}/dependabot/secrets/{secret_name}/repositories"
-    ],
-    updateAlert: [
-      "PATCH /repos/{owner}/{repo}/dependabot/alerts/{alert_number}"
-    ],
-    updateRepositoryAccessForOrg: [
-      "PATCH /organizations/{org}/dependabot/repository-access"
-    ]
-  },
-  dependencyGraph: {
-    createRepositorySnapshot: [
-      "POST /repos/{owner}/{repo}/dependency-graph/snapshots"
-    ],
-    diffRange: [
-      "GET /repos/{owner}/{repo}/dependency-graph/compare/{basehead}"
-    ],
-    exportSbom: ["GET /repos/{owner}/{repo}/dependency-graph/sbom"]
-  },
-  emojis: { get: ["GET /emojis"] },
-  enterpriseTeamMemberships: {
-    add: [
-      "PUT /enterprises/{enterprise}/teams/{enterprise-team}/memberships/{username}"
-    ],
-    bulkAdd: [
-      "POST /enterprises/{enterprise}/teams/{enterprise-team}/memberships/add"
-    ],
-    bulkRemove: [
-      "POST /enterprises/{enterprise}/teams/{enterprise-team}/memberships/remove"
-    ],
-    get: [
-      "GET /enterprises/{enterprise}/teams/{enterprise-team}/memberships/{username}"
-    ],
-    list: ["GET /enterprises/{enterprise}/teams/{enterprise-team}/memberships"],
-    remove: [
-      "DELETE /enterprises/{enterprise}/teams/{enterprise-team}/memberships/{username}"
-    ]
-  },
-  enterpriseTeamOrganizations: {
-    add: [
-      "PUT /enterprises/{enterprise}/teams/{enterprise-team}/organizations/{org}"
-    ],
-    bulkAdd: [
-      "POST /enterprises/{enterprise}/teams/{enterprise-team}/organizations/add"
-    ],
-    bulkRemove: [
-      "POST /enterprises/{enterprise}/teams/{enterprise-team}/organizations/remove"
-    ],
-    delete: [
-      "DELETE /enterprises/{enterprise}/teams/{enterprise-team}/organizations/{org}"
-    ],
-    getAssignment: [
-      "GET /enterprises/{enterprise}/teams/{enterprise-team}/organizations/{org}"
-    ],
-    getAssignments: [
-      "GET /enterprises/{enterprise}/teams/{enterprise-team}/organizations"
-    ]
-  },
-  enterpriseTeams: {
-    create: ["POST /enterprises/{enterprise}/teams"],
-    delete: ["DELETE /enterprises/{enterprise}/teams/{team_slug}"],
-    get: ["GET /enterprises/{enterprise}/teams/{team_slug}"],
-    list: ["GET /enterprises/{enterprise}/teams"],
-    update: ["PATCH /enterprises/{enterprise}/teams/{team_slug}"]
-  },
-  gists: {
-    checkIsStarred: ["GET /gists/{gist_id}/star"],
-    create: ["POST /gists"],
-    createComment: ["POST /gists/{gist_id}/comments"],
-    delete: ["DELETE /gists/{gist_id}"],
-    deleteComment: ["DELETE /gists/{gist_id}/comments/{comment_id}"],
-    fork: ["POST /gists/{gist_id}/forks"],
-    get: ["GET /gists/{gist_id}"],
-    getComment: ["GET /gists/{gist_id}/comments/{comment_id}"],
-    getRevision: ["GET /gists/{gist_id}/{sha}"],
-    list: ["GET /gists"],
-    listComments: ["GET /gists/{gist_id}/comments"],
-    listCommits: ["GET /gists/{gist_id}/commits"],
-    listForUser: ["GET /users/{username}/gists"],
-    listForks: ["GET /gists/{gist_id}/forks"],
-    listPublic: ["GET /gists/public"],
-    listStarred: ["GET /gists/starred"],
-    star: ["PUT /gists/{gist_id}/star"],
-    unstar: ["DELETE /gists/{gist_id}/star"],
-    update: ["PATCH /gists/{gist_id}"],
-    updateComment: ["PATCH /gists/{gist_id}/comments/{comment_id}"]
-  },
-  git: {
-    createBlob: ["POST /repos/{owner}/{repo}/git/blobs"],
-    createCommit: ["POST /repos/{owner}/{repo}/git/commits"],
-    createRef: ["POST /repos/{owner}/{repo}/git/refs"],
-    createTag: ["POST /repos/{owner}/{repo}/git/tags"],
-    createTree: ["POST /repos/{owner}/{repo}/git/trees"],
-    deleteRef: ["DELETE /repos/{owner}/{repo}/git/refs/{ref}"],
-    getBlob: ["GET /repos/{owner}/{repo}/git/blobs/{file_sha}"],
-    getCommit: ["GET /repos/{owner}/{repo}/git/commits/{commit_sha}"],
-    getRef: ["GET /repos/{owner}/{repo}/git/ref/{ref}"],
-    getTag: ["GET /repos/{owner}/{repo}/git/tags/{tag_sha}"],
-    getTree: ["GET /repos/{owner}/{repo}/git/trees/{tree_sha}"],
-    listMatchingRefs: ["GET /repos/{owner}/{repo}/git/matching-refs/{ref}"],
-    updateRef: ["PATCH /repos/{owner}/{repo}/git/refs/{ref}"]
-  },
-  gitignore: {
-    getAllTemplates: ["GET /gitignore/templates"],
-    getTemplate: ["GET /gitignore/templates/{name}"]
-  },
-  hostedCompute: {
-    createNetworkConfigurationForOrg: [
-      "POST /orgs/{org}/settings/network-configurations"
-    ],
-    deleteNetworkConfigurationFromOrg: [
-      "DELETE /orgs/{org}/settings/network-configurations/{network_configuration_id}"
-    ],
-    getNetworkConfigurationForOrg: [
-      "GET /orgs/{org}/settings/network-configurations/{network_configuration_id}"
-    ],
-    getNetworkSettingsForOrg: [
-      "GET /orgs/{org}/settings/network-settings/{network_settings_id}"
-    ],
-    listNetworkConfigurationsForOrg: [
-      "GET /orgs/{org}/settings/network-configurations"
-    ],
-    updateNetworkConfigurationForOrg: [
-      "PATCH /orgs/{org}/settings/network-configurations/{network_configuration_id}"
-    ]
-  },
-  interactions: {
-    getRestrictionsForAuthenticatedUser: ["GET /user/interaction-limits"],
-    getRestrictionsForOrg: ["GET /orgs/{org}/interaction-limits"],
-    getRestrictionsForRepo: ["GET /repos/{owner}/{repo}/interaction-limits"],
-    getRestrictionsForYourPublicRepos: [
-      "GET /user/interaction-limits",
-      {},
-      { renamed: ["interactions", "getRestrictionsForAuthenticatedUser"] }
-    ],
-    removeRestrictionsForAuthenticatedUser: ["DELETE /user/interaction-limits"],
-    removeRestrictionsForOrg: ["DELETE /orgs/{org}/interaction-limits"],
-    removeRestrictionsForRepo: [
-      "DELETE /repos/{owner}/{repo}/interaction-limits"
-    ],
-    removeRestrictionsForYourPublicRepos: [
-      "DELETE /user/interaction-limits",
-      {},
-      { renamed: ["interactions", "removeRestrictionsForAuthenticatedUser"] }
-    ],
-    setRestrictionsForAuthenticatedUser: ["PUT /user/interaction-limits"],
-    setRestrictionsForOrg: ["PUT /orgs/{org}/interaction-limits"],
-    setRestrictionsForRepo: ["PUT /repos/{owner}/{repo}/interaction-limits"],
-    setRestrictionsForYourPublicRepos: [
-      "PUT /user/interaction-limits",
-      {},
-      { renamed: ["interactions", "setRestrictionsForAuthenticatedUser"] }
-    ]
-  },
-  issues: {
-    addAssignees: [
-      "POST /repos/{owner}/{repo}/issues/{issue_number}/assignees"
-    ],
-    addBlockedByDependency: [
-      "POST /repos/{owner}/{repo}/issues/{issue_number}/dependencies/blocked_by"
-    ],
-    addLabels: ["POST /repos/{owner}/{repo}/issues/{issue_number}/labels"],
-    addSubIssue: [
-      "POST /repos/{owner}/{repo}/issues/{issue_number}/sub_issues"
-    ],
-    checkUserCanBeAssigned: ["GET /repos/{owner}/{repo}/assignees/{assignee}"],
-    checkUserCanBeAssignedToIssue: [
-      "GET /repos/{owner}/{repo}/issues/{issue_number}/assignees/{assignee}"
-    ],
-    create: ["POST /repos/{owner}/{repo}/issues"],
-    createComment: [
-      "POST /repos/{owner}/{repo}/issues/{issue_number}/comments"
-    ],
-    createLabel: ["POST /repos/{owner}/{repo}/labels"],
-    createMilestone: ["POST /repos/{owner}/{repo}/milestones"],
-    deleteComment: [
-      "DELETE /repos/{owner}/{repo}/issues/comments/{comment_id}"
-    ],
-    deleteLabel: ["DELETE /repos/{owner}/{repo}/labels/{name}"],
-    deleteMilestone: [
-      "DELETE /repos/{owner}/{repo}/milestones/{milestone_number}"
-    ],
-    get: ["GET /repos/{owner}/{repo}/issues/{issue_number}"],
-    getComment: ["GET /repos/{owner}/{repo}/issues/comments/{comment_id}"],
-    getEvent: ["GET /repos/{owner}/{repo}/issues/events/{event_id}"],
-    getLabel: ["GET /repos/{owner}/{repo}/labels/{name}"],
-    getMilestone: ["GET /repos/{owner}/{repo}/milestones/{milestone_number}"],
-    getParent: ["GET /repos/{owner}/{repo}/issues/{issue_number}/parent"],
-    list: ["GET /issues"],
-    listAssignees: ["GET /repos/{owner}/{repo}/assignees"],
-    listComments: ["GET /repos/{owner}/{repo}/issues/{issue_number}/comments"],
-    listCommentsForRepo: ["GET /repos/{owner}/{repo}/issues/comments"],
-    listDependenciesBlockedBy: [
-      "GET /repos/{owner}/{repo}/issues/{issue_number}/dependencies/blocked_by"
-    ],
-    listDependenciesBlocking: [
-      "GET /repos/{owner}/{repo}/issues/{issue_number}/dependencies/blocking"
-    ],
-    listEvents: ["GET /repos/{owner}/{repo}/issues/{issue_number}/events"],
-    listEventsForRepo: ["GET /repos/{owner}/{repo}/issues/events"],
-    listEventsForTimeline: [
-      "GET /repos/{owner}/{repo}/issues/{issue_number}/timeline"
-    ],
-    listForAuthenticatedUser: ["GET /user/issues"],
-    listForOrg: ["GET /orgs/{org}/issues"],
-    listForRepo: ["GET /repos/{owner}/{repo}/issues"],
-    listLabelsForMilestone: [
-      "GET /repos/{owner}/{repo}/milestones/{milestone_number}/labels"
-    ],
-    listLabelsForRepo: ["GET /repos/{owner}/{repo}/labels"],
-    listLabelsOnIssue: [
-      "GET /repos/{owner}/{repo}/issues/{issue_number}/labels"
-    ],
-    listMilestones: ["GET /repos/{owner}/{repo}/milestones"],
-    listSubIssues: [
-      "GET /repos/{owner}/{repo}/issues/{issue_number}/sub_issues"
-    ],
-    lock: ["PUT /repos/{owner}/{repo}/issues/{issue_number}/lock"],
-    removeAllLabels: [
-      "DELETE /repos/{owner}/{repo}/issues/{issue_number}/labels"
-    ],
-    removeAssignees: [
-      "DELETE /repos/{owner}/{repo}/issues/{issue_number}/assignees"
-    ],
-    removeDependencyBlockedBy: [
-      "DELETE /repos/{owner}/{repo}/issues/{issue_number}/dependencies/blocked_by/{issue_id}"
-    ],
-    removeLabel: [
-      "DELETE /repos/{owner}/{repo}/issues/{issue_number}/labels/{name}"
-    ],
-    removeSubIssue: [
-      "DELETE /repos/{owner}/{repo}/issues/{issue_number}/sub_issue"
-    ],
-    reprioritizeSubIssue: [
-      "PATCH /repos/{owner}/{repo}/issues/{issue_number}/sub_issues/priority"
-    ],
-    setLabels: ["PUT /repos/{owner}/{repo}/issues/{issue_number}/labels"],
-    unlock: ["DELETE /repos/{owner}/{repo}/issues/{issue_number}/lock"],
-    update: ["PATCH /repos/{owner}/{repo}/issues/{issue_number}"],
-    updateComment: ["PATCH /repos/{owner}/{repo}/issues/comments/{comment_id}"],
-    updateLabel: ["PATCH /repos/{owner}/{repo}/labels/{name}"],
-    updateMilestone: [
-      "PATCH /repos/{owner}/{repo}/milestones/{milestone_number}"
-    ]
-  },
-  licenses: {
-    get: ["GET /licenses/{license}"],
-    getAllCommonlyUsed: ["GET /licenses"],
-    getForRepo: ["GET /repos/{owner}/{repo}/license"]
-  },
-  markdown: {
-    render: ["POST /markdown"],
-    renderRaw: [
-      "POST /markdown/raw",
-      { headers: { "content-type": "text/plain; charset=utf-8" } }
-    ]
-  },
-  meta: {
-    get: ["GET /meta"],
-    getAllVersions: ["GET /versions"],
-    getOctocat: ["GET /octocat"],
-    getZen: ["GET /zen"],
-    root: ["GET /"]
-  },
-  migrations: {
-    deleteArchiveForAuthenticatedUser: [
-      "DELETE /user/migrations/{migration_id}/archive"
-    ],
-    deleteArchiveForOrg: [
-      "DELETE /orgs/{org}/migrations/{migration_id}/archive"
-    ],
-    downloadArchiveForOrg: [
-      "GET /orgs/{org}/migrations/{migration_id}/archive"
-    ],
-    getArchiveForAuthenticatedUser: [
-      "GET /user/migrations/{migration_id}/archive"
-    ],
-    getStatusForAuthenticatedUser: ["GET /user/migrations/{migration_id}"],
-    getStatusForOrg: ["GET /orgs/{org}/migrations/{migration_id}"],
-    listForAuthenticatedUser: ["GET /user/migrations"],
-    listForOrg: ["GET /orgs/{org}/migrations"],
-    listReposForAuthenticatedUser: [
-      "GET /user/migrations/{migration_id}/repositories"
-    ],
-    listReposForOrg: ["GET /orgs/{org}/migrations/{migration_id}/repositories"],
-    listReposForUser: [
-      "GET /user/migrations/{migration_id}/repositories",
-      {},
-      { renamed: ["migrations", "listReposForAuthenticatedUser"] }
-    ],
-    startForAuthenticatedUser: ["POST /user/migrations"],
-    startForOrg: ["POST /orgs/{org}/migrations"],
-    unlockRepoForAuthenticatedUser: [
-      "DELETE /user/migrations/{migration_id}/repos/{repo_name}/lock"
-    ],
-    unlockRepoForOrg: [
-      "DELETE /orgs/{org}/migrations/{migration_id}/repos/{repo_name}/lock"
-    ]
-  },
-  oidc: {
-    getOidcCustomSubTemplateForOrg: [
-      "GET /orgs/{org}/actions/oidc/customization/sub"
-    ],
-    updateOidcCustomSubTemplateForOrg: [
-      "PUT /orgs/{org}/actions/oidc/customization/sub"
-    ]
-  },
-  orgs: {
-    addSecurityManagerTeam: [
-      "PUT /orgs/{org}/security-managers/teams/{team_slug}",
-      {},
-      {
-        deprecated: "octokit.rest.orgs.addSecurityManagerTeam() is deprecated, see https://docs.github.com/rest/orgs/security-managers#add-a-security-manager-team"
-      }
-    ],
-    assignTeamToOrgRole: [
-      "PUT /orgs/{org}/organization-roles/teams/{team_slug}/{role_id}"
-    ],
-    assignUserToOrgRole: [
-      "PUT /orgs/{org}/organization-roles/users/{username}/{role_id}"
-    ],
-    blockUser: ["PUT /orgs/{org}/blocks/{username}"],
-    cancelInvitation: ["DELETE /orgs/{org}/invitations/{invitation_id}"],
-    checkBlockedUser: ["GET /orgs/{org}/blocks/{username}"],
-    checkMembershipForUser: ["GET /orgs/{org}/members/{username}"],
-    checkPublicMembershipForUser: ["GET /orgs/{org}/public_members/{username}"],
-    convertMemberToOutsideCollaborator: [
-      "PUT /orgs/{org}/outside_collaborators/{username}"
-    ],
-    createArtifactStorageRecord: [
-      "POST /orgs/{org}/artifacts/metadata/storage-record"
-    ],
-    createInvitation: ["POST /orgs/{org}/invitations"],
-    createIssueType: ["POST /orgs/{org}/issue-types"],
-    createWebhook: ["POST /orgs/{org}/hooks"],
-    customPropertiesForOrgsCreateOrUpdateOrganizationValues: [
-      "PATCH /organizations/{org}/org-properties/values"
-    ],
-    customPropertiesForOrgsGetOrganizationValues: [
-      "GET /organizations/{org}/org-properties/values"
-    ],
-    customPropertiesForReposCreateOrUpdateOrganizationDefinition: [
-      "PUT /orgs/{org}/properties/schema/{custom_property_name}"
-    ],
-    customPropertiesForReposCreateOrUpdateOrganizationDefinitions: [
-      "PATCH /orgs/{org}/properties/schema"
-    ],
-    customPropertiesForReposCreateOrUpdateOrganizationValues: [
-      "PATCH /orgs/{org}/properties/values"
-    ],
-    customPropertiesForReposDeleteOrganizationDefinition: [
-      "DELETE /orgs/{org}/properties/schema/{custom_property_name}"
-    ],
-    customPropertiesForReposGetOrganizationDefinition: [
-      "GET /orgs/{org}/properties/schema/{custom_property_name}"
-    ],
-    customPropertiesForReposGetOrganizationDefinitions: [
-      "GET /orgs/{org}/properties/schema"
-    ],
-    customPropertiesForReposGetOrganizationValues: [
-      "GET /orgs/{org}/properties/values"
-    ],
-    delete: ["DELETE /orgs/{org}"],
-    deleteAttestationsBulk: ["POST /orgs/{org}/attestations/delete-request"],
-    deleteAttestationsById: [
-      "DELETE /orgs/{org}/attestations/{attestation_id}"
-    ],
-    deleteAttestationsBySubjectDigest: [
-      "DELETE /orgs/{org}/attestations/digest/{subject_digest}"
-    ],
-    deleteIssueType: ["DELETE /orgs/{org}/issue-types/{issue_type_id}"],
-    deleteWebhook: ["DELETE /orgs/{org}/hooks/{hook_id}"],
-    disableSelectedRepositoryImmutableReleasesOrganization: [
-      "DELETE /orgs/{org}/settings/immutable-releases/repositories/{repository_id}"
-    ],
-    enableSelectedRepositoryImmutableReleasesOrganization: [
-      "PUT /orgs/{org}/settings/immutable-releases/repositories/{repository_id}"
-    ],
-    get: ["GET /orgs/{org}"],
-    getImmutableReleasesSettings: [
-      "GET /orgs/{org}/settings/immutable-releases"
-    ],
-    getImmutableReleasesSettingsRepositories: [
-      "GET /orgs/{org}/settings/immutable-releases/repositories"
-    ],
-    getMembershipForAuthenticatedUser: ["GET /user/memberships/orgs/{org}"],
-    getMembershipForUser: ["GET /orgs/{org}/memberships/{username}"],
-    getOrgRole: ["GET /orgs/{org}/organization-roles/{role_id}"],
-    getOrgRulesetHistory: ["GET /orgs/{org}/rulesets/{ruleset_id}/history"],
-    getOrgRulesetVersion: [
-      "GET /orgs/{org}/rulesets/{ruleset_id}/history/{version_id}"
-    ],
-    getWebhook: ["GET /orgs/{org}/hooks/{hook_id}"],
-    getWebhookConfigForOrg: ["GET /orgs/{org}/hooks/{hook_id}/config"],
-    getWebhookDelivery: [
-      "GET /orgs/{org}/hooks/{hook_id}/deliveries/{delivery_id}"
-    ],
-    list: ["GET /organizations"],
-    listAppInstallations: ["GET /orgs/{org}/installations"],
-    listArtifactStorageRecords: [
-      "GET /orgs/{org}/artifacts/{subject_digest}/metadata/storage-records"
-    ],
-    listAttestationRepositories: ["GET /orgs/{org}/attestations/repositories"],
-    listAttestations: ["GET /orgs/{org}/attestations/{subject_digest}"],
-    listAttestationsBulk: [
-      "POST /orgs/{org}/attestations/bulk-list{?per_page,before,after}"
-    ],
-    listBlockedUsers: ["GET /orgs/{org}/blocks"],
-    listFailedInvitations: ["GET /orgs/{org}/failed_invitations"],
-    listForAuthenticatedUser: ["GET /user/orgs"],
-    listForUser: ["GET /users/{username}/orgs"],
-    listInvitationTeams: ["GET /orgs/{org}/invitations/{invitation_id}/teams"],
-    listIssueTypes: ["GET /orgs/{org}/issue-types"],
-    listMembers: ["GET /orgs/{org}/members"],
-    listMembershipsForAuthenticatedUser: ["GET /user/memberships/orgs"],
-    listOrgRoleTeams: ["GET /orgs/{org}/organization-roles/{role_id}/teams"],
-    listOrgRoleUsers: ["GET /orgs/{org}/organization-roles/{role_id}/users"],
-    listOrgRoles: ["GET /orgs/{org}/organization-roles"],
-    listOrganizationFineGrainedPermissions: [
-      "GET /orgs/{org}/organization-fine-grained-permissions"
-    ],
-    listOutsideCollaborators: ["GET /orgs/{org}/outside_collaborators"],
-    listPatGrantRepositories: [
-      "GET /orgs/{org}/personal-access-tokens/{pat_id}/repositories"
-    ],
-    listPatGrantRequestRepositories: [
-      "GET /orgs/{org}/personal-access-token-requests/{pat_request_id}/repositories"
-    ],
-    listPatGrantRequests: ["GET /orgs/{org}/personal-access-token-requests"],
-    listPatGrants: ["GET /orgs/{org}/personal-access-tokens"],
-    listPendingInvitations: ["GET /orgs/{org}/invitations"],
-    listPublicMembers: ["GET /orgs/{org}/public_members"],
-    listSecurityManagerTeams: [
-      "GET /orgs/{org}/security-managers",
-      {},
-      {
-        deprecated: "octokit.rest.orgs.listSecurityManagerTeams() is deprecated, see https://docs.github.com/rest/orgs/security-managers#list-security-manager-teams"
-      }
-    ],
-    listWebhookDeliveries: ["GET /orgs/{org}/hooks/{hook_id}/deliveries"],
-    listWebhooks: ["GET /orgs/{org}/hooks"],
-    pingWebhook: ["POST /orgs/{org}/hooks/{hook_id}/pings"],
-    redeliverWebhookDelivery: [
-      "POST /orgs/{org}/hooks/{hook_id}/deliveries/{delivery_id}/attempts"
-    ],
-    removeMember: ["DELETE /orgs/{org}/members/{username}"],
-    removeMembershipForUser: ["DELETE /orgs/{org}/memberships/{username}"],
-    removeOutsideCollaborator: [
-      "DELETE /orgs/{org}/outside_collaborators/{username}"
-    ],
-    removePublicMembershipForAuthenticatedUser: [
-      "DELETE /orgs/{org}/public_members/{username}"
-    ],
-    removeSecurityManagerTeam: [
-      "DELETE /orgs/{org}/security-managers/teams/{team_slug}",
-      {},
-      {
-        deprecated: "octokit.rest.orgs.removeSecurityManagerTeam() is deprecated, see https://docs.github.com/rest/orgs/security-managers#remove-a-security-manager-team"
-      }
-    ],
-    reviewPatGrantRequest: [
-      "POST /orgs/{org}/personal-access-token-requests/{pat_request_id}"
-    ],
-    reviewPatGrantRequestsInBulk: [
-      "POST /orgs/{org}/personal-access-token-requests"
-    ],
-    revokeAllOrgRolesTeam: [
-      "DELETE /orgs/{org}/organization-roles/teams/{team_slug}"
-    ],
-    revokeAllOrgRolesUser: [
-      "DELETE /orgs/{org}/organization-roles/users/{username}"
-    ],
-    revokeOrgRoleTeam: [
-      "DELETE /orgs/{org}/organization-roles/teams/{team_slug}/{role_id}"
-    ],
-    revokeOrgRoleUser: [
-      "DELETE /orgs/{org}/organization-roles/users/{username}/{role_id}"
-    ],
-    setImmutableReleasesSettings: [
-      "PUT /orgs/{org}/settings/immutable-releases"
-    ],
-    setImmutableReleasesSettingsRepositories: [
-      "PUT /orgs/{org}/settings/immutable-releases/repositories"
-    ],
-    setMembershipForUser: ["PUT /orgs/{org}/memberships/{username}"],
-    setPublicMembershipForAuthenticatedUser: [
-      "PUT /orgs/{org}/public_members/{username}"
-    ],
-    unblockUser: ["DELETE /orgs/{org}/blocks/{username}"],
-    update: ["PATCH /orgs/{org}"],
-    updateIssueType: ["PUT /orgs/{org}/issue-types/{issue_type_id}"],
-    updateMembershipForAuthenticatedUser: [
-      "PATCH /user/memberships/orgs/{org}"
-    ],
-    updatePatAccess: ["POST /orgs/{org}/personal-access-tokens/{pat_id}"],
-    updatePatAccesses: ["POST /orgs/{org}/personal-access-tokens"],
-    updateWebhook: ["PATCH /orgs/{org}/hooks/{hook_id}"],
-    updateWebhookConfigForOrg: ["PATCH /orgs/{org}/hooks/{hook_id}/config"]
-  },
-  packages: {
-    deletePackageForAuthenticatedUser: [
-      "DELETE /user/packages/{package_type}/{package_name}"
-    ],
-    deletePackageForOrg: [
-      "DELETE /orgs/{org}/packages/{package_type}/{package_name}"
-    ],
-    deletePackageForUser: [
-      "DELETE /users/{username}/packages/{package_type}/{package_name}"
-    ],
-    deletePackageVersionForAuthenticatedUser: [
-      "DELETE /user/packages/{package_type}/{package_name}/versions/{package_version_id}"
-    ],
-    deletePackageVersionForOrg: [
-      "DELETE /orgs/{org}/packages/{package_type}/{package_name}/versions/{package_version_id}"
-    ],
-    deletePackageVersionForUser: [
-      "DELETE /users/{username}/packages/{package_type}/{package_name}/versions/{package_version_id}"
-    ],
-    getAllPackageVersionsForAPackageOwnedByAnOrg: [
-      "GET /orgs/{org}/packages/{package_type}/{package_name}/versions",
-      {},
-      { renamed: ["packages", "getAllPackageVersionsForPackageOwnedByOrg"] }
-    ],
-    getAllPackageVersionsForAPackageOwnedByTheAuthenticatedUser: [
-      "GET /user/packages/{package_type}/{package_name}/versions",
-      {},
-      {
-        renamed: [
-          "packages",
-          "getAllPackageVersionsForPackageOwnedByAuthenticatedUser"
-        ]
-      }
-    ],
-    getAllPackageVersionsForPackageOwnedByAuthenticatedUser: [
-      "GET /user/packages/{package_type}/{package_name}/versions"
-    ],
-    getAllPackageVersionsForPackageOwnedByOrg: [
-      "GET /orgs/{org}/packages/{package_type}/{package_name}/versions"
-    ],
-    getAllPackageVersionsForPackageOwnedByUser: [
-      "GET /users/{username}/packages/{package_type}/{package_name}/versions"
-    ],
-    getPackageForAuthenticatedUser: [
-      "GET /user/packages/{package_type}/{package_name}"
-    ],
-    getPackageForOrganization: [
-      "GET /orgs/{org}/packages/{package_type}/{package_name}"
-    ],
-    getPackageForUser: [
-      "GET /users/{username}/packages/{package_type}/{package_name}"
-    ],
-    getPackageVersionForAuthenticatedUser: [
-      "GET /user/packages/{package_type}/{package_name}/versions/{package_version_id}"
-    ],
-    getPackageVersionForOrganization: [
-      "GET /orgs/{org}/packages/{package_type}/{package_name}/versions/{package_version_id}"
-    ],
-    getPackageVersionForUser: [
-      "GET /users/{username}/packages/{package_type}/{package_name}/versions/{package_version_id}"
-    ],
-    listDockerMigrationConflictingPackagesForAuthenticatedUser: [
-      "GET /user/docker/conflicts"
-    ],
-    listDockerMigrationConflictingPackagesForOrganization: [
-      "GET /orgs/{org}/docker/conflicts"
-    ],
-    listDockerMigrationConflictingPackagesForUser: [
-      "GET /users/{username}/docker/conflicts"
-    ],
-    listPackagesForAuthenticatedUser: ["GET /user/packages"],
-    listPackagesForOrganization: ["GET /orgs/{org}/packages"],
-    listPackagesForUser: ["GET /users/{username}/packages"],
-    restorePackageForAuthenticatedUser: [
-      "POST /user/packages/{package_type}/{package_name}/restore{?token}"
-    ],
-    restorePackageForOrg: [
-      "POST /orgs/{org}/packages/{package_type}/{package_name}/restore{?token}"
-    ],
-    restorePackageForUser: [
-      "POST /users/{username}/packages/{package_type}/{package_name}/restore{?token}"
-    ],
-    restorePackageVersionForAuthenticatedUser: [
-      "POST /user/packages/{package_type}/{package_name}/versions/{package_version_id}/restore"
-    ],
-    restorePackageVersionForOrg: [
-      "POST /orgs/{org}/packages/{package_type}/{package_name}/versions/{package_version_id}/restore"
-    ],
-    restorePackageVersionForUser: [
-      "POST /users/{username}/packages/{package_type}/{package_name}/versions/{package_version_id}/restore"
-    ]
-  },
-  privateRegistries: {
-    createOrgPrivateRegistry: ["POST /orgs/{org}/private-registries"],
-    deleteOrgPrivateRegistry: [
-      "DELETE /orgs/{org}/private-registries/{secret_name}"
-    ],
-    getOrgPrivateRegistry: ["GET /orgs/{org}/private-registries/{secret_name}"],
-    getOrgPublicKey: ["GET /orgs/{org}/private-registries/public-key"],
-    listOrgPrivateRegistries: ["GET /orgs/{org}/private-registries"],
-    updateOrgPrivateRegistry: [
-      "PATCH /orgs/{org}/private-registries/{secret_name}"
-    ]
-  },
-  projects: {
-    addItemForOrg: ["POST /orgs/{org}/projectsV2/{project_number}/items"],
-    addItemForUser: [
-      "POST /users/{username}/projectsV2/{project_number}/items"
-    ],
-    deleteItemForOrg: [
-      "DELETE /orgs/{org}/projectsV2/{project_number}/items/{item_id}"
-    ],
-    deleteItemForUser: [
-      "DELETE /users/{username}/projectsV2/{project_number}/items/{item_id}"
-    ],
-    getFieldForOrg: [
-      "GET /orgs/{org}/projectsV2/{project_number}/fields/{field_id}"
-    ],
-    getFieldForUser: [
-      "GET /users/{username}/projectsV2/{project_number}/fields/{field_id}"
-    ],
-    getForOrg: ["GET /orgs/{org}/projectsV2/{project_number}"],
-    getForUser: ["GET /users/{username}/projectsV2/{project_number}"],
-    getOrgItem: ["GET /orgs/{org}/projectsV2/{project_number}/items/{item_id}"],
-    getUserItem: [
-      "GET /users/{username}/projectsV2/{project_number}/items/{item_id}"
-    ],
-    listFieldsForOrg: ["GET /orgs/{org}/projectsV2/{project_number}/fields"],
-    listFieldsForUser: [
-      "GET /users/{username}/projectsV2/{project_number}/fields"
-    ],
-    listForOrg: ["GET /orgs/{org}/projectsV2"],
-    listForUser: ["GET /users/{username}/projectsV2"],
-    listItemsForOrg: ["GET /orgs/{org}/projectsV2/{project_number}/items"],
-    listItemsForUser: [
-      "GET /users/{username}/projectsV2/{project_number}/items"
-    ],
-    updateItemForOrg: [
-      "PATCH /orgs/{org}/projectsV2/{project_number}/items/{item_id}"
-    ],
-    updateItemForUser: [
-      "PATCH /users/{username}/projectsV2/{project_number}/items/{item_id}"
-    ]
-  },
-  pulls: {
-    checkIfMerged: ["GET /repos/{owner}/{repo}/pulls/{pull_number}/merge"],
-    create: ["POST /repos/{owner}/{repo}/pulls"],
-    createReplyForReviewComment: [
-      "POST /repos/{owner}/{repo}/pulls/{pull_number}/comments/{comment_id}/replies"
-    ],
-    createReview: ["POST /repos/{owner}/{repo}/pulls/{pull_number}/reviews"],
-    createReviewComment: [
-      "POST /repos/{owner}/{repo}/pulls/{pull_number}/comments"
-    ],
-    deletePendingReview: [
-      "DELETE /repos/{owner}/{repo}/pulls/{pull_number}/reviews/{review_id}"
-    ],
-    deleteReviewComment: [
-      "DELETE /repos/{owner}/{repo}/pulls/comments/{comment_id}"
-    ],
-    dismissReview: [
-      "PUT /repos/{owner}/{repo}/pulls/{pull_number}/reviews/{review_id}/dismissals"
-    ],
-    get: ["GET /repos/{owner}/{repo}/pulls/{pull_number}"],
-    getReview: [
-      "GET /repos/{owner}/{repo}/pulls/{pull_number}/reviews/{review_id}"
-    ],
-    getReviewComment: ["GET /repos/{owner}/{repo}/pulls/comments/{comment_id}"],
-    list: ["GET /repos/{owner}/{repo}/pulls"],
-    listCommentsForReview: [
-      "GET /repos/{owner}/{repo}/pulls/{pull_number}/reviews/{review_id}/comments"
-    ],
-    listCommits: ["GET /repos/{owner}/{repo}/pulls/{pull_number}/commits"],
-    listFiles: ["GET /repos/{owner}/{repo}/pulls/{pull_number}/files"],
-    listRequestedReviewers: [
-      "GET /repos/{owner}/{repo}/pulls/{pull_number}/requested_reviewers"
-    ],
-    listReviewComments: [
-      "GET /repos/{owner}/{repo}/pulls/{pull_number}/comments"
-    ],
-    listReviewCommentsForRepo: ["GET /repos/{owner}/{repo}/pulls/comments"],
-    listReviews: ["GET /repos/{owner}/{repo}/pulls/{pull_number}/reviews"],
-    merge: ["PUT /repos/{owner}/{repo}/pulls/{pull_number}/merge"],
-    removeRequestedReviewers: [
-      "DELETE /repos/{owner}/{repo}/pulls/{pull_number}/requested_reviewers"
-    ],
-    requestReviewers: [
-      "POST /repos/{owner}/{repo}/pulls/{pull_number}/requested_reviewers"
-    ],
-    submitReview: [
-      "POST /repos/{owner}/{repo}/pulls/{pull_number}/reviews/{review_id}/events"
-    ],
-    update: ["PATCH /repos/{owner}/{repo}/pulls/{pull_number}"],
-    updateBranch: [
-      "PUT /repos/{owner}/{repo}/pulls/{pull_number}/update-branch"
-    ],
-    updateReview: [
-      "PUT /repos/{owner}/{repo}/pulls/{pull_number}/reviews/{review_id}"
-    ],
-    updateReviewComment: [
-      "PATCH /repos/{owner}/{repo}/pulls/comments/{comment_id}"
-    ]
-  },
-  rateLimit: { get: ["GET /rate_limit"] },
-  reactions: {
-    createForCommitComment: [
-      "POST /repos/{owner}/{repo}/comments/{comment_id}/reactions"
-    ],
-    createForIssue: [
-      "POST /repos/{owner}/{repo}/issues/{issue_number}/reactions"
-    ],
-    createForIssueComment: [
-      "POST /repos/{owner}/{repo}/issues/comments/{comment_id}/reactions"
-    ],
-    createForPullRequestReviewComment: [
-      "POST /repos/{owner}/{repo}/pulls/comments/{comment_id}/reactions"
-    ],
-    createForRelease: [
-      "POST /repos/{owner}/{repo}/releases/{release_id}/reactions"
-    ],
-    createForTeamDiscussionCommentInOrg: [
-      "POST /orgs/{org}/teams/{team_slug}/discussions/{discussion_number}/comments/{comment_number}/reactions"
-    ],
-    createForTeamDiscussionInOrg: [
-      "POST /orgs/{org}/teams/{team_slug}/discussions/{discussion_number}/reactions"
-    ],
-    deleteForCommitComment: [
-      "DELETE /repos/{owner}/{repo}/comments/{comment_id}/reactions/{reaction_id}"
-    ],
-    deleteForIssue: [
-      "DELETE /repos/{owner}/{repo}/issues/{issue_number}/reactions/{reaction_id}"
-    ],
-    deleteForIssueComment: [
-      "DELETE /repos/{owner}/{repo}/issues/comments/{comment_id}/reactions/{reaction_id}"
-    ],
-    deleteForPullRequestComment: [
-      "DELETE /repos/{owner}/{repo}/pulls/comments/{comment_id}/reactions/{reaction_id}"
-    ],
-    deleteForRelease: [
-      "DELETE /repos/{owner}/{repo}/releases/{release_id}/reactions/{reaction_id}"
-    ],
-    deleteForTeamDiscussion: [
-      "DELETE /orgs/{org}/teams/{team_slug}/discussions/{discussion_number}/reactions/{reaction_id}"
-    ],
-    deleteForTeamDiscussionComment: [
-      "DELETE /orgs/{org}/teams/{team_slug}/discussions/{discussion_number}/comments/{comment_number}/reactions/{reaction_id}"
-    ],
-    listForCommitComment: [
-      "GET /repos/{owner}/{repo}/comments/{comment_id}/reactions"
-    ],
-    listForIssue: ["GET /repos/{owner}/{repo}/issues/{issue_number}/reactions"],
-    listForIssueComment: [
-      "GET /repos/{owner}/{repo}/issues/comments/{comment_id}/reactions"
-    ],
-    listForPullRequestReviewComment: [
-      "GET /repos/{owner}/{repo}/pulls/comments/{comment_id}/reactions"
-    ],
-    listForRelease: [
-      "GET /repos/{owner}/{repo}/releases/{release_id}/reactions"
-    ],
-    listForTeamDiscussionCommentInOrg: [
-      "GET /orgs/{org}/teams/{team_slug}/discussions/{discussion_number}/comments/{comment_number}/reactions"
-    ],
-    listForTeamDiscussionInOrg: [
-      "GET /orgs/{org}/teams/{team_slug}/discussions/{discussion_number}/reactions"
-    ]
-  },
-  repos: {
-    acceptInvitation: [
-      "PATCH /user/repository_invitations/{invitation_id}",
-      {},
-      { renamed: ["repos", "acceptInvitationForAuthenticatedUser"] }
-    ],
-    acceptInvitationForAuthenticatedUser: [
-      "PATCH /user/repository_invitations/{invitation_id}"
-    ],
-    addAppAccessRestrictions: [
-      "POST /repos/{owner}/{repo}/branches/{branch}/protection/restrictions/apps",
-      {},
-      { mapToData: "apps" }
-    ],
-    addCollaborator: ["PUT /repos/{owner}/{repo}/collaborators/{username}"],
-    addStatusCheckContexts: [
-      "POST /repos/{owner}/{repo}/branches/{branch}/protection/required_status_checks/contexts",
-      {},
-      { mapToData: "contexts" }
-    ],
-    addTeamAccessRestrictions: [
-      "POST /repos/{owner}/{repo}/branches/{branch}/protection/restrictions/teams",
-      {},
-      { mapToData: "teams" }
-    ],
-    addUserAccessRestrictions: [
-      "POST /repos/{owner}/{repo}/branches/{branch}/protection/restrictions/users",
-      {},
-      { mapToData: "users" }
-    ],
-    cancelPagesDeployment: [
-      "POST /repos/{owner}/{repo}/pages/deployments/{pages_deployment_id}/cancel"
-    ],
-    checkAutomatedSecurityFixes: [
-      "GET /repos/{owner}/{repo}/automated-security-fixes"
-    ],
-    checkCollaborator: ["GET /repos/{owner}/{repo}/collaborators/{username}"],
-    checkImmutableReleases: ["GET /repos/{owner}/{repo}/immutable-releases"],
-    checkPrivateVulnerabilityReporting: [
-      "GET /repos/{owner}/{repo}/private-vulnerability-reporting"
-    ],
-    checkVulnerabilityAlerts: [
-      "GET /repos/{owner}/{repo}/vulnerability-alerts"
-    ],
-    codeownersErrors: ["GET /repos/{owner}/{repo}/codeowners/errors"],
-    compareCommits: ["GET /repos/{owner}/{repo}/compare/{base}...{head}"],
-    compareCommitsWithBasehead: [
-      "GET /repos/{owner}/{repo}/compare/{basehead}"
-    ],
-    createAttestation: ["POST /repos/{owner}/{repo}/attestations"],
-    createAutolink: ["POST /repos/{owner}/{repo}/autolinks"],
-    createCommitComment: [
-      "POST /repos/{owner}/{repo}/commits/{commit_sha}/comments"
-    ],
-    createCommitSignatureProtection: [
-      "POST /repos/{owner}/{repo}/branches/{branch}/protection/required_signatures"
-    ],
-    createCommitStatus: ["POST /repos/{owner}/{repo}/statuses/{sha}"],
-    createDeployKey: ["POST /repos/{owner}/{repo}/keys"],
-    createDeployment: ["POST /repos/{owner}/{repo}/deployments"],
-    createDeploymentBranchPolicy: [
-      "POST /repos/{owner}/{repo}/environments/{environment_name}/deployment-branch-policies"
-    ],
-    createDeploymentProtectionRule: [
-      "POST /repos/{owner}/{repo}/environments/{environment_name}/deployment_protection_rules"
-    ],
-    createDeploymentStatus: [
-      "POST /repos/{owner}/{repo}/deployments/{deployment_id}/statuses"
-    ],
-    createDispatchEvent: ["POST /repos/{owner}/{repo}/dispatches"],
-    createForAuthenticatedUser: ["POST /user/repos"],
-    createFork: ["POST /repos/{owner}/{repo}/forks"],
-    createInOrg: ["POST /orgs/{org}/repos"],
-    createOrUpdateEnvironment: [
-      "PUT /repos/{owner}/{repo}/environments/{environment_name}"
-    ],
-    createOrUpdateFileContents: ["PUT /repos/{owner}/{repo}/contents/{path}"],
-    createOrgRuleset: ["POST /orgs/{org}/rulesets"],
-    createPagesDeployment: ["POST /repos/{owner}/{repo}/pages/deployments"],
-    createPagesSite: ["POST /repos/{owner}/{repo}/pages"],
-    createRelease: ["POST /repos/{owner}/{repo}/releases"],
-    createRepoRuleset: ["POST /repos/{owner}/{repo}/rulesets"],
-    createUsingTemplate: [
-      "POST /repos/{template_owner}/{template_repo}/generate"
-    ],
-    createWebhook: ["POST /repos/{owner}/{repo}/hooks"],
-    customPropertiesForReposCreateOrUpdateRepositoryValues: [
-      "PATCH /repos/{owner}/{repo}/properties/values"
-    ],
-    customPropertiesForReposGetRepositoryValues: [
-      "GET /repos/{owner}/{repo}/properties/values"
-    ],
-    declineInvitation: [
-      "DELETE /user/repository_invitations/{invitation_id}",
-      {},
-      { renamed: ["repos", "declineInvitationForAuthenticatedUser"] }
-    ],
-    declineInvitationForAuthenticatedUser: [
-      "DELETE /user/repository_invitations/{invitation_id}"
-    ],
-    delete: ["DELETE /repos/{owner}/{repo}"],
-    deleteAccessRestrictions: [
-      "DELETE /repos/{owner}/{repo}/branches/{branch}/protection/restrictions"
-    ],
-    deleteAdminBranchProtection: [
-      "DELETE /repos/{owner}/{repo}/branches/{branch}/protection/enforce_admins"
-    ],
-    deleteAnEnvironment: [
-      "DELETE /repos/{owner}/{repo}/environments/{environment_name}"
-    ],
-    deleteAutolink: ["DELETE /repos/{owner}/{repo}/autolinks/{autolink_id}"],
-    deleteBranchProtection: [
-      "DELETE /repos/{owner}/{repo}/branches/{branch}/protection"
-    ],
-    deleteCommitComment: ["DELETE /repos/{owner}/{repo}/comments/{comment_id}"],
-    deleteCommitSignatureProtection: [
-      "DELETE /repos/{owner}/{repo}/branches/{branch}/protection/required_signatures"
-    ],
-    deleteDeployKey: ["DELETE /repos/{owner}/{repo}/keys/{key_id}"],
-    deleteDeployment: [
-      "DELETE /repos/{owner}/{repo}/deployments/{deployment_id}"
-    ],
-    deleteDeploymentBranchPolicy: [
-      "DELETE /repos/{owner}/{repo}/environments/{environment_name}/deployment-branch-policies/{branch_policy_id}"
-    ],
-    deleteFile: ["DELETE /repos/{owner}/{repo}/contents/{path}"],
-    deleteInvitation: [
-      "DELETE /repos/{owner}/{repo}/invitations/{invitation_id}"
-    ],
-    deleteOrgRuleset: ["DELETE /orgs/{org}/rulesets/{ruleset_id}"],
-    deletePagesSite: ["DELETE /repos/{owner}/{repo}/pages"],
-    deletePullRequestReviewProtection: [
-      "DELETE /repos/{owner}/{repo}/branches/{branch}/protection/required_pull_request_reviews"
-    ],
-    deleteRelease: ["DELETE /repos/{owner}/{repo}/releases/{release_id}"],
-    deleteReleaseAsset: [
-      "DELETE /repos/{owner}/{repo}/releases/assets/{asset_id}"
-    ],
-    deleteRepoRuleset: ["DELETE /repos/{owner}/{repo}/rulesets/{ruleset_id}"],
-    deleteWebhook: ["DELETE /repos/{owner}/{repo}/hooks/{hook_id}"],
-    disableAutomatedSecurityFixes: [
-      "DELETE /repos/{owner}/{repo}/automated-security-fixes"
-    ],
-    disableDeploymentProtectionRule: [
-      "DELETE /repos/{owner}/{repo}/environments/{environment_name}/deployment_protection_rules/{protection_rule_id}"
-    ],
-    disableImmutableReleases: [
-      "DELETE /repos/{owner}/{repo}/immutable-releases"
-    ],
-    disablePrivateVulnerabilityReporting: [
-      "DELETE /repos/{owner}/{repo}/private-vulnerability-reporting"
-    ],
-    disableVulnerabilityAlerts: [
-      "DELETE /repos/{owner}/{repo}/vulnerability-alerts"
-    ],
-    downloadArchive: [
-      "GET /repos/{owner}/{repo}/zipball/{ref}",
-      {},
-      { renamed: ["repos", "downloadZipballArchive"] }
-    ],
-    downloadTarballArchive: ["GET /repos/{owner}/{repo}/tarball/{ref}"],
-    downloadZipballArchive: ["GET /repos/{owner}/{repo}/zipball/{ref}"],
-    enableAutomatedSecurityFixes: [
-      "PUT /repos/{owner}/{repo}/automated-security-fixes"
-    ],
-    enableImmutableReleases: ["PUT /repos/{owner}/{repo}/immutable-releases"],
-    enablePrivateVulnerabilityReporting: [
-      "PUT /repos/{owner}/{repo}/private-vulnerability-reporting"
-    ],
-    enableVulnerabilityAlerts: [
-      "PUT /repos/{owner}/{repo}/vulnerability-alerts"
-    ],
-    generateReleaseNotes: [
-      "POST /repos/{owner}/{repo}/releases/generate-notes"
-    ],
-    get: ["GET /repos/{owner}/{repo}"],
-    getAccessRestrictions: [
-      "GET /repos/{owner}/{repo}/branches/{branch}/protection/restrictions"
-    ],
-    getAdminBranchProtection: [
-      "GET /repos/{owner}/{repo}/branches/{branch}/protection/enforce_admins"
-    ],
-    getAllDeploymentProtectionRules: [
-      "GET /repos/{owner}/{repo}/environments/{environment_name}/deployment_protection_rules"
-    ],
-    getAllEnvironments: ["GET /repos/{owner}/{repo}/environments"],
-    getAllStatusCheckContexts: [
-      "GET /repos/{owner}/{repo}/branches/{branch}/protection/required_status_checks/contexts"
-    ],
-    getAllTopics: ["GET /repos/{owner}/{repo}/topics"],
-    getAppsWithAccessToProtectedBranch: [
-      "GET /repos/{owner}/{repo}/branches/{branch}/protection/restrictions/apps"
-    ],
-    getAutolink: ["GET /repos/{owner}/{repo}/autolinks/{autolink_id}"],
-    getBranch: ["GET /repos/{owner}/{repo}/branches/{branch}"],
-    getBranchProtection: [
-      "GET /repos/{owner}/{repo}/branches/{branch}/protection"
-    ],
-    getBranchRules: ["GET /repos/{owner}/{repo}/rules/branches/{branch}"],
-    getClones: ["GET /repos/{owner}/{repo}/traffic/clones"],
-    getCodeFrequencyStats: ["GET /repos/{owner}/{repo}/stats/code_frequency"],
-    getCollaboratorPermissionLevel: [
-      "GET /repos/{owner}/{repo}/collaborators/{username}/permission"
-    ],
-    getCombinedStatusForRef: ["GET /repos/{owner}/{repo}/commits/{ref}/status"],
-    getCommit: ["GET /repos/{owner}/{repo}/commits/{ref}"],
-    getCommitActivityStats: ["GET /repos/{owner}/{repo}/stats/commit_activity"],
-    getCommitComment: ["GET /repos/{owner}/{repo}/comments/{comment_id}"],
-    getCommitSignatureProtection: [
-      "GET /repos/{owner}/{repo}/branches/{branch}/protection/required_signatures"
-    ],
-    getCommunityProfileMetrics: ["GET /repos/{owner}/{repo}/community/profile"],
-    getContent: ["GET /repos/{owner}/{repo}/contents/{path}"],
-    getContributorsStats: ["GET /repos/{owner}/{repo}/stats/contributors"],
-    getCustomDeploymentProtectionRule: [
-      "GET /repos/{owner}/{repo}/environments/{environment_name}/deployment_protection_rules/{protection_rule_id}"
-    ],
-    getDeployKey: ["GET /repos/{owner}/{repo}/keys/{key_id}"],
-    getDeployment: ["GET /repos/{owner}/{repo}/deployments/{deployment_id}"],
-    getDeploymentBranchPolicy: [
-      "GET /repos/{owner}/{repo}/environments/{environment_name}/deployment-branch-policies/{branch_policy_id}"
-    ],
-    getDeploymentStatus: [
-      "GET /repos/{owner}/{repo}/deployments/{deployment_id}/statuses/{status_id}"
-    ],
-    getEnvironment: [
-      "GET /repos/{owner}/{repo}/environments/{environment_name}"
-    ],
-    getLatestPagesBuild: ["GET /repos/{owner}/{repo}/pages/builds/latest"],
-    getLatestRelease: ["GET /repos/{owner}/{repo}/releases/latest"],
-    getOrgRuleSuite: ["GET /orgs/{org}/rulesets/rule-suites/{rule_suite_id}"],
-    getOrgRuleSuites: ["GET /orgs/{org}/rulesets/rule-suites"],
-    getOrgRuleset: ["GET /orgs/{org}/rulesets/{ruleset_id}"],
-    getOrgRulesets: ["GET /orgs/{org}/rulesets"],
-    getPages: ["GET /repos/{owner}/{repo}/pages"],
-    getPagesBuild: ["GET /repos/{owner}/{repo}/pages/builds/{build_id}"],
-    getPagesDeployment: [
-      "GET /repos/{owner}/{repo}/pages/deployments/{pages_deployment_id}"
-    ],
-    getPagesHealthCheck: ["GET /repos/{owner}/{repo}/pages/health"],
-    getParticipationStats: ["GET /repos/{owner}/{repo}/stats/participation"],
-    getPullRequestReviewProtection: [
-      "GET /repos/{owner}/{repo}/branches/{branch}/protection/required_pull_request_reviews"
-    ],
-    getPunchCardStats: ["GET /repos/{owner}/{repo}/stats/punch_card"],
-    getReadme: ["GET /repos/{owner}/{repo}/readme"],
-    getReadmeInDirectory: ["GET /repos/{owner}/{repo}/readme/{dir}"],
-    getRelease: ["GET /repos/{owner}/{repo}/releases/{release_id}"],
-    getReleaseAsset: ["GET /repos/{owner}/{repo}/releases/assets/{asset_id}"],
-    getReleaseByTag: ["GET /repos/{owner}/{repo}/releases/tags/{tag}"],
-    getRepoRuleSuite: [
-      "GET /repos/{owner}/{repo}/rulesets/rule-suites/{rule_suite_id}"
-    ],
-    getRepoRuleSuites: ["GET /repos/{owner}/{repo}/rulesets/rule-suites"],
-    getRepoRuleset: ["GET /repos/{owner}/{repo}/rulesets/{ruleset_id}"],
-    getRepoRulesetHistory: [
-      "GET /repos/{owner}/{repo}/rulesets/{ruleset_id}/history"
-    ],
-    getRepoRulesetVersion: [
-      "GET /repos/{owner}/{repo}/rulesets/{ruleset_id}/history/{version_id}"
-    ],
-    getRepoRulesets: ["GET /repos/{owner}/{repo}/rulesets"],
-    getStatusChecksProtection: [
-      "GET /repos/{owner}/{repo}/branches/{branch}/protection/required_status_checks"
-    ],
-    getTeamsWithAccessToProtectedBranch: [
-      "GET /repos/{owner}/{repo}/branches/{branch}/protection/restrictions/teams"
-    ],
-    getTopPaths: ["GET /repos/{owner}/{repo}/traffic/popular/paths"],
-    getTopReferrers: ["GET /repos/{owner}/{repo}/traffic/popular/referrers"],
-    getUsersWithAccessToProtectedBranch: [
-      "GET /repos/{owner}/{repo}/branches/{branch}/protection/restrictions/users"
-    ],
-    getViews: ["GET /repos/{owner}/{repo}/traffic/views"],
-    getWebhook: ["GET /repos/{owner}/{repo}/hooks/{hook_id}"],
-    getWebhookConfigForRepo: [
-      "GET /repos/{owner}/{repo}/hooks/{hook_id}/config"
-    ],
-    getWebhookDelivery: [
-      "GET /repos/{owner}/{repo}/hooks/{hook_id}/deliveries/{delivery_id}"
-    ],
-    listActivities: ["GET /repos/{owner}/{repo}/activity"],
-    listAttestations: [
-      "GET /repos/{owner}/{repo}/attestations/{subject_digest}"
-    ],
-    listAutolinks: ["GET /repos/{owner}/{repo}/autolinks"],
-    listBranches: ["GET /repos/{owner}/{repo}/branches"],
-    listBranchesForHeadCommit: [
-      "GET /repos/{owner}/{repo}/commits/{commit_sha}/branches-where-head"
-    ],
-    listCollaborators: ["GET /repos/{owner}/{repo}/collaborators"],
-    listCommentsForCommit: [
-      "GET /repos/{owner}/{repo}/commits/{commit_sha}/comments"
-    ],
-    listCommitCommentsForRepo: ["GET /repos/{owner}/{repo}/comments"],
-    listCommitStatusesForRef: [
-      "GET /repos/{owner}/{repo}/commits/{ref}/statuses"
-    ],
-    listCommits: ["GET /repos/{owner}/{repo}/commits"],
-    listContributors: ["GET /repos/{owner}/{repo}/contributors"],
-    listCustomDeploymentRuleIntegrations: [
-      "GET /repos/{owner}/{repo}/environments/{environment_name}/deployment_protection_rules/apps"
-    ],
-    listDeployKeys: ["GET /repos/{owner}/{repo}/keys"],
-    listDeploymentBranchPolicies: [
-      "GET /repos/{owner}/{repo}/environments/{environment_name}/deployment-branch-policies"
-    ],
-    listDeploymentStatuses: [
-      "GET /repos/{owner}/{repo}/deployments/{deployment_id}/statuses"
-    ],
-    listDeployments: ["GET /repos/{owner}/{repo}/deployments"],
-    listForAuthenticatedUser: ["GET /user/repos"],
-    listForOrg: ["GET /orgs/{org}/repos"],
-    listForUser: ["GET /users/{username}/repos"],
-    listForks: ["GET /repos/{owner}/{repo}/forks"],
-    listInvitations: ["GET /repos/{owner}/{repo}/invitations"],
-    listInvitationsForAuthenticatedUser: ["GET /user/repository_invitations"],
-    listLanguages: ["GET /repos/{owner}/{repo}/languages"],
-    listPagesBuilds: ["GET /repos/{owner}/{repo}/pages/builds"],
-    listPublic: ["GET /repositories"],
-    listPullRequestsAssociatedWithCommit: [
-      "GET /repos/{owner}/{repo}/commits/{commit_sha}/pulls"
-    ],
-    listReleaseAssets: [
-      "GET /repos/{owner}/{repo}/releases/{release_id}/assets"
-    ],
-    listReleases: ["GET /repos/{owner}/{repo}/releases"],
-    listTags: ["GET /repos/{owner}/{repo}/tags"],
-    listTeams: ["GET /repos/{owner}/{repo}/teams"],
-    listWebhookDeliveries: [
-      "GET /repos/{owner}/{repo}/hooks/{hook_id}/deliveries"
-    ],
-    listWebhooks: ["GET /repos/{owner}/{repo}/hooks"],
-    merge: ["POST /repos/{owner}/{repo}/merges"],
-    mergeUpstream: ["POST /repos/{owner}/{repo}/merge-upstream"],
-    pingWebhook: ["POST /repos/{owner}/{repo}/hooks/{hook_id}/pings"],
-    redeliverWebhookDelivery: [
-      "POST /repos/{owner}/{repo}/hooks/{hook_id}/deliveries/{delivery_id}/attempts"
-    ],
-    removeAppAccessRestrictions: [
-      "DELETE /repos/{owner}/{repo}/branches/{branch}/protection/restrictions/apps",
-      {},
-      { mapToData: "apps" }
-    ],
-    removeCollaborator: [
-      "DELETE /repos/{owner}/{repo}/collaborators/{username}"
-    ],
-    removeStatusCheckContexts: [
-      "DELETE /repos/{owner}/{repo}/branches/{branch}/protection/required_status_checks/contexts",
-      {},
-      { mapToData: "contexts" }
-    ],
-    removeStatusCheckProtection: [
-      "DELETE /repos/{owner}/{repo}/branches/{branch}/protection/required_status_checks"
-    ],
-    removeTeamAccessRestrictions: [
-      "DELETE /repos/{owner}/{repo}/branches/{branch}/protection/restrictions/teams",
-      {},
-      { mapToData: "teams" }
-    ],
-    removeUserAccessRestrictions: [
-      "DELETE /repos/{owner}/{repo}/branches/{branch}/protection/restrictions/users",
-      {},
-      { mapToData: "users" }
-    ],
-    renameBranch: ["POST /repos/{owner}/{repo}/branches/{branch}/rename"],
-    replaceAllTopics: ["PUT /repos/{owner}/{repo}/topics"],
-    requestPagesBuild: ["POST /repos/{owner}/{repo}/pages/builds"],
-    setAdminBranchProtection: [
-      "POST /repos/{owner}/{repo}/branches/{branch}/protection/enforce_admins"
-    ],
-    setAppAccessRestrictions: [
-      "PUT /repos/{owner}/{repo}/branches/{branch}/protection/restrictions/apps",
-      {},
-      { mapToData: "apps" }
-    ],
-    setStatusCheckContexts: [
-      "PUT /repos/{owner}/{repo}/branches/{branch}/protection/required_status_checks/contexts",
-      {},
-      { mapToData: "contexts" }
-    ],
-    setTeamAccessRestrictions: [
-      "PUT /repos/{owner}/{repo}/branches/{branch}/protection/restrictions/teams",
-      {},
-      { mapToData: "teams" }
-    ],
-    setUserAccessRestrictions: [
-      "PUT /repos/{owner}/{repo}/branches/{branch}/protection/restrictions/users",
-      {},
-      { mapToData: "users" }
-    ],
-    testPushWebhook: ["POST /repos/{owner}/{repo}/hooks/{hook_id}/tests"],
-    transfer: ["POST /repos/{owner}/{repo}/transfer"],
-    update: ["PATCH /repos/{owner}/{repo}"],
-    updateBranchProtection: [
-      "PUT /repos/{owner}/{repo}/branches/{branch}/protection"
-    ],
-    updateCommitComment: ["PATCH /repos/{owner}/{repo}/comments/{comment_id}"],
-    updateDeploymentBranchPolicy: [
-      "PUT /repos/{owner}/{repo}/environments/{environment_name}/deployment-branch-policies/{branch_policy_id}"
-    ],
-    updateInformationAboutPagesSite: ["PUT /repos/{owner}/{repo}/pages"],
-    updateInvitation: [
-      "PATCH /repos/{owner}/{repo}/invitations/{invitation_id}"
-    ],
-    updateOrgRuleset: ["PUT /orgs/{org}/rulesets/{ruleset_id}"],
-    updatePullRequestReviewProtection: [
-      "PATCH /repos/{owner}/{repo}/branches/{branch}/protection/required_pull_request_reviews"
-    ],
-    updateRelease: ["PATCH /repos/{owner}/{repo}/releases/{release_id}"],
-    updateReleaseAsset: [
-      "PATCH /repos/{owner}/{repo}/releases/assets/{asset_id}"
-    ],
-    updateRepoRuleset: ["PUT /repos/{owner}/{repo}/rulesets/{ruleset_id}"],
-    updateStatusCheckPotection: [
-      "PATCH /repos/{owner}/{repo}/branches/{branch}/protection/required_status_checks",
-      {},
-      { renamed: ["repos", "updateStatusCheckProtection"] }
-    ],
-    updateStatusCheckProtection: [
-      "PATCH /repos/{owner}/{repo}/branches/{branch}/protection/required_status_checks"
-    ],
-    updateWebhook: ["PATCH /repos/{owner}/{repo}/hooks/{hook_id}"],
-    updateWebhookConfigForRepo: [
-      "PATCH /repos/{owner}/{repo}/hooks/{hook_id}/config"
-    ],
-    uploadReleaseAsset: [
-      "POST /repos/{owner}/{repo}/releases/{release_id}/assets{?name,label}",
-      { baseUrl: "https://uploads.github.com" }
-    ]
-  },
-  search: {
-    code: ["GET /search/code"],
-    commits: ["GET /search/commits"],
-    issuesAndPullRequests: ["GET /search/issues"],
-    labels: ["GET /search/labels"],
-    repos: ["GET /search/repositories"],
-    topics: ["GET /search/topics"],
-    users: ["GET /search/users"]
-  },
-  secretScanning: {
-    createPushProtectionBypass: [
-      "POST /repos/{owner}/{repo}/secret-scanning/push-protection-bypasses"
-    ],
-    getAlert: [
-      "GET /repos/{owner}/{repo}/secret-scanning/alerts/{alert_number}"
-    ],
-    getScanHistory: ["GET /repos/{owner}/{repo}/secret-scanning/scan-history"],
-    listAlertsForOrg: ["GET /orgs/{org}/secret-scanning/alerts"],
-    listAlertsForRepo: ["GET /repos/{owner}/{repo}/secret-scanning/alerts"],
-    listLocationsForAlert: [
-      "GET /repos/{owner}/{repo}/secret-scanning/alerts/{alert_number}/locations"
-    ],
-    listOrgPatternConfigs: [
-      "GET /orgs/{org}/secret-scanning/pattern-configurations"
-    ],
-    updateAlert: [
-      "PATCH /repos/{owner}/{repo}/secret-scanning/alerts/{alert_number}"
-    ],
-    updateOrgPatternConfigs: [
-      "PATCH /orgs/{org}/secret-scanning/pattern-configurations"
-    ]
-  },
-  securityAdvisories: {
-    createFork: [
-      "POST /repos/{owner}/{repo}/security-advisories/{ghsa_id}/forks"
-    ],
-    createPrivateVulnerabilityReport: [
-      "POST /repos/{owner}/{repo}/security-advisories/reports"
-    ],
-    createRepositoryAdvisory: [
-      "POST /repos/{owner}/{repo}/security-advisories"
-    ],
-    createRepositoryAdvisoryCveRequest: [
-      "POST /repos/{owner}/{repo}/security-advisories/{ghsa_id}/cve"
-    ],
-    getGlobalAdvisory: ["GET /advisories/{ghsa_id}"],
-    getRepositoryAdvisory: [
-      "GET /repos/{owner}/{repo}/security-advisories/{ghsa_id}"
-    ],
-    listGlobalAdvisories: ["GET /advisories"],
-    listOrgRepositoryAdvisories: ["GET /orgs/{org}/security-advisories"],
-    listRepositoryAdvisories: ["GET /repos/{owner}/{repo}/security-advisories"],
-    updateRepositoryAdvisory: [
-      "PATCH /repos/{owner}/{repo}/security-advisories/{ghsa_id}"
-    ]
-  },
-  teams: {
-    addOrUpdateMembershipForUserInOrg: [
-      "PUT /orgs/{org}/teams/{team_slug}/memberships/{username}"
-    ],
-    addOrUpdateRepoPermissionsInOrg: [
-      "PUT /orgs/{org}/teams/{team_slug}/repos/{owner}/{repo}"
-    ],
-    checkPermissionsForRepoInOrg: [
-      "GET /orgs/{org}/teams/{team_slug}/repos/{owner}/{repo}"
-    ],
-    create: ["POST /orgs/{org}/teams"],
-    createDiscussionCommentInOrg: [
-      "POST /orgs/{org}/teams/{team_slug}/discussions/{discussion_number}/comments"
-    ],
-    createDiscussionInOrg: ["POST /orgs/{org}/teams/{team_slug}/discussions"],
-    deleteDiscussionCommentInOrg: [
-      "DELETE /orgs/{org}/teams/{team_slug}/discussions/{discussion_number}/comments/{comment_number}"
-    ],
-    deleteDiscussionInOrg: [
-      "DELETE /orgs/{org}/teams/{team_slug}/discussions/{discussion_number}"
-    ],
-    deleteInOrg: ["DELETE /orgs/{org}/teams/{team_slug}"],
-    getByName: ["GET /orgs/{org}/teams/{team_slug}"],
-    getDiscussionCommentInOrg: [
-      "GET /orgs/{org}/teams/{team_slug}/discussions/{discussion_number}/comments/{comment_number}"
-    ],
-    getDiscussionInOrg: [
-      "GET /orgs/{org}/teams/{team_slug}/discussions/{discussion_number}"
-    ],
-    getMembershipForUserInOrg: [
-      "GET /orgs/{org}/teams/{team_slug}/memberships/{username}"
-    ],
-    list: ["GET /orgs/{org}/teams"],
-    listChildInOrg: ["GET /orgs/{org}/teams/{team_slug}/teams"],
-    listDiscussionCommentsInOrg: [
-      "GET /orgs/{org}/teams/{team_slug}/discussions/{discussion_number}/comments"
-    ],
-    listDiscussionsInOrg: ["GET /orgs/{org}/teams/{team_slug}/discussions"],
-    listForAuthenticatedUser: ["GET /user/teams"],
-    listMembersInOrg: ["GET /orgs/{org}/teams/{team_slug}/members"],
-    listPendingInvitationsInOrg: [
-      "GET /orgs/{org}/teams/{team_slug}/invitations"
-    ],
-    listReposInOrg: ["GET /orgs/{org}/teams/{team_slug}/repos"],
-    removeMembershipForUserInOrg: [
-      "DELETE /orgs/{org}/teams/{team_slug}/memberships/{username}"
-    ],
-    removeRepoInOrg: [
-      "DELETE /orgs/{org}/teams/{team_slug}/repos/{owner}/{repo}"
-    ],
-    updateDiscussionCommentInOrg: [
-      "PATCH /orgs/{org}/teams/{team_slug}/discussions/{discussion_number}/comments/{comment_number}"
-    ],
-    updateDiscussionInOrg: [
-      "PATCH /orgs/{org}/teams/{team_slug}/discussions/{discussion_number}"
-    ],
-    updateInOrg: ["PATCH /orgs/{org}/teams/{team_slug}"]
-  },
-  users: {
-    addEmailForAuthenticated: [
-      "POST /user/emails",
-      {},
-      { renamed: ["users", "addEmailForAuthenticatedUser"] }
-    ],
-    addEmailForAuthenticatedUser: ["POST /user/emails"],
-    addSocialAccountForAuthenticatedUser: ["POST /user/social_accounts"],
-    block: ["PUT /user/blocks/{username}"],
-    checkBlocked: ["GET /user/blocks/{username}"],
-    checkFollowingForUser: ["GET /users/{username}/following/{target_user}"],
-    checkPersonIsFollowedByAuthenticated: ["GET /user/following/{username}"],
-    createGpgKeyForAuthenticated: [
-      "POST /user/gpg_keys",
-      {},
-      { renamed: ["users", "createGpgKeyForAuthenticatedUser"] }
-    ],
-    createGpgKeyForAuthenticatedUser: ["POST /user/gpg_keys"],
-    createPublicSshKeyForAuthenticated: [
-      "POST /user/keys",
-      {},
-      { renamed: ["users", "createPublicSshKeyForAuthenticatedUser"] }
-    ],
-    createPublicSshKeyForAuthenticatedUser: ["POST /user/keys"],
-    createSshSigningKeyForAuthenticatedUser: ["POST /user/ssh_signing_keys"],
-    deleteAttestationsBulk: [
-      "POST /users/{username}/attestations/delete-request"
-    ],
-    deleteAttestationsById: [
-      "DELETE /users/{username}/attestations/{attestation_id}"
-    ],
-    deleteAttestationsBySubjectDigest: [
-      "DELETE /users/{username}/attestations/digest/{subject_digest}"
-    ],
-    deleteEmailForAuthenticated: [
-      "DELETE /user/emails",
-      {},
-      { renamed: ["users", "deleteEmailForAuthenticatedUser"] }
-    ],
-    deleteEmailForAuthenticatedUser: ["DELETE /user/emails"],
-    deleteGpgKeyForAuthenticated: [
-      "DELETE /user/gpg_keys/{gpg_key_id}",
-      {},
-      { renamed: ["users", "deleteGpgKeyForAuthenticatedUser"] }
-    ],
-    deleteGpgKeyForAuthenticatedUser: ["DELETE /user/gpg_keys/{gpg_key_id}"],
-    deletePublicSshKeyForAuthenticated: [
-      "DELETE /user/keys/{key_id}",
-      {},
-      { renamed: ["users", "deletePublicSshKeyForAuthenticatedUser"] }
-    ],
-    deletePublicSshKeyForAuthenticatedUser: ["DELETE /user/keys/{key_id}"],
-    deleteSocialAccountForAuthenticatedUser: ["DELETE /user/social_accounts"],
-    deleteSshSigningKeyForAuthenticatedUser: [
-      "DELETE /user/ssh_signing_keys/{ssh_signing_key_id}"
-    ],
-    follow: ["PUT /user/following/{username}"],
-    getAuthenticated: ["GET /user"],
-    getById: ["GET /user/{account_id}"],
-    getByUsername: ["GET /users/{username}"],
-    getContextForUser: ["GET /users/{username}/hovercard"],
-    getGpgKeyForAuthenticated: [
-      "GET /user/gpg_keys/{gpg_key_id}",
-      {},
-      { renamed: ["users", "getGpgKeyForAuthenticatedUser"] }
-    ],
-    getGpgKeyForAuthenticatedUser: ["GET /user/gpg_keys/{gpg_key_id}"],
-    getPublicSshKeyForAuthenticated: [
-      "GET /user/keys/{key_id}",
-      {},
-      { renamed: ["users", "getPublicSshKeyForAuthenticatedUser"] }
-    ],
-    getPublicSshKeyForAuthenticatedUser: ["GET /user/keys/{key_id}"],
-    getSshSigningKeyForAuthenticatedUser: [
-      "GET /user/ssh_signing_keys/{ssh_signing_key_id}"
-    ],
-    list: ["GET /users"],
-    listAttestations: ["GET /users/{username}/attestations/{subject_digest}"],
-    listAttestationsBulk: [
-      "POST /users/{username}/attestations/bulk-list{?per_page,before,after}"
-    ],
-    listBlockedByAuthenticated: [
-      "GET /user/blocks",
-      {},
-      { renamed: ["users", "listBlockedByAuthenticatedUser"] }
-    ],
-    listBlockedByAuthenticatedUser: ["GET /user/blocks"],
-    listEmailsForAuthenticated: [
-      "GET /user/emails",
-      {},
-      { renamed: ["users", "listEmailsForAuthenticatedUser"] }
-    ],
-    listEmailsForAuthenticatedUser: ["GET /user/emails"],
-    listFollowedByAuthenticated: [
-      "GET /user/following",
-      {},
-      { renamed: ["users", "listFollowedByAuthenticatedUser"] }
-    ],
-    listFollowedByAuthenticatedUser: ["GET /user/following"],
-    listFollowersForAuthenticatedUser: ["GET /user/followers"],
-    listFollowersForUser: ["GET /users/{username}/followers"],
-    listFollowingForUser: ["GET /users/{username}/following"],
-    listGpgKeysForAuthenticated: [
-      "GET /user/gpg_keys",
-      {},
-      { renamed: ["users", "listGpgKeysForAuthenticatedUser"] }
-    ],
-    listGpgKeysForAuthenticatedUser: ["GET /user/gpg_keys"],
-    listGpgKeysForUser: ["GET /users/{username}/gpg_keys"],
-    listPublicEmailsForAuthenticated: [
-      "GET /user/public_emails",
-      {},
-      { renamed: ["users", "listPublicEmailsForAuthenticatedUser"] }
-    ],
-    listPublicEmailsForAuthenticatedUser: ["GET /user/public_emails"],
-    listPublicKeysForUser: ["GET /users/{username}/keys"],
-    listPublicSshKeysForAuthenticated: [
-      "GET /user/keys",
-      {},
-      { renamed: ["users", "listPublicSshKeysForAuthenticatedUser"] }
-    ],
-    listPublicSshKeysForAuthenticatedUser: ["GET /user/keys"],
-    listSocialAccountsForAuthenticatedUser: ["GET /user/social_accounts"],
-    listSocialAccountsForUser: ["GET /users/{username}/social_accounts"],
-    listSshSigningKeysForAuthenticatedUser: ["GET /user/ssh_signing_keys"],
-    listSshSigningKeysForUser: ["GET /users/{username}/ssh_signing_keys"],
-    setPrimaryEmailVisibilityForAuthenticated: [
-      "PATCH /user/email/visibility",
-      {},
-      { renamed: ["users", "setPrimaryEmailVisibilityForAuthenticatedUser"] }
-    ],
-    setPrimaryEmailVisibilityForAuthenticatedUser: [
-      "PATCH /user/email/visibility"
-    ],
-    unblock: ["DELETE /user/blocks/{username}"],
-    unfollow: ["DELETE /user/following/{username}"],
-    updateAuthenticated: ["PATCH /user"]
-  }
-};
-var endpoints_default = Endpoints;
-
-const endpointMethodsMap = /* @__PURE__ */ new Map();
-for (const [scope, endpoints] of Object.entries(endpoints_default)) {
-  for (const [methodName, endpoint] of Object.entries(endpoints)) {
-    const [route, defaults, decorations] = endpoint;
-    const [method, url] = route.split(/ /);
-    const endpointDefaults = Object.assign(
-      {
-        method,
-        url
-      },
-      defaults
-    );
-    if (!endpointMethodsMap.has(scope)) {
-      endpointMethodsMap.set(scope, /* @__PURE__ */ new Map());
-    }
-    endpointMethodsMap.get(scope).set(methodName, {
-      scope,
-      methodName,
-      endpointDefaults,
-      decorations
-    });
-  }
-}
-const handler = {
-  has({ scope }, methodName) {
-    return endpointMethodsMap.get(scope).has(methodName);
-  },
-  getOwnPropertyDescriptor(target, methodName) {
-    return {
-      value: this.get(target, methodName),
-      // ensures method is in the cache
-      configurable: true,
-      writable: true,
-      enumerable: true
-    };
-  },
-  defineProperty(target, methodName, descriptor) {
-    Object.defineProperty(target.cache, methodName, descriptor);
-    return true;
-  },
-  deleteProperty(target, methodName) {
-    delete target.cache[methodName];
-    return true;
-  },
-  ownKeys({ scope }) {
-    return [...endpointMethodsMap.get(scope).keys()];
-  },
-  set(target, methodName, value) {
-    return target.cache[methodName] = value;
-  },
-  get({ octokit, scope, cache }, methodName) {
-    if (cache[methodName]) {
-      return cache[methodName];
-    }
-    const method = endpointMethodsMap.get(scope).get(methodName);
-    if (!method) {
-      return void 0;
-    }
-    const { endpointDefaults, decorations } = method;
-    if (decorations) {
-      cache[methodName] = decorate(
-        octokit,
-        scope,
-        methodName,
-        endpointDefaults,
-        decorations
-      );
-    } else {
-      cache[methodName] = octokit.request.defaults(endpointDefaults);
-    }
-    return cache[methodName];
-  }
-};
-function endpointsToMethods(octokit) {
-  const newMethods = {};
-  for (const scope of endpointMethodsMap.keys()) {
-    newMethods[scope] = new Proxy({ octokit, scope, cache: {} }, handler);
-  }
-  return newMethods;
-}
-function decorate(octokit, scope, methodName, defaults, decorations) {
-  const requestWithDefaults = octokit.request.defaults(defaults);
-  function withDecorations(...args) {
-    let options = requestWithDefaults.endpoint.merge(...args);
-    if (decorations.mapToData) {
-      options = Object.assign({}, options, {
-        data: options[decorations.mapToData],
-        [decorations.mapToData]: void 0
-      });
-      return requestWithDefaults(options);
-    }
-    if (decorations.renamed) {
-      const [newScope, newMethodName] = decorations.renamed;
-      octokit.log.warn(
-        `octokit.${scope}.${methodName}() has been renamed to octokit.${newScope}.${newMethodName}()`
-      );
-    }
-    if (decorations.deprecated) {
-      octokit.log.warn(decorations.deprecated);
-    }
-    if (decorations.renamedParameters) {
-      const options2 = requestWithDefaults.endpoint.merge(...args);
-      for (const [name, alias] of Object.entries(
-        decorations.renamedParameters
-      )) {
-        if (name in options2) {
-          octokit.log.warn(
-            `"${name}" parameter is deprecated for "octokit.${scope}.${methodName}()". Use "${alias}" instead`
-          );
-          if (!(alias in options2)) {
-            options2[alias] = options2[name];
-          }
-          delete options2[name];
-        }
-      }
-      return requestWithDefaults(options2);
-    }
-    return requestWithDefaults(...args);
-  }
-  return Object.assign(withDecorations, requestWithDefaults);
-}
-
-function restEndpointMethods(octokit) {
-  const api = endpointsToMethods(octokit);
-  return {
-    rest: api
-  };
-}
-restEndpointMethods.VERSION = VERSION$1;
-
-// pkg/dist-src/version.js
-var VERSION = "0.0.0-development";
-
-// pkg/dist-src/normalize-paginated-list-response.js
-function normalizePaginatedListResponse(response) {
-  if (!response.data) {
-    return {
-      ...response,
-      data: []
-    };
-  }
-  const responseNeedsNormalization = ("total_count" in response.data || "total_commits" in response.data) && !("url" in response.data);
-  if (!responseNeedsNormalization) return response;
-  const incompleteResults = response.data.incomplete_results;
-  const repositorySelection = response.data.repository_selection;
-  const totalCount = response.data.total_count;
-  const totalCommits = response.data.total_commits;
-  delete response.data.incomplete_results;
-  delete response.data.repository_selection;
-  delete response.data.total_count;
-  delete response.data.total_commits;
-  const namespaceKey = Object.keys(response.data)[0];
-  const data = response.data[namespaceKey];
-  response.data = data;
-  if (typeof incompleteResults !== "undefined") {
-    response.data.incomplete_results = incompleteResults;
-  }
-  if (typeof repositorySelection !== "undefined") {
-    response.data.repository_selection = repositorySelection;
-  }
-  response.data.total_count = totalCount;
-  response.data.total_commits = totalCommits;
-  return response;
-}
-
-// pkg/dist-src/iterator.js
-function iterator(octokit, route, parameters) {
-  const options = typeof route === "function" ? route.endpoint(parameters) : octokit.request.endpoint(route, parameters);
-  const requestMethod = typeof route === "function" ? route : octokit.request;
-  const method = options.method;
-  const headers = options.headers;
-  let url = options.url;
-  return {
-    [Symbol.asyncIterator]: () => ({
-      async next() {
-        if (!url) return { done: true };
-        try {
-          const response = await requestMethod({ method, url, headers });
-          const normalizedResponse = normalizePaginatedListResponse(response);
-          url = ((normalizedResponse.headers.link || "").match(
-            /<([^<>]+)>;\s*rel="next"/
-          ) || [])[1];
-          if (!url && "total_commits" in normalizedResponse.data) {
-            const parsedUrl = new URL(normalizedResponse.url);
-            const params = parsedUrl.searchParams;
-            const page = parseInt(params.get("page") || "1", 10);
-            const per_page = parseInt(params.get("per_page") || "250", 10);
-            if (page * per_page < normalizedResponse.data.total_commits) {
-              params.set("page", String(page + 1));
-              url = parsedUrl.toString();
-            }
-          }
-          return { value: normalizedResponse };
-        } catch (error) {
-          if (error.status !== 409) throw error;
-          url = "";
-          return {
-            value: {
-              status: 200,
-              headers: {},
-              data: []
-            }
-          };
-        }
-      }
-    })
-  };
-}
-
-// pkg/dist-src/paginate.js
-function paginate(octokit, route, parameters, mapFn) {
-  if (typeof parameters === "function") {
-    mapFn = parameters;
-    parameters = void 0;
-  }
-  return gather(
-    octokit,
-    [],
-    iterator(octokit, route, parameters)[Symbol.asyncIterator](),
-    mapFn
-  );
-}
-function gather(octokit, results, iterator2, mapFn) {
-  return iterator2.next().then((result) => {
-    if (result.done) {
-      return results;
-    }
-    let earlyExit = false;
-    function done() {
-      earlyExit = true;
-    }
-    results = results.concat(
-      mapFn ? mapFn(result.value, done) : result.value.data
-    );
-    if (earlyExit) {
-      return results;
-    }
-    return gather(octokit, results, iterator2, mapFn);
-  });
-}
-
-// pkg/dist-src/compose-paginate.js
-Object.assign(paginate, {
-  iterator
-});
-
-// pkg/dist-src/index.js
-function paginateRest(octokit) {
-  return {
-    paginate: Object.assign(paginate.bind(null, octokit), {
-      iterator: iterator.bind(null, octokit)
-    })
-  };
-}
-paginateRest.VERSION = VERSION;
-
-new Context();
-const baseUrl = getApiBaseUrl();
-const defaults = {
-    baseUrl,
-    request: {
-        agent: getProxyAgent(baseUrl),
-        fetch: getProxyFetch(baseUrl)
-    }
-};
-Octokit.plugin(restEndpointMethods, paginateRest).defaults(defaults);
-
-const context = new Context();
-
 /**
  * Downloads and installs the Workshop snap.
  * Does nothing if already installed.
@@ -88888,23 +83389,26 @@ async function setupWorkshop(channel, revision) {
  *
  * @param project Project ID and directory.
  * @param workshop Workshop name.
+ * @param cacheKey Primary cache key.
  * @param plugs Mount plugs to cache.
  * @returns Resolves when complete.
  */
-async function saveCache(project, workshop, plugs) {
-    const hashes = plugHashes(project, workshop, plugs);
+async function saveCache(project, workshop, cacheKey, plugs) {
+    const hashes = cacheHashes(project, workshop, cacheKey, plugs);
+    const keyHashes = plugHashes(project, workshop, cacheKey ? 'v2' : 'v1', plugs);
     const existing = [];
     for (const [i, plug] of plugs.entries()) {
         const source = mountHostSource(project.id, workshop, plug.sdk, plug.name);
         const exists = await mv(source, hostCachePath(hashes[i]));
         if (exists) {
-            debug(`Caching ${plugToString$1(plug)} (${source})`);
+            debug(`Caching ${plugToString$2(plug)} (${source})`);
             existing.push(hashes[i]);
         }
     }
     const uploads = existing.map((hash) => {
         const paths = [hostCachePath(hash)];
-        const key = `workshop-${hash}-${context.runId}-${context.runAttempt}`;
+        const index = hashes.indexOf(hash);
+        const key = cacheEntryKey(keyHashes[index], cacheKey);
         return saveCache$1(paths, key);
     });
     await Promise.all(uploads);
@@ -88914,40 +83418,61 @@ async function saveCache(project, workshop, plugs) {
  *
  * @param project Project ID and directory.
  * @param workshop Workshop name.
+ * @param cacheKey Primary cache key.
+ * @param restoreKeys Ordered fallback cache key prefixes.
  * @param plugs Mount plugs to restore.
- * @returns Resolves when complete.
+ * @returns Plugs restored with an exact primary-key match.
  */
-async function restoreCache(project, workshop, plugs) {
-    const hashes = plugHashes(project, workshop, plugs);
-    const downloads = hashes.map((hash) => {
+async function restoreCache(project, workshop, cacheKey, restoreKeys, plugs) {
+    const hashes = cacheHashes(project, workshop, cacheKey, plugs);
+    const keyHashes = plugHashes(project, workshop, cacheKey ? 'v2' : 'v1', plugs);
+    const downloads = hashes.map((hash, index) => {
         const paths = [hostCachePath(hash)];
-        const key = `workshop-${hash}-${context.runId}-${context.runAttempt}`;
-        const prefixes = [`workshop-${hash}-`];
+        const keyHash = keyHashes[index];
+        const key = cacheEntryKey(keyHash, cacheKey);
+        const prefixes = restoreKeys.map((restoreKey) => cachePrefix(keyHash, restoreKey));
         return restoreCache$1(paths, key, prefixes);
     });
-    await Promise.all(downloads);
+    const restored = await Promise.all(downloads);
     for (const [i, plug] of plugs.entries()) {
         const target = mountHostSource(project.id, workshop, plug.sdk, plug.name);
         const exists = await mv(hostCachePath(hashes[i]), target);
         if (exists) {
-            debug(`Restored ${plugToString$1(plug)} (${target})`);
+            debug(`Restored ${plugToString$2(plug)} (${target})`);
         }
     }
+    return plugs.filter((plug, index) => restored[index] === cacheEntryKey(keyHashes[index], cacheKey));
 }
-function plugHashes(project, workshop, plugs) {
+function plugHashes(project, workshop, version, plugs, cacheKey = '') {
     const hashes = plugs.map((plug) => {
-        const metadata = ['v1', project.path, workshop, plug.sdk, plug.name];
+        const metadata = [
+            version,
+            project.path,
+            workshop,
+            cacheKey,
+            plug.sdk,
+            plug.name
+        ].filter(Boolean);
         return createHash('sha256').update(JSON.stringify(metadata)).digest('hex');
     });
     for (const [i, hash] of hashes.entries()) {
         const j = hashes.indexOf(hash);
         if (j < i) {
-            throw new Error(`hash collision between ${plugToString$1(plugs[j])} and ${plugToString$1(plugs[i])}`);
+            throw new Error(`hash collision between ${plugToString$2(plugs[j])} and ${plugToString$2(plugs[i])}`);
         }
     }
     return hashes;
 }
-function plugToString$1(plug) {
+function cacheHashes(project, workshop, cacheKey, plugs) {
+    return plugHashes(project, workshop, cacheKey ? 'v2' : 'v1', plugs, cacheKey);
+}
+function cacheEntryKey(hash, cacheKey) {
+    return cachePrefix(hash, cacheKey);
+}
+function cachePrefix(hash, cacheKey) {
+    return `workshop-${hash}-${cacheKey}`;
+}
+function plugToString$2(plug) {
     return `${plug.sdk}:${plug.name}`;
 }
 async function mv(source, target) {
@@ -88957,7 +83482,7 @@ async function mv(source, target) {
     catch {
         return false;
     }
-    await fs$1.mkdir(path$1.dirname(target), { mode: 0o755, recursive: true });
+    await fs$1.mkdir(path$2.dirname(target), { mode: 0o755, recursive: true });
     await fs$1.rename(source, target);
     return true;
 }
@@ -89012,22 +83537,36 @@ function getInputs() {
     }
     let project = getInput('project');
     if (project) {
-        project = path$1.resolve(project);
+        project = path$2.resolve(project);
     }
     else {
-        project = path$1.resolve();
+        project = path$2.resolve();
     }
     debug(`Project directory: ${project}`);
     const workshop = getInput('workshop');
+    const cacheKey = getInput('cache-key');
+    const restoreKeys = getInput('restore-keys')
+        .split('\n')
+        .map((line) => line.trim())
+        .filter(Boolean);
     const cache = parsePlugRefs(getInput('cache'));
     const restore = parsePlugRefs(getInput('restore'));
-    const cachedPlugs = new Set(cache.map(plugToString));
+    const cachedPlugs = new Set(cache.map(plugToString$1));
     for (const plug of restore) {
-        if (cachedPlugs.has(plugToString(plug))) {
-            throw new Error(`${plugToString(plug)} cannot appear in both cache and restore`);
+        if (cachedPlugs.has(plugToString$1(plug))) {
+            throw new Error(`${plugToString$1(plug)} cannot appear in both cache and restore`);
         }
     }
-    return { channel, revision, project, workshop, cache, restore };
+    return {
+        channel,
+        revision,
+        project,
+        workshop,
+        cacheKey,
+        restoreKeys,
+        cache,
+        restore
+    };
 }
 function fullChannel(channel) {
     if (!channel) {
@@ -89065,7 +83604,7 @@ function parsePlugRefs(input) {
         .filter(Boolean)
         .map(parsePlugRef);
 }
-function plugToString(plug) {
+function plugToString$1(plug) {
     return `${plug.sdk}:${plug.name}`;
 }
 const SDK_NAME = /^(?:[a-z0-9]-?)*[a-z](?:-?[a-z0-9])*$/;
@@ -89079,11 +83618,12 @@ const PLUG_NAME = /^[a-z](?:-?[a-z0-9])*$/;
  */
 async function run() {
     try {
-        const { channel, revision, project: path, workshop: name, cache, restore } = getInputs();
+        const { channel, revision, project: path, workshop: name, cacheKey, restoreKeys, cache, restore } = getInputs();
         await setupWorkshop(channel, revision);
         const { project, workshop } = await resolveWorkshop(path, name);
         saveWorkshop({ project, workshop });
-        await restoreCache(project, workshop, [...cache, ...restore]);
+        const cacheHits = await restoreCache(project, workshop, cacheKey, restoreKeys, [...cache, ...restore]);
+        saveCacheMisses(cache, cacheHits);
         await launchWorkshop(project.path, workshop);
     }
     catch (error) {
@@ -89109,6 +83649,11 @@ function saveWorkshop({ project, workshop }) {
     saveState('PROJECT_PATH', project.path);
     saveState('WORKSHOP_NAME', workshop);
 }
+function saveCacheMisses(cache, cacheHits) {
+    const hits = new Set(cacheHits.map(plugToString));
+    const misses = cache.filter((plug) => !hits.has(plugToString(plug)));
+    saveState('CACHE_MISSES', JSON.stringify(misses));
+}
 function restoreWorkshop() {
     return {
         project: {
@@ -89123,6 +83668,12 @@ function restoreState(name) {
     require$$0$2(result, `${JSON.stringify(name)} state not found`);
     return result;
 }
+function restoreCacheMisses() {
+    return JSON.parse(restoreState('CACHE_MISSES'));
+}
+function plugToString(plug) {
+    return `${plug.sdk}:${plug.name}`;
+}
 /**
  * Caches mount plug contents after a successful workflow run.
  *
@@ -89130,12 +83681,14 @@ function restoreState(name) {
  */
 async function postRun() {
     try {
-        const { cache } = getInputs();
+        const { cacheKey, cache } = getInputs();
         const { project, workshop } = restoreWorkshop();
+        const cacheMisses = restoreCacheMisses();
         debug(`Project ID: ${project.id}`);
         debug(`Project directory: ${project.path}`);
         debug(`Workshop: ${workshop}`);
-        await saveCache(project, workshop, cache);
+        const cacheToSave = cache.filter((plug) => cacheMisses.some((missing) => plugToString(missing) === plugToString(plug)));
+        await saveCache(project, workshop, cacheKey, cacheToSave);
     }
     catch (error) {
         setFailed(errorMessage(error));

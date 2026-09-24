@@ -6,6 +6,8 @@ beforeEach(() => {
     INPUT_CHANNEL: 'latest/edge',
     INPUT_PROJECT: '/project',
     INPUT_WORKSHOP: 'dev',
+    ['INPUT_CACHE-KEY']: 'current',
+    ['INPUT_RESTORE-KEYS']: 'base\n default \n\n',
     INPUT_CACHE: 'sdk:plug \n \n  :system-plug\n\n',
     INPUT_RESTORE: 'rust:cargo-registry\n'
   })
@@ -18,6 +20,8 @@ test('uses environment', () => {
     revision: '',
     project: '/project',
     workshop: 'dev',
+    cacheKey: 'current',
+    restoreKeys: ['base', 'default'],
     cache: [
       { sdk: 'sdk', name: 'plug' },
       { sdk: 'system', name: 'system-plug' }
@@ -72,6 +76,14 @@ test('allows no workshop', () => {
   delete process.env.INPUT_WORKSHOP
 
   expect(getInputs().workshop).toBe('')
+})
+
+test('allows no cache key or restore keys', () => {
+  delete process.env['INPUT_CACHE-KEY']
+  delete process.env['INPUT_RESTORE-KEYS']
+
+  expect(getInputs().cacheKey).toBe('')
+  expect(getInputs().restoreKeys).toEqual([])
 })
 
 test('allows no cache', () => {

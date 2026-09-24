@@ -23,6 +23,14 @@ export type Inputs = {
    */
   workshop: string
   /**
+   * Primary key for cached mount plugs.
+   */
+  cacheKey: string
+  /**
+   * Ordered fallback key prefixes for cached mount plugs.
+   */
+  restoreKeys: string[]
+  /**
    * Mount plugs to cache across workflow runs.
    */
   cache: PlugRef[]
@@ -67,6 +75,12 @@ export function getInputs(): Inputs {
   core.debug(`Project directory: ${project}`)
 
   const workshop = core.getInput('workshop')
+  const cacheKey = core.getInput('cache-key')
+  const restoreKeys = core
+    .getInput('restore-keys')
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
   const cache = parsePlugRefs(core.getInput('cache'))
   const restore = parsePlugRefs(core.getInput('restore'))
   const cachedPlugs = new Set(cache.map(plugToString))
@@ -79,7 +93,16 @@ export function getInputs(): Inputs {
     }
   }
 
-  return { channel, revision, project, workshop, cache, restore }
+  return {
+    channel,
+    revision,
+    project,
+    workshop,
+    cacheKey,
+    restoreKeys,
+    cache,
+    restore
+  }
 }
 
 function fullChannel(channel: string): string {

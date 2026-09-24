@@ -87,7 +87,7 @@ describe('cache', () => {
   })
 
   test('allows no source', async () => {
-    await saveCache({ id: '42', path: '' }, 'dev', [
+    await saveCache({ id: '42', path: '' }, 'dev', '', [
       { sdk: 'go', name: 'mod-cache' }
     ])
 
@@ -97,9 +97,13 @@ describe('cache', () => {
   })
 
   test('allows no cache', async () => {
-    await restoreCache({ id: '42', path: '' }, 'dev', [
-      { sdk: 'go', name: 'mod-cache' }
-    ])
+    await restoreCache(
+      { id: '42', path: '' },
+      'dev',
+      '',
+      [],
+      [{ sdk: 'go', name: 'mod-cache' }]
+    )
 
     await expect(fs.access(paths.userDataPath())).rejects.toThrow(
       'no such file or directory'
@@ -111,21 +115,57 @@ describe('cache', () => {
     await fs.mkdir(source, { recursive: true })
     await fs.writeFile(path.join(source, 'content'), 'go modules')
 
-    await saveCache({ id: '42', path: '' }, 'dev', [
+    await saveCache({ id: '42', path: '' }, 'dev', '', [
       { sdk: 'go', name: 'mod-cache' }
     ])
 
     await fs.rm(paths.userDataPath(), { recursive: true })
 
-    await restoreCache({ id: '42', path: '' }, 'dev', [
-      { sdk: 'go', name: 'mod-cache' }
-    ])
+    await restoreCache(
+      { id: '42', path: '' },
+      'dev',
+      '',
+      [],
+      [{ sdk: 'go', name: 'mod-cache' }]
+    )
 
     const content = await fs.readFile(path.join(source, 'content'), {
       encoding: 'utf8'
     })
 
     expect(content).toEqual('go modules')
+  })
+
+  test('restores a mount from the first matching fallback key', async () => {
+    const source = paths.mountHostSource('42', 'dev', 'go', 'mod-cache')
+    await fs.mkdir(source, { recursive: true })
+    await fs.writeFile(path.join(source, 'content'), 'first fallback')
+
+    await saveCache({ id: '42', path: '' }, 'dev', 'first-current', [
+      { sdk: 'go', name: 'mod-cache' }
+    ])
+
+    await fs.mkdir(source, { recursive: true })
+    await fs.writeFile(path.join(source, 'content'), 'second fallback')
+
+    await saveCache({ id: '42', path: '' }, 'dev', 'second-current', [
+      { sdk: 'go', name: 'mod-cache' }
+    ])
+
+    await fs.rm(paths.userDataPath(), { recursive: true })
+
+    await restoreCache(
+      { id: '42', path: '' },
+      'dev',
+      'current',
+      ['first-', 'second-'],
+      [{ sdk: 'go', name: 'mod-cache' }]
+    )
+
+    const content = await fs.readFile(path.join(source, 'content'), {
+      encoding: 'utf8'
+    })
+    expect(content).toEqual('first fallback')
   })
 
   test('preserves multiple mounts', async () => {
@@ -139,17 +179,23 @@ describe('cache', () => {
       await fs.writeFile(path.join(source, 'content'), source)
     }
 
-    await saveCache({ id: '42', path: '' }, 'dev', [
+    await saveCache({ id: '42', path: '' }, 'dev', '', [
       { sdk: 'go', name: 'mod-cache' },
       { sdk: 'python', name: 'pip-cache' }
     ])
 
     await fs.rm(paths.userDataPath(), { recursive: true })
 
-    await restoreCache({ id: '42', path: '' }, 'dev', [
-      { sdk: 'go', name: 'mod-cache' },
-      { sdk: 'python', name: 'pip-cache' }
-    ])
+    await restoreCache(
+      { id: '42', path: '' },
+      'dev',
+      '',
+      [],
+      [
+        { sdk: 'go', name: 'mod-cache' },
+        { sdk: 'python', name: 'pip-cache' }
+      ]
+    )
 
     for (const source of sources) {
       const content = await fs.readFile(path.join(source, 'content'), {
@@ -161,7 +207,7 @@ describe('cache', () => {
   })
 
   test('avoids hash collisions', async () => {
-    const promise = saveCache({ id: '42', path: '' }, 'dev', [
+    const promise = saveCache({ id: '42', path: '' }, 'dev', '', [
       { sdk: 'go', name: 'mod-cache' },
       { sdk: 'go', name: 'mod-cache' }
     ])

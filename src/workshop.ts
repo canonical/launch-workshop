@@ -13,7 +13,6 @@ import { pierceFirewall, setupLxd } from './lxd.js'
 import type { PlugRef } from './inputs.js'
 import type { Project } from './workshopd.js'
 import assert from 'node:assert'
-import { context } from '@actions/github'
 import { createHash } from 'node:crypto'
 import { isNativeError } from 'node:util/types'
 import path from 'node:path'
@@ -49,15 +48,18 @@ export async function setupWorkshop(
  *
  * @param project Project ID and directory.
  * @param workshop Workshop name.
+ * @param cacheKey Primary cache key.
  * @param plugs Mount plugs to cache.
  * @returns Resolves when complete.
  */
 export async function saveCache(
   project: Project,
   workshop: string,
+  cacheKey: string,
   plugs: PlugRef[]
 ): Promise<void> {
-  const hashes = plugHashes(project, workshop, plugs)
+  const hashes = cacheHashes(project, workshop, cacheKey, plugs)
+  const keyHashes = plugHashes(project, workshop, cacheKey ? 'v2' : 'v1', plugs)
 
   const existing = []
   for (const [i, plug] of plugs.entries()) {
@@ -71,7 +73,8 @@ export async function saveCache(
 
   const uploads = existing.map((hash) => {
     const paths = [hostCachePath(hash)]
-    const key = `workshop-${hash}-${context.runId}-${context.runAttempt}`
+    const index = hashes.indexOf(hash)
+    const key = cacheEntryKey(keyHashes[index], cacheKey)
     return cache.saveCache(paths, key)
   })
   await Promise.all(uploads)
@@ -82,23 +85,31 @@ export async function saveCache(
  *
  * @param project Project ID and directory.
  * @param workshop Workshop name.
+ * @param cacheKey Primary cache key.
+ * @param restoreKeys Ordered fallback cache key prefixes.
  * @param plugs Mount plugs to restore.
- * @returns Resolves when complete.
+ * @returns Plugs restored with an exact primary-key match.
  */
 export async function restoreCache(
   project: Project,
   workshop: string,
+  cacheKey: string,
+  restoreKeys: string[],
   plugs: PlugRef[]
-): Promise<void> {
-  const hashes = plugHashes(project, workshop, plugs)
+): Promise<PlugRef[]> {
+  const hashes = cacheHashes(project, workshop, cacheKey, plugs)
+  const keyHashes = plugHashes(project, workshop, cacheKey ? 'v2' : 'v1', plugs)
 
-  const downloads = hashes.map((hash) => {
+  const downloads = hashes.map((hash, index) => {
     const paths = [hostCachePath(hash)]
-    const key = `workshop-${hash}-${context.runId}-${context.runAttempt}`
-    const prefixes = [`workshop-${hash}-`]
+    const keyHash = keyHashes[index]
+    const key = cacheEntryKey(keyHash, cacheKey)
+    const prefixes = restoreKeys.map((restoreKey) =>
+      cachePrefix(keyHash, restoreKey)
+    )
     return cache.restoreCache(paths, key, prefixes)
   })
-  await Promise.all(downloads)
+  const restored = await Promise.all(downloads)
 
   for (const [i, plug] of plugs.entries()) {
     const target = mountHostSource(project.id, workshop, plug.sdk, plug.name)
@@ -107,15 +118,29 @@ export async function restoreCache(
       core.debug(`Restored ${plugToString(plug)} (${target})`)
     }
   }
+
+  return plugs.filter(
+    (plug, index) =>
+      restored[index] === cacheEntryKey(keyHashes[index], cacheKey)
+  )
 }
 
 function plugHashes(
   project: Project,
   workshop: string,
-  plugs: PlugRef[]
+  version: 'v1' | 'v2',
+  plugs: PlugRef[],
+  cacheKey = ''
 ): string[] {
   const hashes = plugs.map((plug) => {
-    const metadata = ['v1', project.path, workshop, plug.sdk, plug.name]
+    const metadata = [
+      version,
+      project.path,
+      workshop,
+      cacheKey,
+      plug.sdk,
+      plug.name
+    ].filter(Boolean)
     return createHash('sha256').update(JSON.stringify(metadata)).digest('hex')
   })
 
@@ -129,6 +154,23 @@ function plugHashes(
   }
 
   return hashes
+}
+
+function cacheHashes(
+  project: Project,
+  workshop: string,
+  cacheKey: string,
+  plugs: PlugRef[]
+): string[] {
+  return plugHashes(project, workshop, cacheKey ? 'v2' : 'v1', plugs, cacheKey)
+}
+
+function cacheEntryKey(hash: string, cacheKey: string): string {
+  return cachePrefix(hash, cacheKey)
+}
+
+function cachePrefix(hash: string, cacheKey: string): string {
+  return `workshop-${hash}-${cacheKey}`
 }
 
 function plugToString(plug: PlugRef): string {
