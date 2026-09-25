@@ -25,6 +25,7 @@ test('launches workshop', async () => {
   expect(workshop.restoreCache).toHaveBeenCalledWith(
     { id: '42424242', path: '/project' },
     'dev',
+    '',
     [{ sdk: 'go', name: 'mod-cache' }]
   )
   expect(workshop.launchWorkshop).toHaveBeenCalledWith('/project', 'dev')
@@ -34,6 +35,7 @@ test('launches workshop', async () => {
   expect(workshop.saveCache).toHaveBeenCalledWith(
     { id: '42424242', path: '/project' },
     'dev',
+    '',
     [{ sdk: 'go', name: 'mod-cache' }]
   )
 })
@@ -45,6 +47,7 @@ test('infers workshop name', async () => {
       revision: '',
       project: '/project/ws',
       workshop: '',
+      cacheKey: '',
       cache: []
     }),
     async () => {
@@ -55,6 +58,7 @@ test('infers workshop name', async () => {
       expect(workshop.restoreCache).toHaveBeenCalledWith(
         { id: '42424242', path: '/project/ws' },
         'ws',
+        '',
         []
       )
       expect(workshop.launchWorkshop).toHaveBeenCalledWith('/project/ws', 'ws')
@@ -64,6 +68,7 @@ test('infers workshop name', async () => {
       expect(workshop.saveCache).toHaveBeenCalledWith(
         { id: '42424242', path: '/project/ws' },
         'ws',
+        '',
         []
       )
     }

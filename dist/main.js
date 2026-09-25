@@ -87803,11 +87803,12 @@ async function setupWorkshop(channel, revision) {
  *
  * @param project Project ID and directory.
  * @param workshop Workshop name.
+ * @param cacheKey Caller-supplied cache identity.
  * @param plugs Mount plugs to cache.
  * @returns Resolves when complete.
  */
-async function saveCache(project, workshop, plugs) {
-    const hashes = plugHashes(project, workshop, plugs);
+async function saveCache(project, workshop, cacheKey, plugs) {
+    const hashes = plugHashes(project, workshop, cacheKey, plugs);
     const existing = [];
     for (const [i, plug] of plugs.entries()) {
         const source = mountHostSource(project.id, workshop, plug.sdk, plug.name);
@@ -87829,11 +87830,12 @@ async function saveCache(project, workshop, plugs) {
  *
  * @param project Project ID and directory.
  * @param workshop Workshop name.
+ * @param cacheKey Caller-supplied cache identity.
  * @param plugs Mount plugs to restore.
  * @returns Resolves when complete.
  */
-async function restoreCache(project, workshop, plugs) {
-    const hashes = plugHashes(project, workshop, plugs);
+async function restoreCache(project, workshop, cacheKey, plugs) {
+    const hashes = plugHashes(project, workshop, cacheKey, plugs);
     const downloads = hashes.map((hash) => {
         const paths = [hostCachePath(hash)];
         const key = `workshop-${hash}-${context.runId}-${context.runAttempt}`;
@@ -87849,9 +87851,16 @@ async function restoreCache(project, workshop, plugs) {
         }
     }
 }
-function plugHashes(project, workshop, plugs) {
+function plugHashes(project, workshop, cacheKey, plugs) {
     const hashes = plugs.map((plug) => {
-        const metadata = ['v1', project.path, workshop, plug.sdk, plug.name];
+        const metadata = [
+            'v2',
+            project.path,
+            workshop,
+            cacheKey,
+            plug.sdk,
+            plug.name
+        ];
         return createHash('sha256').update(JSON.stringify(metadata)).digest('hex');
     });
     for (const [i, hash] of hashes.entries()) {
@@ -87880,7 +87889,7 @@ async function mv(source, target) {
  * Launches a workshop.
  *
  * @param project Project directory.
- * @param workshop Name of workshop to launch.
+ * @param workshop Workshop name.
  * @returns Resolves when complete.
  */
 async function launchWorkshop(project, workshop) {
@@ -87934,12 +87943,13 @@ function getInputs() {
     }
     debug(`Project directory: ${project}`);
     const workshop = getInput('workshop');
+    const cacheKey = getInput('cache-key');
     const cache = getInput('cache')
         .split('\n')
         .map((l) => l.trim())
         .filter(Boolean)
         .map(parsePlugRef);
-    return { channel, revision, project, workshop, cache };
+    return { channel, revision, project, workshop, cacheKey, cache };
 }
 function fullChannel(channel) {
     if (!channel) {
@@ -87981,11 +87991,11 @@ const PLUG_NAME = /^[a-z](?:-?[a-z0-9])*$/;
  */
 async function run() {
     try {
-        const { channel, revision, project: path, workshop: name, cache } = getInputs();
+        const { channel, revision, project: path, workshop: name, cacheKey, cache } = getInputs();
         await setupWorkshop(channel, revision);
         const { project, workshop } = await resolveWorkshop(path, name);
         saveWorkshop({ project, workshop });
-        await restoreCache(project, workshop, cache);
+        await restoreCache(project, workshop, cacheKey, cache);
         await launchWorkshop(project.path, workshop);
     }
     catch (error) {
@@ -88032,12 +88042,12 @@ function restoreState(name) {
  */
 async function postRun() {
     try {
-        const { cache } = getInputs();
+        const { cacheKey, cache } = getInputs();
         const { project, workshop } = restoreWorkshop();
         debug(`Project ID: ${project.id}`);
         debug(`Project directory: ${project.path}`);
         debug(`Workshop: ${workshop}`);
-        await saveCache(project, workshop, cache);
+        await saveCache(project, workshop, cacheKey, cache);
     }
     catch (error) {
         setFailed(errorMessage(error));
