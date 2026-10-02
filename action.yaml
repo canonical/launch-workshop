@@ -14,8 +14,19 @@ inputs:
     description: Directory containing a workshop to launch.
   workshop:
     description: Name of workshop to launch.
+  cache-key:
+    description: Primary key for cached mount plugs.
+    required: false
+    default: ''
+  restore-keys:
+    description: Ordered fallback key prefixes for cached mount plugs.
+    required: false
+    default: ''
   cache:
-    description: Mount plugs to cache across workflow runs.
+    description: Mount plugs to restore before and save after the workflow.
+  restore:
+    description:
+      Mount plugs to restore before the workflow without saving after.
 runs:
   using: node24
   main: dist/index.js
