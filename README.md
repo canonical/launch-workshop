@@ -98,8 +98,7 @@ never saved:
 ```yaml
 - uses: canonical/launch-workshop@v1
   with:
-    cache-key:
-      ${{ github.ref_name }}-${{ hashFiles('workshop.yaml', '.workshop/**') }}
+    cache-key: ${{ github.ref_name }}
     restore-keys: |
       ${{ github.event.repository.default_branch }}-
     cache: |
