@@ -25,7 +25,12 @@ test('launches workshop', async () => {
   expect(workshop.restoreCache).toHaveBeenCalledWith(
     { id: '42424242', path: '/project' },
     'dev',
-    [{ sdk: 'go', name: 'mod-cache' }]
+    '',
+    [],
+    [
+      { sdk: 'go', name: 'mod-cache' },
+      { sdk: 'rust', name: 'cargo-registry' }
+    ]
   )
   expect(workshop.launchWorkshop).toHaveBeenCalledWith('/project', 'dev')
 
@@ -34,6 +39,7 @@ test('launches workshop', async () => {
   expect(workshop.saveCache).toHaveBeenCalledWith(
     { id: '42424242', path: '/project' },
     'dev',
+    '',
     [{ sdk: 'go', name: 'mod-cache' }]
   )
 })
@@ -45,7 +51,10 @@ test('infers workshop name', async () => {
       revision: '',
       project: '/project/ws',
       workshop: '',
-      cache: []
+      cacheKey: '',
+      restoreKeys: [],
+      cache: [],
+      restore: []
     }),
     async () => {
       await run()
@@ -55,6 +64,8 @@ test('infers workshop name', async () => {
       expect(workshop.restoreCache).toHaveBeenCalledWith(
         { id: '42424242', path: '/project/ws' },
         'ws',
+        '',
+        [],
         []
       )
       expect(workshop.launchWorkshop).toHaveBeenCalledWith('/project/ws', 'ws')
@@ -64,9 +75,26 @@ test('infers workshop name', async () => {
       expect(workshop.saveCache).toHaveBeenCalledWith(
         { id: '42424242', path: '/project/ws' },
         'ws',
+        '',
         []
       )
     }
+  )
+})
+
+test('does not save plugs restored with an exact primary key', async () => {
+  workshop.restoreCache.mockResolvedValueOnce([
+    { sdk: 'go', name: 'mod-cache' }
+  ])
+
+  await run()
+  await postRun()
+
+  expect(workshop.saveCache).toHaveBeenCalledWith(
+    { id: '42424242', path: '/project' },
+    'dev',
+    '',
+    []
   )
 })
 
