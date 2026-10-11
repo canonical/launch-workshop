@@ -23,9 +23,21 @@ export type Inputs = {
    */
   workshop: string
   /**
+   * Primary key for cached mount plugs.
+   */
+  cacheKey: string
+  /**
+   * Ordered fallback key prefixes for cached mount plugs.
+   */
+  restoreKeys: string[]
+  /**
    * Mount plugs to cache across workflow runs.
    */
   cache: PlugRef[]
+  /**
+   * Mount plugs to restore without caching after the workflow.
+   */
+  restore: PlugRef[]
 }
 
 /**
@@ -63,15 +75,34 @@ export function getInputs(): Inputs {
   core.debug(`Project directory: ${project}`)
 
   const workshop = core.getInput('workshop')
-
-  const cache = core
-    .getInput('cache')
+  const cacheKey = core.getInput('cache-key')
+  const restoreKeys = core
+    .getInput('restore-keys')
     .split('\n')
-    .map((l) => l.trim())
+    .map((line) => line.trim())
     .filter(Boolean)
-    .map(parsePlugRef)
+  const cache = parsePlugRefs(core.getInput('cache'))
+  const restore = parsePlugRefs(core.getInput('restore'))
+  const cachedPlugs = new Set(cache.map(plugToString))
 
-  return { channel, revision, project, workshop, cache }
+  for (const plug of restore) {
+    if (cachedPlugs.has(plugToString(plug))) {
+      throw new Error(
+        `${plugToString(plug)} cannot appear in both cache and restore`
+      )
+    }
+  }
+
+  return {
+    channel,
+    revision,
+    project,
+    workshop,
+    cacheKey,
+    restoreKeys,
+    cache,
+    restore
+  }
 }
 
 function fullChannel(channel: string): string {
@@ -118,6 +149,18 @@ function parsePlugRef(ref: string): PlugRef {
   )
 
   return { sdk, name }
+}
+
+function parsePlugRefs(input: string): PlugRef[] {
+  return input
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map(parsePlugRef)
+}
+
+function plugToString(plug: PlugRef): string {
+  return `${plug.sdk}:${plug.name}`
 }
 
 const SDK_NAME = /^(?:[a-z0-9]-?)*[a-z](?:-?[a-z0-9])*$/
