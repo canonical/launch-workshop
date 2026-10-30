@@ -15,6 +15,8 @@ type Workshop = {
   workshop: string
 }
 
+type PlugRef = ReturnType<typeof getInputs>['cache'][number]
+
 /**
  * Launches a workshop, installing Workshop first if necessary.
  * Restores mount plug contents from cache (if possible).
@@ -28,7 +30,10 @@ export async function run(): Promise<void> {
       revision,
       project: path,
       workshop: name,
-      cache
+      cacheKey,
+      restoreKeys,
+      cache,
+      restore
     } = getInputs()
 
     await setupWorkshop(channel, revision)
@@ -36,7 +41,14 @@ export async function run(): Promise<void> {
     const { project, workshop } = await resolveWorkshop(path, name)
     saveWorkshop({ project, workshop })
 
-    await restoreCache(project, workshop, cache)
+    const cacheHits = await restoreCache(
+      project,
+      workshop,
+      cacheKey,
+      restoreKeys,
+      [...cache, ...restore]
+    )
+    saveCacheMisses(cache, cacheHits)
 
     await launchWorkshop(project.path, workshop)
   } catch (error) {
@@ -69,6 +81,12 @@ function saveWorkshop({ project, workshop }: Workshop) {
   core.saveState('WORKSHOP_NAME', workshop)
 }
 
+function saveCacheMisses(cache: PlugRef[], cacheHits: PlugRef[]) {
+  const hits = new Set(cacheHits.map(plugToString))
+  const misses = cache.filter((plug) => !hits.has(plugToString(plug)))
+  core.saveState('CACHE_MISSES', JSON.stringify(misses))
+}
+
 function restoreWorkshop(): Workshop {
   return {
     project: {
@@ -85,6 +103,14 @@ function restoreState(name: string): string {
   return result
 }
 
+function restoreCacheMisses(): PlugRef[] {
+  return JSON.parse(restoreState('CACHE_MISSES'))
+}
+
+function plugToString(plug: PlugRef): string {
+  return `${plug.sdk}:${plug.name}`
+}
+
 /**
  * Caches mount plug contents after a successful workflow run.
  *
@@ -92,14 +118,20 @@ function restoreState(name: string): string {
  */
 export async function postRun(): Promise<void> {
   try {
-    const { cache } = getInputs()
+    const { cacheKey, cache } = getInputs()
 
     const { project, workshop } = restoreWorkshop()
+    const cacheMisses = restoreCacheMisses()
     core.debug(`Project ID: ${project.id}`)
     core.debug(`Project directory: ${project.path}`)
     core.debug(`Workshop: ${workshop}`)
 
-    await saveCache(project, workshop, cache)
+    const cacheToSave = cache.filter((plug) =>
+      cacheMisses.some(
+        (missing) => plugToString(missing) === plugToString(plug)
+      )
+    )
+    await saveCache(project, workshop, cacheKey, cacheToSave)
   } catch (error) {
     core.setFailed(errorMessage(error))
   }
