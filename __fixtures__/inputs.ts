@@ -6,5 +6,8 @@ export const getInputs = jest.fn<typeof inputs.getInputs>().mockReturnValue({
   revision: '',
   project: '/project',
   workshop: 'dev',
-  cache: [{ sdk: 'go', name: 'mod-cache' }]
+  cacheKey: '',
+  restoreKeys: [],
+  cache: [{ sdk: 'go', name: 'mod-cache' }],
+  restore: [{ sdk: 'rust', name: 'cargo-registry' }]
 })
